@@ -9,8 +9,8 @@ from math_ops import *
 logging.getLogger().setLevel(logging.DEBUG)
 
 BITW = 1
-BITA = 4
-BITG = 6
+BITA = 8
+BITG = 6 # TODO: we don't have binarized gradient implementation yet.
 
 # get quantized functions
 f_w, f_a, f_g = get_dorefa(BITW, BITA, BITG)
@@ -24,6 +24,9 @@ def prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size):
 	return train_iter, val_iter
 
 def get_lenet():
+	"""
+	original lenet
+	"""
 	data = mx.symbol.Variable('data')
 	# first conv layer
 	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=20)
@@ -45,7 +48,7 @@ def get_lenet():
 
 def nonlin(x):
 	if BITA == 32:
-		return mx.sym.Activation(data=x, act_type="tanh")    # still use relu for 32bit cases
+		return mx.sym.Activation(data=x, act_type="relu")    # still use relu for 32bit cases
 	return mx.sym.Custom(data=x, op_type='clip_by_0_1')
 
 def activate(x):
@@ -54,9 +57,11 @@ def activate(x):
 
 def get_binary_lenet():
 	data = mx.symbol.Variable('data')
+
 	# first conv layer
-	conv1 = mx.sym.Convolution(data=f_w(data), kernel=(5,5), num_filter=20)	
+	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=20)	
 	conv1_q = f_w(conv1)
+	#conv1_q = mx.sym.Custom(data=conv1_q, op_type='debug')
 	tanh1 = activate(conv1_q)
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 	# second conv layer
@@ -118,7 +123,8 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 		ctx = mx.gpu(gpu_id),     # use GPU 0 for training, others are same as before
 		symbol = lenet,   		  # network structure    
 		num_epoch = 10,     	  # number of data passes for training 
-		learning_rate = 0.01)
+		learning_rate = 0.1,
+		optimizer='Adam')
 
 	model.fit(
 		X=train_iter,  			# training data

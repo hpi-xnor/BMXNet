@@ -22,6 +22,17 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 		x = x * n		
 		return mx.sym.Custom(data=x, op_type='around') / n
 
+	def binary_sign(x):
+		"""
+		- clip input tensor to [0, 1]
+		- round it to {0, 1}
+		- convert to {1, -1}
+		"""
+		x_1_0 = mx.sym.Custom(data=x, op_type='clip_by_0_1')
+		x_round = mx.sym.Custom(data=x_1_0, op_type='around')
+		binary_w = x_round * 2 - 1
+		return binary_w
+
 	def qua_w(x):
 		"""
 		quantization function for weights
@@ -32,8 +43,9 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 			return x
 		# 1 bit
 		if nbit_w == 1:   
-				E = mx.sym.Custom(data=mx.sym.abs(x), op_type='reduce_mean')				
-				binary_w = mx.sym.sign(x) #mx.sym.sign(x/E)* E
+				E = mx.sym.Custom(data=mx.sym.abs(x), op_type='reduce_mean')	
+				#mx.sym.sign(x/E)* E # the scaling factor E not works, why?????
+				binary_w = binary_sign(x)							
 				#binary_w = mx.sym.Custom(data=binary_w, op_type='debug')
 				return binary_w
 		# otherwise
