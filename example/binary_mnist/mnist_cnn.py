@@ -9,9 +9,10 @@ import argparse
 import mxnet as mx
 import matplotlib.pyplot as plt
 
-from train_val import train as mnist_train
+from train_val import train as mnist_train 
 from train_val import val as mnist_val
 from train_val import classify as mnist_classify
+from train_val import train_binary as mnist_train_binary
 
 
 def download_data(url, force_download=True): 
@@ -69,7 +70,7 @@ def main(args):
 	#check_data_visually(train_img, train_lbl)      
 	batch_size = 100
 	if not args.predict:
-		model = mnist_train(train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
+		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
 		model.save(args.out_file)
 	else:
 		#mnist_val(args.model_prefix, args.epochs, train_img, val_img, train_lbl, val_lbl, batch_size)

@@ -1,6 +1,6 @@
 import mxnet as mx
 import numpy as np
-
+from math_ops import *
 
 def get_dorefa(nbit_w, nbit_a, nbit_g):
 	""" 
@@ -18,8 +18,9 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 		x: input tensor
 		k: k-bit quatization
 		"""
-		n = float(2**k-1)		
-		return mx.sym.round(x * n) / n
+		n = float(2**k-1)
+		x = x * n		
+		return mx.sym.Custom(data=x, op_type='around') / n
 
 	def qua_w(x):
 		"""
@@ -30,19 +31,26 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 		if nbit_w == 32:
 			return x
 		# 1 bit
-		if nbit_w == 1:   # BWN TODO: implement custom operators
-				E = mx.sym.mean(mx.sym.abs(x))
-				return mx.sym.sign(x / E) * E
+		if nbit_w == 1:   
+				E = mx.sym.Custom(data=mx.sym.abs(x), op_type='reduce_mean')				
+				binary_w = mx.sym.sign(x) #mx.sym.sign(x/E)* E
+				#binary_w = mx.sym.Custom(data=binary_w, op_type='debug')
+				return binary_w
 		# otherwise
-		x = tf.tanh(x)
-		x = x / tf.reduce_max(tf.abs(x)) * 0.5 + 0.5
-		return 2 * quantize(x, bitW) - 1
+		x = mx.sym.Custom(data=x, op_type='tanh')
+		x = x / mx.sym.Custom(data=mx.sym.abs(x), op_type='amax') * 0.5 + 0.5
+		return 2 * quantize(x, nbit_w) - 1
 
 	def qua_a(x):
-		if bitA == 32:
+		if nbit_a == 32:
 			return x
-		return quantize(x, bitA)
+		return quantize(x, nbit_a)
 
+	def qua_g(x):
+		#if nbit_g == 32:
+		return x
+	return qua_w, qua_a, qua_g
+"""
 	global GRAD_DEFINED
 	if not GRAD_DEFINED:
 		@tf.RegisterGradient("FGGrad")
@@ -58,10 +66,6 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 			x = quantize(x, bitG) - 0.5
 			return x * maxx * 2
 	GRAD_DEFINED = True
+"""
 
-	def qua_g(x):
-		if bitG == 32:
-			return x
-		with G.gradient_override_map({"Identity": "FGGrad"}):
-			return tf.identity(x)
-	return fw, fa, fg
+	
