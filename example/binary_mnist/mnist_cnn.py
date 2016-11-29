@@ -80,7 +80,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='generate generate annotations file from data source')
 	parser.add_argument('-model_prefix', dest='model_prefix', type=str, help="gives where to find the binary model file and .json file")
 	parser.add_argument('-o', dest='out_file', type=str, default=None, help='path to save model')
-	parser.add_argument('-gpu', dest='gpu_id', type=int, default=0, help='selected gpu device id')
+	parser.add_argument('-gpu', dest='gpu_id', type=int, default=-1, help='selected gpu device id')
 	parser.add_argument('--predict', dest='predict', action='store_true',default=False, help='whether do the prediction, otherwise do the training')
 	parser.add_argument('-epochs', dest='epochs', type=int, default=0, help='set the epoch number')
 

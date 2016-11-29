@@ -86,9 +86,11 @@ def get_binary_lenet():
 def train(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 	lenet = get_lenet()
 	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
-
+	device = mx.cpu()
+	if gpu_id >= 0:
+		device = mx.gpu(gpu_id)
 	model = mx.model.FeedForward(
-		ctx = mx.gpu(gpu_id),     # use GPU 0 for training, others are same as before
+		ctx = device,     # use GPU 0 for training, others are same as before
 		symbol = lenet,   		  # network structure    
 		num_epoch = 10,     	  # number of data passes for training 
 		learning_rate = 0.1)
@@ -118,9 +120,11 @@ def classify(val_img, model_prefix, epoch_num):
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 	lenet = get_binary_lenet()
 	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
-
+	device = mx.cpu()
+	if gpu_id >= 0:
+		device = mx.gpu(gpu_id)
 	model = mx.model.FeedForward(
-		ctx = mx.gpu(gpu_id),     # use GPU 0 for training, others are same as before
+		ctx = device,     # use GPU 0 for training, others are same as before
 		symbol = lenet,   		  # network structure    
 		num_epoch = 10,     	  # number of data passes for training 
 		learning_rate = 0.1,
