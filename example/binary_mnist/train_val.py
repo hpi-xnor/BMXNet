@@ -9,7 +9,7 @@ from math_ops import *
 logging.getLogger().setLevel(logging.DEBUG)
 
 BITW = 1
-BITA = 8
+BITA = 1
 BITG = 6 # TODO: we don't have binarized gradient implementation yet.
 
 # get quantized functions
@@ -48,7 +48,7 @@ def get_lenet():
 
 def nonlin(x):
 	if BITA == 32:
-		return mx.sym.Activation(data=x, act_type="relu")    # still use relu for 32bit cases
+		return mx.sym.Activation(data=x, act_type="tanh")    # still use tanh for 32bit cases
 	return mx.sym.Custom(data=x, op_type='clip_by_0_1')
 
 def activate(x):
@@ -73,8 +73,8 @@ def get_binary_lenet():
 	flatten = mx.sym.Flatten(data=pool2)
 	flatten = f_w(flatten)
 	fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
-	fc1_q = f_w(fc1)
-	tanh3 = activate(fc1_q)
+	fc1_q = f_w(fc1)	
+	tanh3 = activate(fc1_q)	
 	# second fullc
 	fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
 	# softmax loss
@@ -127,7 +127,6 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 		ctx = device,     # use GPU 0 for training, others are same as before
 		symbol = lenet,   		  # network structure    
 		num_epoch = 10,     	  # number of data passes for training 
-		learning_rate = 0.1,
 		optimizer='Adam')
 
 	model.fit(

@@ -19,8 +19,8 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 		k: k-bit quatization
 		"""
 		n = float(2**k-1)
-		x = x * n		
-		return mx.sym.Custom(data=x, op_type='around') / n
+		x_q = mx.sym.Custom(data=x*n, op_type='around') / n		
+		return x_q
 
 	def binary_sign(x):
 		"""
@@ -43,9 +43,9 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 			return x
 		# 1 bit
 		if nbit_w == 1:   
-				E = mx.sym.Custom(data=mx.sym.abs(x), op_type='reduce_mean')	
+				E = mx.sym.Custom(data=mx.sym.abs(x), op_type='pro_channel_reduce_mean')	
 				#mx.sym.sign(x/E)* E # the scaling factor E not works, why?????
-				binary_w = binary_sign(x)							
+				binary_w = binary_sign(x)#*E							
 				#binary_w = mx.sym.Custom(data=binary_w, op_type='debug')
 				return binary_w
 		# otherwise
@@ -56,6 +56,8 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 	def qua_a(x):
 		if nbit_a == 32:
 			return x
+		if nbit_a == 1:
+			return binary_sign(x)
 		return quantize(x, nbit_a)
 
 	def qua_g(x):

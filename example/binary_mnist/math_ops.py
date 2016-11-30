@@ -7,21 +7,33 @@ import mxnet as mx
 import numpy as np
 
 #=========== math reduce_mean ============#
-class ReduceMean(mx.operator.CustomOp):
+class ChannelReduceMean(mx.operator.CustomOp):
+	"""
+	can only process array up to 4 dimontions
+	"""
 	def forward(self, is_train, req, in_data, out_data, aux):
-		x = in_data[0].asnumpy()		
-		y = np.mean(x)
-		#y = np.array([y])
-		#print mx.nd.array(y).shape
-		self.assign(out_data[0], req[0], y)
+		x = in_data[0].asnumpy()				
+		#pdb.set_trace()		
+		y = x
+		n = x.ndim
+
+		if n > 2:
+			y = np.mean(x, axis=2, keepdims=True)
+		if n == 4:
+			y = np.mean(y, axis=3, keepdims=True)
+		
+		y_nd = mx.nd.array(y)
+		y_o = y_nd.broadcast_to(x.shape)
+		#pdb.set_trace()		
+		self.assign(out_data[0], req[0], y_o)
 	
 	def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
-		self.assign(in_grad[0], req[0], out_grad[0])
+		self.assign(in_grad[0], req[0], out_grad[0])	
 
-@mx.operator.register("reduce_mean")
-class ReduceMeanProp(mx.operator.CustomOpProp):
+@mx.operator.register("pro_channel_reduce_mean")
+class ChannelReduceMeanProp(mx.operator.CustomOpProp):
 	def __init__(self):
-		super(ReduceMeanProp, self).__init__(need_top_grad=True)
+		super(ChannelReduceMeanProp, self).__init__(need_top_grad=True)
 
 	def list_arguments(self):
 		return ['data']
@@ -30,7 +42,7 @@ class ReduceMeanProp(mx.operator.CustomOpProp):
 		return ['output']
 
 	def create_operator(self, ctx, shapes, dtypes):
-		return ReduceMean()
+		return ChannelReduceMean()
 #========= end math mean ==========#
 
 #=========== math tanh ============#
