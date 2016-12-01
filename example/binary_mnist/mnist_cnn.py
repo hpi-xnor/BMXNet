@@ -9,23 +9,21 @@ import argparse
 import mxnet as mx
 import matplotlib.pyplot as plt
 
-from train_val import train as mnist_train 
+from train_val import train as mnist_train
 from train_val import val as mnist_val
 from train_val import classify as mnist_classify
 from train_val import train_binary as mnist_train_binary
 
+def download_data(dir, files):
+	for url in files:
+		name = url.rsplit('/', 1)[-1]
+		filename = os.path.join(dir, name)
 
-def download_data(url, force_download=True): 
-	fname = url.split("/")[-1]
-	if force_download or not os.path.exists(fname):
-		urllib.urlretrieve(url, fname)
-	return fname
+		if not os.path.isfile(filename):
+			print "downloading file %s..." % name
+			urllib.urlretrieve(url, filename)
 
-def read_data(label_url, image_url, download=False):
-	if download: 
-		label_url=download_data(label_url) 
-	if download: 
-		image_url = download_data(image_url)
+def read_data(label_url, image_url):
 	with gzip.open(label_url) as flbl:
 		magic, num = struct.unpack(">II", flbl.read(8))
 		label = np.fromstring(flbl.read(), dtype=np.int8)
@@ -34,24 +32,19 @@ def read_data(label_url, image_url, download=False):
 		image = np.fromstring(fimg.read(), dtype=np.uint8).reshape(len(label), rows, cols)
 	return (label, image)
 
-
 def prepare_data():
-	path='data/'
-	downloadable=False
-	data_dir = 'data'
-	if not os.path.exists(data_dir):
-		os.makedirs(data_dir)
-	if not os.path.isfile(os.path.join(data_dir, 'train-labels-idx1-ubyte.gz')) or \
-		not os.path.isfile(os.path.join(data_dir, 'train-images-idx3-ubyte.gz')) or \
-		not os.path.isfile(os.path.join(data_dir, 't10k-labels-idx1-ubyte.gz')) or \
-		not os.path.isfile(os.path.join(data_dir, 't10k-images-idx3-ubyte.gz')):
-		path='http://yann.lecun.com/exdb/mnist/'
-		downloadable=True
+	path = 'data/'
+	files = ['http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz',
+	         'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz',
+	         'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz',
+	         'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz']
+
+	download_data(path, files)
 
 	(train_lbl, train_img) = read_data(
-		path+'train-labels-idx1-ubyte.gz', path+'train-images-idx3-ubyte.gz', downloadable)
+		path+'train-labels-idx1-ubyte.gz', path+'train-images-idx3-ubyte.gz')
 	(val_lbl, val_img) = read_data(
-		path+'t10k-labels-idx1-ubyte.gz', path+'t10k-images-idx3-ubyte.gz', downloadable)
+		path+'t10k-labels-idx1-ubyte.gz', path+'t10k-images-idx3-ubyte.gz')
 	return train_img, val_img, train_lbl, val_lbl
 
 def check_data_visually(train_img, train_lbl):
@@ -63,13 +56,14 @@ def check_data_visually(train_img, train_lbl):
 	print('label: %s' % (train_lbl[0:10],))
 
 
-def main(args):    
-	#prepare data, download if necessary  
+def main(args):
+	print('preparing data...')
 	train_img, val_img, train_lbl, val_lbl = prepare_data()
 	#can be used for checking mnist data with respect to its label
-	#check_data_visually(train_img, train_lbl)      
+	#check_data_visually(train_img, train_lbl)
 	batch_size = 100
 	if not args.predict:
+		print 'starting training...'
 		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
 		model.save(args.out_file)
 	else:
