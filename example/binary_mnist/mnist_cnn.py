@@ -70,7 +70,7 @@ def main(args):
 	#check_data_visually(train_img, train_lbl)      
 	batch_size = 100
 	if not args.predict:
-		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
+		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.epochs, args.gpu_id)
 		model.save(args.out_file)
 	else:
 		#mnist_val(args.model_prefix, args.epochs, train_img, val_img, train_lbl, val_lbl, batch_size)

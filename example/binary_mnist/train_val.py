@@ -60,21 +60,27 @@ def get_binary_lenet():
 
 	# first conv layer
 	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=20)	
-	conv1_q = f_w(conv1)
-	#conv1_q = mx.sym.Custom(data=conv1_q, op_type='debug')
-	tanh1 = activate(conv1_q)
+	conv1_q = f_w(conv1)	
+	bn1 = mx.sym.BatchNorm(data=conv1_q)
+	tanh1 = activate(bn1)
+
+	#tanh1 = mx.sym.Custom(data=tanh1, op_type='debug')
+
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
+	
 	# second conv layer
 	conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=50)
 	conv2_q = f_w(conv2)
-	tanh2 = activate(conv2_q)
+	bn2 = mx.sym.BatchNorm(data=conv2_q)
+	tanh2 = activate(bn2)
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)
 	flatten = f_w(flatten)
 	fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
 	fc1_q = f_w(fc1)	
-	tanh3 = activate(fc1_q)	
+	bn3 = mx.sym.BatchNorm(data=fc1_q)
+	tanh3 = activate(bn3)	
 	# second fullc
 	fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
 	# softmax loss
@@ -83,7 +89,7 @@ def get_binary_lenet():
 	return lenet
 
 
-def train(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
+def train(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
 	lenet = get_lenet()
 	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
 	device = mx.cpu()
@@ -92,7 +98,7 @@ def train(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 	model = mx.model.FeedForward(
 		ctx = device,     # use GPU 0 for training, others are same as before
 		symbol = lenet,   		  # network structure    
-		num_epoch = 10,     	  # number of data passes for training 
+		num_epoch = epochs,     	  # number of data passes for training 
 		learning_rate = 0.1)
 	model.fit(
 		X=train_iter,  			# training data
@@ -117,7 +123,7 @@ def classify(val_img, model_prefix, epoch_num):
 	prob = model.predict(to4d(val_img[0:1]))[0]
 	print 'Classified as %d with probability %f' % (prob.argmax(), max(prob))
 
-def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
+def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
 	lenet = get_binary_lenet()
 	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
 	device = mx.cpu()
@@ -126,7 +132,7 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 	model = mx.model.FeedForward(
 		ctx = device,     # use GPU 0 for training, others are same as before
 		symbol = lenet,   		  # network structure    
-		num_epoch = 10,     	  # number of data passes for training 
+		num_epoch = epochs,     	  # number of data passes for training 
 		optimizer='Adam')
 
 	model.fit(

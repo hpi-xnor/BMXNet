@@ -17,10 +17,15 @@ class ChannelReduceMean(mx.operator.CustomOp):
 		y = x
 		n = x.ndim
 
+		#create mean for each channel
 		if n > 2:
-			y = np.mean(x, axis=2, keepdims=True)
+			y = np.mean(y, axis=2, keepdims=True)
 		if n == 4:
 			y = np.mean(y, axis=3, keepdims=True)
+		
+		#do this if we want to get a global scalar mean across all channels			
+		#if n > 1:
+		#	y = np.mean(y, axis=1, keepdims=True)
 		
 		y_nd = mx.nd.array(y)
 		y_o = y_nd.broadcast_to(x.shape)
@@ -40,6 +45,11 @@ class ChannelReduceMeanProp(mx.operator.CustomOpProp):
 
 	def list_outputs(self):
 		return ['output']
+
+	def infer_shape(self, in_shape):
+		data_shape = in_shape[0]
+		output_shape = in_shape[0]
+		return [data_shape], [output_shape], []
 
 	def create_operator(self, ctx, shapes, dtypes):
 		return ChannelReduceMean()
