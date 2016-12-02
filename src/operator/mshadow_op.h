@@ -312,6 +312,53 @@ struct minus_sign {
   }
 };
 
+/*! \brief nbit quantize function, calc grad using straight-through estimator(STE) */
+struct quantize {
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a, DType b) {
+    return DType( roundf((powf(DType(2.0f), b)-DType(1.0f))*a) / (powf(DType(2.0f), b)-DType(1.0f)) );
+  }
+};
+struct quantize_grad {
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a) {
+    return DType(DType(1.0f));
+  }
+};
+
+/*! \brief deterministic binary sign function, calc grad using STE */
+struct sign_det {
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a) {
+    if (a < 0.0f) return DType(-DType(1.0f));
+    if (a > 0.0f) return DType(DType(1.0f));
+    return DType(DType(1.0f));
+  }
+};
+struct sign_det_grad {
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a) {    
+    return DType( absf(a) <= DType(1.0f) ? DType(1.0f) : DType(0.0f));
+  }
+};
+
+/*! \brief hard_sigmoid function, calc grad using STE */
+struct hard_sigmoid {
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a) {
+    return DType( 0.0f > (1.0f < (a + DType(1.0f))/DType(2.0f) ? 1.0f : (a + DType(1.0f))/DType(2.0f)) ? \
+      0.0f : (1.0f < (a + DType(1.0f))/DType(2.0f) ? 1.0f : (a + DType(1.0f))/DType(2.0f)) );    
+  }
+};
+struct hard_sigmoid_grad {
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a) {    
+    if (a < 0.0f) return DType(0.0f);
+    if (a > 1.0f) return DType(0.0f);
+    return DType(DType(1.0f));  
+  }
+};
+
 }  // namespace mshadow_op
 }  // namespace op
 }  // namespace mxnet
