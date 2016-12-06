@@ -327,7 +327,7 @@ struct quantize_grad {
 };
 
 /*! \brief deterministic binary sign function, calc grad using STE */
-struct sign_det {
+struct det_sign {
   template<typename DType>
   MSHADOW_XINLINE static DType Map(DType a) {
     if (a < 0.0f) return DType(-DType(1.0f));
@@ -335,7 +335,7 @@ struct sign_det {
     return DType(DType(1.0f));
   }
 };
-struct sign_det_grad {
+struct det_sign_grad {
   template<typename DType>
   MSHADOW_XINLINE static DType Map(DType a) {    
     return DType( absf(a) <= DType(1.0f) ? DType(1.0f) : DType(0.0f));
