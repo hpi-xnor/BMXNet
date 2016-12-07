@@ -43,9 +43,10 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 			return x
 		# 1 bit
 		if nbit_w == 1:   
+				#with scaling factor E
 				E = mx.sym.Custom(data=mx.sym.abs(x), op_type='pro_channel_reduce_mean')	
-				#mx.sym.sign(x/E)* E # the scaling factor E not works, why?????
-				binary_w = binary_sign(x/E)*E						
+				binary_w = binary_sign(x/E)*E
+				#binary_w = binary_sign(x)
 				#binary_w = mx.sym.Custom(data=binary_w, op_type='debug')
 				return binary_w
 		# otherwise
