@@ -9,7 +9,7 @@ from math_ops import *
 logging.getLogger().setLevel(logging.DEBUG)
 
 BITW = 1
-BITA = 32
+BITA = 1
 BITG = 6 # TODO: we don't have binarized gradient implementation yet.
 
 # get quantized functions
@@ -62,8 +62,8 @@ def get_binary_lenet():
 	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=20)	
 	conv1_q = f_w(conv1)	
 	bn1 = mx.sym.BatchNorm(data=conv1_q)
-	tanh1 = activate(bn1)
-	#tanh1 = mx.sym.QActivation(data=bn1, act_bit=BITA)
+	#tanh1 = activate(bn1)
+	tanh1 = mx.sym.QActivation(data=bn1, act_bit=BITA)
 
 	#tanh1 = mx.sym.Custom(data=tanh1, op_type='debug')
 
@@ -74,8 +74,8 @@ def get_binary_lenet():
 	conv2_q = f_w(conv2)
 	bn2 = mx.sym.BatchNorm(data=conv2_q)
 	
-	tanh2 = activate(bn2)
-	#tanh2 = mx.sym.QActivation(data=bn2, act_bit=BITA)
+	#tanh2 = activate(bn2)
+	tanh2 = mx.sym.QActivation(data=bn2, act_bit=BITA)
 
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
 	# first fullc layer
@@ -85,8 +85,8 @@ def get_binary_lenet():
 	fc1_q = f_w(fc1)	
 	bn3 = mx.sym.BatchNorm(data=fc1_q)
 	
-	tanh3 = activate(bn3)	
-	#tanh3 = mx.sym.QActivation(data=bn3, act_bit=BITA)
+	#tanh3 = activate(bn3)	
+	tanh3 = mx.sym.QActivation(data=bn3, act_bit=BITA)
 
 	# second fullc
 	fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
