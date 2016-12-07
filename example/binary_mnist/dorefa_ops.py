@@ -49,8 +49,7 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 				#binary_w = mx.sym.Custom(data=binary_w, op_type='debug')
 				return binary_w
 		# otherwise
-		#x = mx.sym.Custom(data=x, op_type='tanh')
-		x = mx.sym.Activation(data=x, act_type="tanh")
+		x = mx.sym.Activation(data=x, act_type="tanh")  	
 		x = x / mx.sym.Custom(data=mx.sym.abs(x), op_type='amax') * 0.5 + 0.5
 		return 2 * quantize(x, nbit_w) - 1
 

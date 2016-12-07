@@ -62,7 +62,9 @@ class QActivationOp : public Operator {
     if(act_bit_ == 1){
       Assign(out, req[q_activation::kOut], F<mshadow_op::det_sign>(data));
     }else{
-      Assign(out, req[q_activation::kOut], F<mshadow_op::quantize>(F<mshadow_op::hard_sigmoid>(data), scalar(DType(act_bit_))));
+      Assign(out, req[q_activation::kOut], F<mshadow_op::quantize>(
+                                              F<mshadow_op::maximum>(F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
+                                              scalar(DType(act_bit_))));
     }
   }
 
@@ -85,7 +87,7 @@ class QActivationOp : public Operator {
     if(act_bit_ == 1){
       Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
     }else{
-      Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::quantize_grad>(m_in_data) * F<mshadow_op::hard_sigmoid_grad>(m_in_data) * m_out_grad);
+      Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
     }    
   }
   private:

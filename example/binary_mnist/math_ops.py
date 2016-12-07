@@ -92,8 +92,7 @@ class Amax(mx.operator.CustomOp):
 	def forward(self, is_train, req, in_data, out_data, aux):
 		x = in_data[0].asnumpy()
 		y = np.amax(x)
-		#print y.asnumpy()
-		self.assign(out_data[0], req[0], mx.nd.array(y))
+		self.assign(out_data[0], req[0], y)
 	
 	def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
 		self.assign(in_grad[0], req[0], out_grad[0])

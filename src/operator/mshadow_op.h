@@ -315,8 +315,8 @@ struct minus_sign {
 /*! \brief nbit quantize function, calc grad using straight-through estimator(STE) */
 struct quantize {
   template<typename DType>
-  MSHADOW_XINLINE static DType Map(DType a, DType b) {
-    return DType( roundf((powf(DType(2.0f), b)-DType(1.0f))*a) / (powf(DType(2.0f), b)-DType(1.0f)) );
+  MSHADOW_XINLINE static DType Map(DType a, real_t b) {
+    return DType( roundf( DType(real_t(powf(2.0f, b)- 1.0f) * a) ) / DType( powf(2.0f, b)- 1.0f) );
   }
 };
 struct quantize_grad {
@@ -339,23 +339,6 @@ struct det_sign_grad {
   template<typename DType>
   MSHADOW_XINLINE static DType Map(DType a) {    
     return DType( fabsf(a) <= DType(1.0f) ? DType(1.0f) : DType(0.0f));
-  }
-};
-
-/*! \brief hard_sigmoid function, calc grad using STE */
-struct hard_sigmoid {
-  template<typename DType>
-  MSHADOW_XINLINE static DType Map(DType a) {
-    return DType( DType(0.0f) > ( DType(1.0f) < (a + DType(1.0f))/DType(2.0f) ? DType(1.0f) : (a + DType(1.0f))/DType(2.0f)) ? \
-      DType(0.0f) : ( DType(1.0f) < (a + DType(1.0f))/DType(2.0f) ? DType(1.0f) : (a + DType(1.0f))/DType(2.0f)) );    
-  }
-};
-struct hard_sigmoid_grad {
-  template<typename DType>
-  MSHADOW_XINLINE static DType Map(DType a) {    
-    if (a < 0.0f) return DType(0.0f);
-    if (a > 1.0f) return DType(0.0f);
-    return DType(DType(1.0f));  
   }
 };
 
