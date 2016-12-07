@@ -12,7 +12,6 @@ template<>
 Operator *CreateOp<cpu>(QActivationParam param, int dtype) {
   Operator *op = NULL;
   CHECK(param.act_bit==1 || param.act_bit==2 || param.act_bit==4 || param.act_bit==8 || param.act_bit==16 || param.act_bit==32);
-  Operator *op = NULL;
   MSHADOW_REAL_TYPE_SWITCH(dtype, DType, {
     op = new QActivationOp<cpu, DType>(param);
   });

@@ -338,7 +338,7 @@ struct det_sign {
 struct det_sign_grad {
   template<typename DType>
   MSHADOW_XINLINE static DType Map(DType a) {    
-    return DType( absf(a) <= DType(1.0f) ? DType(1.0f) : DType(0.0f));
+    return DType( fabsf(a) <= DType(1.0f) ? DType(1.0f) : DType(0.0f));
   }
 };
 
@@ -346,8 +346,8 @@ struct det_sign_grad {
 struct hard_sigmoid {
   template<typename DType>
   MSHADOW_XINLINE static DType Map(DType a) {
-    return DType( 0.0f > (1.0f < (a + DType(1.0f))/DType(2.0f) ? 1.0f : (a + DType(1.0f))/DType(2.0f)) ? \
-      0.0f : (1.0f < (a + DType(1.0f))/DType(2.0f) ? 1.0f : (a + DType(1.0f))/DType(2.0f)) );    
+    return DType( DType(0.0f) > ( DType(1.0f) < (a + DType(1.0f))/DType(2.0f) ? DType(1.0f) : (a + DType(1.0f))/DType(2.0f)) ? \
+      DType(0.0f) : ( DType(1.0f) < (a + DType(1.0f))/DType(2.0f) ? DType(1.0f) : (a + DType(1.0f))/DType(2.0f)) );    
   }
 };
 struct hard_sigmoid_grad {

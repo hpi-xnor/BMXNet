@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <algorithm>
 #include "./operator_common.h"
 #include "./mshadow_op.h"
 
@@ -61,7 +62,7 @@ class QActivationOp : public Operator {
     if(act_bit_ == 1){
       Assign(out, req[q_activation::kOut], F<mshadow_op::det_sign>(data));
     }else{
-      Assign(out, req[q_activation::kOut], F<mshadow_op::quantize>(F<mshadow_op::hard_sigmoid>(data), act_bit_));
+      Assign(out, req[q_activation::kOut], F<mshadow_op::quantize>(F<mshadow_op::hard_sigmoid>(data), scalar(DType(act_bit_))));
     }
   }
 
