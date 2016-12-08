@@ -59,9 +59,12 @@ namespace mxnet {
                 Tensor<xpu, 2, DType> data = in_data[q_weights::kData].FlatTo2D<xpu, DType>(s);
                 Tensor<xpu, 2, DType> out = out_data[q_weights::kOut].FlatTo2D<xpu, DType>(s);
 
-                if(act_bit_ == 1){
-                    Assign(out, req[q_weights::kOut], F<mshadow_op::det_sign>(data));
-                }else{
+                if (act_bit_ == 32) {
+                    Assign(out, req[q_weights::kOut], data);
+                } else if (act_bit_ == 1) {
+                    Assign(out, req[q_weights::kOut], F<mshadow_op::det_sign>(data));// / E) * E);
+                } else {
+                    assert(false);
                     Assign(out, req[q_weights::kOut], F<mshadow_op::quantize>(
                             F<mshadow_op::maximum>(F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
                             scalar(DType(act_bit_))));
@@ -84,11 +87,17 @@ namespace mxnet {
                 Tensor<xpu, 2, DType> m_out_grad = out_grad[q_weights::kOut].FlatTo2D<xpu, DType>(s);
                 Tensor<xpu, 2, DType> m_in_data = in_data[q_weights::kData].FlatTo2D<xpu, DType>(s);
                 Tensor<xpu, 2, DType> m_in_grad = in_grad[q_weights::kData].FlatTo2D<xpu, DType>(s);
-                if(act_bit_ == 1){
-                    Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
-                }else{
-                    Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
-                }
+
+                Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
+
+//                if (act_bit_ == 32) {
+//                    Assign(m_in_grad, req[q_weights::kData], m_out_grad);
+//                } else if (act_bit_ == 1) {
+//                    Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
+//                } else {
+//                    assert(false);
+//                    Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
+//                }
             }
         private:
             int act_bit_;

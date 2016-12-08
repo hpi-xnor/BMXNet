@@ -39,7 +39,7 @@ The following quantization methods of weights are supported:
 - `2-32 bit`: using quantization function
 
 )")
-        .add_arguments(QActivationParam::__FIELDS__());
+        .add_arguments(QWeightsParam::__FIELDS__());
 
     }  // namespace op
 }  // namespace mxnet
