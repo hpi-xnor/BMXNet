@@ -26,13 +26,22 @@ namespace mxnet {
         namespace q_weights {
             enum QWeightsOpInputs {kData};
             enum QWeightsOpOutputs {kOut};
+            enum QWeightsScalingFactor{kChannelMean, kScalar, kNone};
         }  // lowbit_weights
 
         struct QWeightsParam : public dmlc::Parameter<QWeightsParam> {
             unsigned int act_bit;
+            int scaling_factor;
             DMLC_DECLARE_PARAMETER(QWeightsParam) {
+
                     DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
                             .describe("Number of bits weights should be quantized to (1-32)");
+
+                    DMLC_DECLARE_FIELD(scaling_factor).set_default(q_weights::kNone)
+                            .add_enum("channel_mean", q_weights::kChannelMean)
+                            .add_enum("scalar", q_weights::kScalar)
+                            .add_enum("none", q_weights::kNone)
+                            .describe("Scaling factor to multiply binarized weight with.");
             }
         };
 
@@ -45,6 +54,7 @@ namespace mxnet {
         public:
             explicit QWeightsOp(QWeightsParam param) {
                 this->act_bit_ = param.act_bit;
+                this->scaling_factor_ = param.scaling_factor;
             }
             virtual void Forward(const OpContext &ctx,
                                  const std::vector<TBlob> &in_data,
@@ -62,12 +72,22 @@ namespace mxnet {
                 if (act_bit_ == 32) {
                     Assign(out, req[q_weights::kOut], data);
                 } else if (act_bit_ == 1) {
-                    Assign(out, req[q_weights::kOut], F<mshadow_op::det_sign>(data));// / E) * E);
+                    real_t scaling_factor = 1;
+                    if (scaling_factor_ == q_weights::kScalar) {
+                        scaling_factor = 5;
+                    } else if (scaling_factor_ == q_weights::kChannelMean) {
+                        LOG(FATAL) << "channel mean as scaling factor is currently not implemented";
+                        scaling_factor = 0;
+                    }
+                    //Assign(out, req[q_weights::kOut], data / ScalarExp<DType>(scaling_factor));
+                    Assign(out,
+                           req[q_weights::kOut],
+                           F<mshadow_op::det_sign>(data / ScalarExp<DType>(scaling_factor)) * ScalarExp<DType>(scaling_factor));
                 } else {
-                    assert(false);
-                    Assign(out, req[q_weights::kOut], F<mshadow_op::quantize>(
-                            F<mshadow_op::maximum>(F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
-                            scalar(DType(act_bit_))));
+                    LOG(FATAL) << "quantizing to n bits is currently not implemented (only 1 and 32 bit)";
+//                    Assign(out, req[q_weights::kOut], F<mshadow_op::quantize>(
+//                            F<mshadow_op::maximum>(F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
+//                            scalar(DType(act_bit_))));
                 }
             }
 
@@ -101,6 +121,7 @@ namespace mxnet {
             }
         private:
             int act_bit_;
+            int scaling_factor_;
         };  // class QWeightsOp
 
 // Decalre Factory function, used for dispatch specialization
