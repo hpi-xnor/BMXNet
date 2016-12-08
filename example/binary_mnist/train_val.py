@@ -93,6 +93,7 @@ def get_binary_lenet():
 	# softmax loss
 	lenet = mx.sym.SoftmaxOutput(data=fc2, name='softmax')
 
+	print 'using quantized lenet with bitwidth %d (weights), %d (activations) and %d (gradients)' % (BITW, BITA, BITG)
 	return lenet
 
 
