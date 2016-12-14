@@ -74,12 +74,11 @@ namespace mxnet {
                 } else if (act_bit_ == 1) {
                     real_t scaling_factor = 1;
                     if (scaling_factor_ == q_weights::kScalar) {
-                        scaling_factor = 5;
+                        LOG(FATAL) << "scalar scaling factor is currently not implemented";
                     } else if (scaling_factor_ == q_weights::kChannelMean) {
                         LOG(FATAL) << "channel mean as scaling factor is currently not implemented";
-                        scaling_factor = 0;
                     }
-                    //Assign(out, req[q_weights::kOut], data / ScalarExp<DType>(scaling_factor));
+
                     Assign(out,
                            req[q_weights::kOut],
                            F<mshadow_op::det_sign>(data / ScalarExp<DType>(scaling_factor)) * ScalarExp<DType>(scaling_factor));
@@ -109,15 +108,6 @@ namespace mxnet {
                 Tensor<xpu, 2, DType> m_in_grad = in_grad[q_weights::kData].FlatTo2D<xpu, DType>(s);
 
                 Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
-
-//                if (act_bit_ == 32) {
-//                    Assign(m_in_grad, req[q_weights::kData], m_out_grad);
-//                } else if (act_bit_ == 1) {
-//                    Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
-//                } else {
-//                    assert(false);
-//                    Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
-//                }
             }
         private:
             int act_bit_;
