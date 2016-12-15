@@ -26,6 +26,7 @@ namespace mxnet {
         namespace q_weights {
             enum QWeightsOpInputs {kData};
             enum QWeightsOpOutputs {kOut};
+            enum QWeightsOpResource {kTempSpace};
             enum QWeightsScalingFactor{kChannelMean, kScalar, kNone};
         }  // lowbit_weights
 
@@ -104,13 +105,10 @@ namespace mxnet {
                            req[q_weights::kOut],
                            F<mshadow_op::det_sign>(data / ScalarExp<DType>(scaling_factor)) * ScalarExp<DType>(scaling_factor));
                 } else {
-                    Tensor<xpu, 2, DType> abs = NewTensor<xpu>(data.shape_, DType(1.0), MSHADOW_ALLOC_PAD, data.stream_);
-
+                    Tensor<xpu, 2, DType> abs = ctx.requested[q_weights::kTempSpace].get_space_typed<xpu, 2, DType>(data.shape_, data.stream_);
                     abs = F<mshadow_op::abs>(F<mshadow_op::tanh>(data));
 
                     DType max = amax(abs);
-
-                    FreeSpace(&abs);
 
 //                    Tensor<xpu, 1, DType> reduced1 = NewTensor<cpu>(Shape1(abs.shape_.shape_[1]), DType(2.0));
 //                    reduced1 = reduce_except_dim<1, red::maximum>(abs);
@@ -229,6 +227,14 @@ namespace mxnet {
     const std::vector<int> &in_data,
     const std::vector<void*> &out_data) const override {
     return {{in_data[q_weights::kData], out_data[q_weights::kOut]}};
+  }
+
+  std::vector<ResourceRequest> ForwardResource(
+    const std::vector<TShape> &in_shape) const override {
+    if (param_.act_bit > 1 && param_.act_bit < 32) {
+        return {ResourceRequest::kTempSpace};
+    }
+    return {};
   }
 
   Operator* CreateOperator(Context ctx) const override {
