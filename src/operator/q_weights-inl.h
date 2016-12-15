@@ -10,12 +10,10 @@
 #include <dmlc/logging.h>
 #include <dmlc/parameter.h>
 #include <mxnet/operator.h>
-#include <cstring>
 #include <map>
 #include <string>
 #include <vector>
 #include <utility>
-#include <algorithm>
 #include "./operator_common.h"
 #include "./mshadow_op.h"
 
