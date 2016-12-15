@@ -83,10 +83,28 @@ namespace mxnet {
                            req[q_weights::kOut],
                            F<mshadow_op::det_sign>(data / ScalarExp<DType>(scaling_factor)) * ScalarExp<DType>(scaling_factor));
                 } else {
-                    LOG(FATAL) << "quantizing to n bits is currently not implemented (only 1 and 32 bit)";
-//                    Assign(out, req[q_weights::kOut], F<mshadow_op::quantize>(
-//                            F<mshadow_op::maximum>(F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
-//                            scalar(DType(act_bit_))));
+                    Tensor<xpu, 2, DType> abs = NewTensor<xpu>(data.shape_, DType(1.0));
+                    abs = F<mshadow_op::abs>(F<mshadow_op::tanh>(data));
+
+                    // @todo this needs to be implemented nicely and with gpu support (see nvidia pdf on reduction with cuda)
+                    DType max = 0;
+                    for (index_t i = 0; i < abs.size(0); ++i) {
+                        for (index_t j = 0; j < abs.size(1); ++j) {
+                            if (abs[i][j] > max) {
+                                max = abs[i][j];
+                            }
+                        }
+                    }
+
+//                    Tensor<xpu, 1, DType> reduced1 = NewTensor<cpu>(Shape1(abs.shape_.shape_[1]), DType(2.0));
+//                    reduced1 = reduce_except_dim<1, red::maximum>(abs);
+
+                    Assign(out,
+                           req[q_weights::kOut],
+                           scalar(DType(2.0)) *
+                                  F<mshadow_op::quantize>(F<mshadow_op::tanh>(data) / scalar(DType(2.0) * max) + scalar(DType(0.5)),
+                                                          scalar(DType(act_bit_)))
+                                  - scalar(DType(1.0)));
                 }
             }
 
@@ -107,7 +125,11 @@ namespace mxnet {
                 Tensor<xpu, 2, DType> m_in_data = in_data[q_weights::kData].FlatTo2D<xpu, DType>(s);
                 Tensor<xpu, 2, DType> m_in_grad = in_grad[q_weights::kData].FlatTo2D<xpu, DType>(s);
 
-                Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
+                if (act_bit_ == 1) {
+                    Assign(m_in_grad, req[q_weights::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
+                } else  {
+                    Assign(m_in_grad, req[q_weights::kData], m_out_grad);
+                }
             }
         private:
             int act_bit_;
