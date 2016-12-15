@@ -45,6 +45,27 @@ namespace mxnet {
             }
         };
 
+
+        // @todo naive implementation |==> this needs to be implemented nicely and with gpu support (see nvidia pdf on reduction with cuda)
+        template<typename xpu, int dim, typename DType>
+        inline DType amax(const mshadow::Tensor<xpu, dim, DType> &tensor) {
+            mshadow::Tensor<cpu, 2, DType> abs_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(1.0));
+
+            mshadow::Copy(abs_cpu, tensor, tensor.stream_);
+
+            DType max = 0;
+            for (index_t i = 0; i < abs_cpu.size(0); ++i) {
+                for (index_t j = 0; j < abs_cpu.size(1); ++j) {
+                    if (abs_cpu[i][j] > max) {
+                        max = abs_cpu[i][j];
+                    }
+                }
+            }
+
+            mshadow::FreeSpace(&abs_cpu);
+
+            return max;
+        }
 /**
  * \brief This is the implementation of quantizing weights operator.
  * \tparam xpu The device that the op will be executed on.
@@ -83,18 +104,13 @@ namespace mxnet {
                            req[q_weights::kOut],
                            F<mshadow_op::det_sign>(data / ScalarExp<DType>(scaling_factor)) * ScalarExp<DType>(scaling_factor));
                 } else {
-                    Tensor<xpu, 2, DType> abs = NewTensor<xpu>(data.shape_, DType(1.0));
+                    Tensor<xpu, 2, DType> abs = NewTensor<xpu>(data.shape_, DType(1.0), MSHADOW_ALLOC_PAD, data.stream_);
+
                     abs = F<mshadow_op::abs>(F<mshadow_op::tanh>(data));
 
-                    // @todo this needs to be implemented nicely and with gpu support (see nvidia pdf on reduction with cuda)
-                    DType max = 0;
-                    for (index_t i = 0; i < abs.size(0); ++i) {
-                        for (index_t j = 0; j < abs.size(1); ++j) {
-                            if (abs[i][j] > max) {
-                                max = abs[i][j];
-                            }
-                        }
-                    }
+                    DType max = amax(abs);
+
+                    FreeSpace(&abs);
 
 //                    Tensor<xpu, 1, DType> reduced1 = NewTensor<cpu>(Shape1(abs.shape_.shape_[1]), DType(2.0));
 //                    reduced1 = reduce_except_dim<1, red::maximum>(abs);
