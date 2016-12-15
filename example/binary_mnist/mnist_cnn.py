@@ -39,6 +39,9 @@ def prepare_data():
 	         'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz',
 	         'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz']
 
+	if not os.path.exists(path):
+		os.makedirs(path)
+
 	download_data(path, files)
 
 	(train_lbl, train_img) = read_data(
