@@ -90,7 +90,7 @@ namespace mxnet {
                 Tensor<xpu, 2, DType> out = out_data[q_weights::kOut].FlatTo2D<xpu, DType>(s);
 
                 if (act_bit_ == 32) {
-                    Assign(out, req[q_weights::kOut], data);
+                    Assign(out, req[q_weights::kOut], F<mshadow_op::identity>(data));
                 } else if (act_bit_ == 1) {
                     real_t scaling_factor = 1;
                     if (scaling_factor_ == q_weights::kScalar) {
