@@ -137,15 +137,26 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu
 	device = mx.cpu()
 	if gpu_id >= 0:
 		device = mx.gpu(gpu_id)
-	model = mx.model.FeedForward(
-		ctx = device,     # use GPU 0 for training, others are same as before
-		symbol = lenet,   		  # network structure    
-		num_epoch = epochs,     	  # number of data passes for training 
-		optimizer='Adam')
+	# model = mx.model.FeedForward(
+	# 	ctx = device,     # use GPU 0 for training, others are same as before
+	# 	symbol = lenet,   		  # network structure
+	# 	num_epoch = epochs,     	  # number of data passes for training
+	# 	optimizer='Adam')
+    #
+	# model.fit(
+	# 	X=train_iter,  			# training data
+	# 	eval_data=val_iter, 	# validation data
+	# 	batch_end_callback = mx.callback.Speedometer(batch_size, 5) # output progress for each 200 data batches
+	# )
+
+	model = mx.mod.Module(lenet, context = device)
 
 	model.fit(
-		X=train_iter,  			# training data
+		train_iter,  			# training data
 		eval_data=val_iter, 	# validation data
+		optimizer='Adam',
+		num_epoch=epochs,
 		batch_end_callback = mx.callback.Speedometer(batch_size, 200) # output progress for each 200 data batches
-	) 
+	)
+
 	return model
