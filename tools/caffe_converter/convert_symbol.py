@@ -165,6 +165,11 @@ def proto2script(proto_file):
             type_string = 'mx.symbol.BatchNorm'
             param = layer[i].batch_norm_param
             param_string = 'use_global_stats=%s' % param.use_global_stats
+        if layer[i].type == 'PReLU':
+            type_string = 'mx.symbol.LeakyReLU'
+            param = layer[i].prelu_param
+            param_string = "act_type='prelu', slope=%f" % param.filler.value
+            need_flatten[name] = need_flatten[mapping[layer[i].bottom[0]]]
         if type_string == '':
             raise Exception('Unknown Layer %s!' % layer[i].type)
         if type_string != 'split':
@@ -200,7 +205,7 @@ def proto2symbol(proto_file):
     return ret, input_dim
 
 def main():
-    symbol_string, output_name = proto2script(sys.argv[1])
+    symbol_string, output_name, input_dim = proto2script(sys.argv[1])
     if len(sys.argv) > 2:
         with open(sys.argv[2], 'w') as fout:
             fout.write(symbol_string)

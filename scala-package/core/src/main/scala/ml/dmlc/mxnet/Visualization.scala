@@ -121,8 +121,8 @@ object Visualization {
 
     /**
      * Render file with Graphviz engine into format.
-     *  @param engine The layout commmand used for rendering ('dot', 'neato', ...).
-     *  @param format The output format used for rendering ('pdf', 'png', ...).
+     * @param engine The layout commmand used for rendering ('dot', 'neato', ...).
+     * @param format The output format used for rendering ('pdf', 'png', ...).
      * @param fileName Name of the DOT source file to render.
      * @param path Path to save the Dot source file.
      */
@@ -160,11 +160,15 @@ object Visualization {
    *               for example:
    *                      nodeAttrs = Map("shape" -> "oval", "fixedsize" -> "fasle")
    *                      means to plot the network in "oval"
+   * @param hideWeights
+   *               if true (default) then inputs with names like `*_weight`
+   *               or `*_bias` will be hidden
    * @return Dot object of symbol
    */
   def plotNetwork(symbol: Symbol,
       title: String = "plot", shape: Map[String, Shape] = null,
-      nodeAttrs: Map[String, String] = Map[String, String]()): Dot = {
+      nodeAttrs: Map[String, String] = Map[String, String](),
+      hideWeights: Boolean = true): Dot = {
 
     val (drawShape, shapeDict) = {
       if (shape == null) (false, null)
@@ -185,13 +189,6 @@ object Visualization {
     require(conf.contains("nodes"))
     val nodes = conf("nodes").asInstanceOf[List[Any]]
 
-    require(conf.contains("heads"))
-    val heads = {
-      val headsList = conf("heads").asInstanceOf[List[List[Int]]]
-      require(headsList.length > 0)
-      headsList(0).toSet
-    }
-
     // default attributes of node
     val nodeAttr = scala.collection.mutable.Map("shape" -> "box", "fixedsize" -> "true",
               "width" -> "1.3", "height" -> "0.8034", "style" -> "filled")
@@ -200,45 +197,60 @@ object Visualization {
     val dot = new Dot(name = title)
     // color map
     val cm = List(""""#8dd3c7"""", """"#fb8072"""", """"#ffffb3"""",
-                            """"#bebada"""", """"#80b1d3"""", """"#fdb462"""",
-                            """"#b3de69"""", """"#fccde5"""")
+                  """"#bebada"""", """"#80b1d3"""", """"#fdb462"""",
+                  """"#b3de69"""", """"#fccde5"""")
+
+    // Internal helper to figure out if node should be hidden with hide_weights
+    def looksLikeWeight(name: String): Boolean = {
+      if (name.endsWith("_weight") || name.endsWith("_bias")) true
+      else false
+    }
 
     // make nodes
-    nodes.zipWithIndex.foreach { case (node, i) =>
+    val hiddenNodes = scala.collection.mutable.Set[String]()
+    nodes.foreach { node =>
       val params = node.asInstanceOf[Map[String, Any]]
       val op = params("op").asInstanceOf[String]
       val name = params("name").asInstanceOf[String]
-      val param = params("param").asInstanceOf[Map[String, String]]
+      val attrs = {
+        if (params.contains("attr")) params("attr").asInstanceOf[Map[String, String]]
+        else Map[String, String]()
+      }
       // input data
       val attr = nodeAttr.clone()
       var label = op
       var continue = false
       op match {
-        case "null" => if (heads.contains(i)) {
+        case "null" => {
+          if (looksLikeWeight(name)) {
+            if (hideWeights) hiddenNodes.add(name)
+            continue = true
+          }
+          attr("shape") = "oval" // inputs get their own shape
           label = name
           attr("fillcolor") = cm(0)
-        } else continue = true
+        }
         case "Convolution" => {
-          val kernel = str2Tuple(param("kernel"))
-          val stride = str2Tuple(param("stride"))
+          val kernel = str2Tuple(attrs("kernel"))
+          val stride = if (attrs.contains("stride")) str2Tuple(attrs("stride")) else List(1)
           label =
-            s""""Convolution\\n${kernel(0)}x${kernel(1)}/${stride(0)}, ${param("num_filter")}""""
+            s""""Convolution\\n${kernel(0)}x${kernel(1)}/${stride(0)}, ${attrs("num_filter")}""""
           attr("fillcolor") = cm(1)
         }
         case "FullyConnected" => {
-          label = s""""FullyConnected\\n${param("num_hidden")}""""
+          label = s""""FullyConnected\\n${attrs("num_hidden")}""""
           attr("fillcolor") = cm(1)
         }
         case "BatchNorm" => attr("fillcolor") = cm(3)
         case "Activation" | "LeakyReLU" => {
-          label = s""""${op}\\n${param("act_type")}""""
+          label = s""""${op}\\n${attrs("act_type")}""""
           attr("fillcolor") = cm(2)
         }
         case "Pooling" => {
-          val kernel = str2Tuple(param("kernel"))
-          val stride = str2Tuple(param("stride"))
+          val kernel = str2Tuple(attrs("kernel"))
+          val stride = if (attrs.contains("stride")) str2Tuple(attrs("stride")) else List(1)
           label =
-            s""""Pooling\\n${param("pool_type")}, ${kernel(0)}x${kernel(1)}/${stride(0)}""""
+            s""""Pooling\\n${attrs("pool_type")}, ${kernel(0)}x${kernel(1)}/${stride(0)}""""
           attr("fillcolor") = cm(4)
         }
         case "Concat" | "Flatten" | "Reshape" => attr("fillcolor") = cm(5)
@@ -249,7 +261,7 @@ object Visualization {
     }
 
     // add edges
-    nodes.zipWithIndex.foreach { case (node, i) =>
+    nodes.foreach { node =>
       val params = node.asInstanceOf[Map[String, Any]]
       val op = params("op").asInstanceOf[String]
       val name = params("name").asInstanceOf[String]
@@ -258,7 +270,7 @@ object Visualization {
         for (item <- inputs) {
           val inputNode = nodes(item(0).toInt).asInstanceOf[Map[String, Any]]
           val inputName = inputNode("name").asInstanceOf[String]
-          if (inputNode("op").asInstanceOf[String] != "null" || heads.contains(item(0).toInt)) {
+          if (!hiddenNodes.contains(inputName)) {
             val attrs = scala.collection.mutable.Map("dir" -> "back", "arrowtail" -> "open")
             // add shapes
             if (drawShape) {

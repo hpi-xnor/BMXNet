@@ -6,9 +6,9 @@ In this topic, we provide a step-by-step tutorial on how to set up an AWS cluste
 MXNet. We show how to:
 
 - [Use Amazon S3 to host data](#use-amazon-s3-to-host-data)
-- [Set up an EC2 GPU instance with all dependencies installed](#setup-an-ec2-gpu-instance)
+- [Set up an EC2 GPU instance with all dependencies installed](#set-up-an-ec2-gpu-instance)
 - [Build and run MXNet on a single computer](#build-and-run-mxnet-on-a-gpu-instance)
-- [Set up an EC2 GPU cluster for distributed training](#setup-an-ec2-gpu-cluster)
+- [Set up an EC2 GPU cluster for distributed training](#set-up-an-ec2-gpu-cluster-for-distributed-training)
 
 ### Use Amazon S3 to Host Data
 
@@ -119,7 +119,8 @@ directory of the root computer, such as `~/train`, and MXNet is built as `~/mxne
   And then copy the training program:
 
   ```bash
-  cp ~/mxnet/example/image-classification/*.py 
+  cp ~/mxnet/example/image-classification/*.py .
+  cp -r ~/mxnet/example/image-classification/common .
   ```
 
 2. Prepare a host file with all slaves's private IPs. For example, `cat hosts`:
