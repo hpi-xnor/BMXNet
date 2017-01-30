@@ -1,3 +1,4 @@
+from __future__ import print_function
 import mxnet as mx
 import numpy as np
 from timeit import default_timer as timer
@@ -36,7 +37,7 @@ class Detector(object):
         self.mod.bind(data_shapes=[('data', (batch_size, 3, data_shape, data_shape))])
         self.mod.set_params(args, auxs)
         self.data_shape = data_shape
-        self.mean_pixels = mean_pixels
+        self.mean_pixels = mx.nd.array(mean_pixels).reshape((3,1,1))
 
     def detect(self, det_iter, show_timer=False):
         """
@@ -60,8 +61,8 @@ class Detector(object):
         detections = self.mod.predict(det_iter).asnumpy()
         time_elapsed = timer() - start
         if show_timer:
-            print "Detection time for {} images: {:.4f} sec".format(
-                num_images, time_elapsed)
+            print("Detection time for {} images: {:.4f} sec".format(
+                num_images, time_elapsed))
         result = []
         for i in range(detections.shape[0]):
             det = detections[i, :, :]

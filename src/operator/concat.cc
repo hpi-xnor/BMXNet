@@ -7,7 +7,7 @@
 
 #include "./concat-inl.h"
 #if MXNET_USE_MKL2017 == 1
-#include <mxnet/mkl_memory.h>
+#include <mkl_memory.h>
 #include "./mkl/mkl_memory-inl.h"
 #include "./mkl/mkl_concat-inl.h"
 #endif  // MXNET_USE_MKL2017
@@ -28,6 +28,8 @@ Operator* CreateOp<cpu>(ConcatParam param, int dtype) {
       break;
     }
   }
+  if (enableMKLWarnGenerated())
+    LOG(INFO) << MKLConcatOp<cpu, float>::getName() << " Skip MKL optimization";
 #endif
   MSHADOW_REAL_TYPE_SWITCH(dtype, DType, {
     op = new ConcatOp<cpu, DType>(param);
@@ -50,7 +52,7 @@ MXNET_REGISTER_OP_PROPERTY(Concat, ConcatProp)
 .add_argument("data", "Symbol[]", "List of tensors to concatenate")
 .add_arguments(ConcatParam::__FIELDS__())
 .set_key_var_num_args("num_args")
-.describe("Perform an feature concat on channel dim (defaut is 1) over all");
+.describe("Perform a feature concat on channel dim (defaut is 1) over all");
 
 }  // namespace op
 }  // namespace mxnet

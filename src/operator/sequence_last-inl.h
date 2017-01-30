@@ -56,7 +56,7 @@ class SequenceLastOp : public Operator {
     Stream<xpu> *s = ctx.get_stream<xpu>();
 
     // Get any size input + output into required form
-    int n = in_data[seq_last::kData].size(1);
+    index_t n = in_data[seq_last::kData].size(1);
     int max_seq_len = in_data[seq_last::kData].size(0);
     int total_size = in_data[seq_last::kData].Size();
     Shape<2> s2 = Shape2(n, static_cast<int>(total_size / n / max_seq_len));
@@ -102,7 +102,7 @@ class SequenceLastOp : public Operator {
     Stream<xpu> *s = ctx.get_stream<xpu>();
 
     // Get any size input + output into required form
-    int n = in_grad[seq_last::kData].size(1);
+    index_t n = in_grad[seq_last::kData].size(1);
     int max_seq_len = in_grad[seq_last::kData].size(0);
     int total_size = in_grad[seq_last::kData].Size();
     Shape<2> s2 = Shape2(n, static_cast<int>(total_size / n / max_seq_len));
@@ -166,7 +166,8 @@ class SequenceLastProp : public OperatorProperty {
         << "Input:[data, sequence_length]";
 
     const TShape &dshape = (*in_shape)[seq_last::kData];
-    if (dshape.ndim() == 0) return false;
+    CHECK_GT(dshape.ndim(), 2)
+        << "The data array must be of rank 3 or greater.";
     // seq length vector is same as batch size
     if (param_.use_sequence_length)
       SHAPE_ASSIGN_CHECK(*in_shape, seq_last::kSequenceLength,
