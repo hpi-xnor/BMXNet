@@ -19,6 +19,8 @@
 #include <string>
 #include <utility>
 #include "./operator_common.h"
+#include "./mshadow_op.h"
+#include "./q_helper.h"
 
 
 namespace mxnet {
@@ -85,7 +87,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
     .set_default(dmlc::optional<int>())
     .describe("Set layout for input, output and weight. Empty for\n    "
               "default layout: NCHW for 2d and NCDHW for 3d.");
-    DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
+    DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
   }
 };
@@ -129,6 +131,26 @@ class QConvolutionOp : public Operator {
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
 #endif
+
+    // mf quantize weights
+//    LOG(INFO) << "------ QCONV -------";
+//    for (auto&& tblob : in_data) {
+//      LOG(INFO) << "TBlob with ndim()=" << tblob.ndim() << " and Size()=" << tblob.Size();
+//      for (int i = 0; i < tblob.ndim(); i++) {
+//        LOG(INFO) << "  [" << i << "] = " << tblob.size(i);
+//      }
+//    }
+//    LOG(INFO) << "Tensor<xpu, 3, DType> wmat:";
+//    for (int i = 0; i < wmat.shape_.kDimension; i++) {
+//      LOG(INFO) << "wmat[" << i << "].size = " << wmat.size(i);
+//    }
+
+    Tensor<xpu, 1, DType> w1d = in_data[q_conv::kWeight].FlatTo1D<xpu, DType>(s);
+    Tensor<xpu, 1, DType> abs = ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
+
+    helper::quantize(w1d, abs, this->param_.act_bit);
+    // mf /quantize weights
+
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
         ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(

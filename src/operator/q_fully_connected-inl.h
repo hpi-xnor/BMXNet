@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 #include "./operator_common.h"
+#include "./q_helper.h"
 
 
 namespace mxnet {
@@ -25,6 +26,7 @@ namespace op {
 namespace q_fullc {
 enum QFullyConnectedOpInputs {kData, kWeight, kBias};
 enum QFullyConnectedOpOutputs {kOut};
+enum QFullyConnectedResource {kTempSpace};
 }  // fullc
 
 struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
@@ -37,7 +39,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
     .describe("Number of hidden nodes of the output.");
     DMLC_DECLARE_FIELD(no_bias).set_default(false)
     .describe("Whether to disable bias parameter.");
-    DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
+    DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
   }
 };
@@ -81,6 +83,22 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> wmat = in_data[q_fullc::kWeight].get<xpu, 2, DType>(s);
     Tensor<xpu, 2, DType> out = out_data[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
+
+    // mf quantize weights
+//    LOG(INFO) << "------ QFC -------";
+//    for (auto&& tblob : in_data) {
+//      LOG(INFO) << "TBlob with ndim()=" << tblob.ndim() << " and Size()=" << tblob.Size();
+//      for (int i = 0; i < tblob.ndim(); i++) {
+//        LOG(INFO) << "  [" << i << "] = " << tblob.size(i);
+//      }
+//    }
+
+    Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+    Tensor<xpu, 1, DType> abs = ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
+
+    helper::quantize(w1d, abs, this->param_.act_bit);
+    // /mf quantize weights
+
     out = dot(data, wmat.T());
     if (!param_.no_bias) {
       Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
@@ -202,7 +220,7 @@ class QFullyConnectedProp : public OperatorProperty {
       }
     }
     out_type->clear();
-    out_type->push_back(mshadow::kUint8);
+    out_type->push_back(dtype);
     return true;
   }
 
@@ -230,6 +248,11 @@ class QFullyConnectedProp : public OperatorProperty {
     const std::vector<int> &out_data,
     const std::vector<void*> &in_grad) const override {
     return {{in_data[q_fullc::kData], in_grad[q_fullc::kData]}};
+  }
+
+  std::vector<ResourceRequest> ForwardResource(
+          const std::vector<TShape> &in_shape) const override {
+    return {ResourceRequest::kTempSpace};
   }
 
   Operator* CreateOperator(Context ctx) const override {
