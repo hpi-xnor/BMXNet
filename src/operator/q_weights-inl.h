@@ -16,6 +16,7 @@
 #include <utility>
 #include "./operator_common.h"
 #include "./mshadow_op.h"
+#include "./q_helper.h"
 
 namespace mxnet {
     namespace op {
@@ -86,38 +87,44 @@ namespace mxnet {
                 CHECK_EQ(in_data.size(), 1);
                 CHECK_EQ(out_data.size(), 1);
                 Stream<xpu> *s = ctx.get_stream<xpu>();
-                Tensor<xpu, 2, DType> data = in_data[q_weights::kData].FlatTo2D<xpu, DType>(s);
-                Tensor<xpu, 2, DType> out = out_data[q_weights::kOut].FlatTo2D<xpu, DType>(s);
+                Tensor<xpu, 1, DType> data = in_data[q_weights::kData].FlatTo1D<xpu, DType>(s);
+                Tensor<xpu, 1, DType> out = out_data[q_weights::kOut].FlatTo1D<xpu, DType>(s);
+                Tensor<xpu, 1, DType> workspace = ctx.requested[q_weights::kTempSpace].get_space_typed<xpu, 1, DType>(data.shape_, data.stream_);
 
-                if (act_bit_ == 32) {
-                    Assign(out, req[q_weights::kOut], F<mshadow_op::identity>(data));
-                } else if (act_bit_ == 1) {
-                    real_t scaling_factor = 1;
-                    if (scaling_factor_ == q_weights::kScalar) {
-                        LOG(FATAL) << "scalar scaling factor is currently not implemented";
-                    } else if (scaling_factor_ == q_weights::kChannelMean) {
-                        LOG(FATAL) << "channel mean as scaling factor is currently not implemented";
-                    }
+                helper::quantize(data, workspace, act_bit_);
 
-                    Assign(out,
-                           req[q_weights::kOut],
-                           F<mshadow_op::det_sign>(data / ScalarExp<DType>(scaling_factor)) * ScalarExp<DType>(scaling_factor));
-                } else {
-                    Tensor<xpu, 2, DType> abs = ctx.requested[q_weights::kTempSpace].get_space_typed<xpu, 2, DType>(data.shape_, data.stream_);
-                    abs = F<mshadow_op::abs>(F<mshadow_op::tanh>(data));
+                Assign(out, req[q_weights::kOut], data);
+                return;
 
-                    DType max = amax(abs);
-
-//                    Tensor<xpu, 1, DType> reduced1 = NewTensor<cpu>(Shape1(abs.shape_.shape_[1]), DType(2.0));
-//                    reduced1 = reduce_except_dim<1, red::maximum>(abs);
-
-                    Assign(out,
-                           req[q_weights::kOut],
-                           scalar(DType(2.0)) *
-                                  F<mshadow_op::quantize>(F<mshadow_op::tanh>(data) / scalar(DType(2.0) * max) + scalar(DType(0.5)),
-                                                          scalar(DType(act_bit_)))
-                                  - scalar(DType(1.0)));
-                }
+//                if (act_bit_ == 32) {
+//                    Assign(out, req[q_weights::kOut], F<mshadow_op::identity>(data));
+//                } else if (act_bit_ == 1) {
+//                    real_t scaling_factor = 1;
+//                    if (scaling_factor_ == q_weights::kScalar) {
+//                        LOG(FATAL) << "scalar scaling factor is currently not implemented";
+//                    } else if (scaling_factor_ == q_weights::kChannelMean) {
+//                        LOG(FATAL) << "channel mean as scaling factor is currently not implemented";
+//                    }
+//
+//                    Assign(out,
+//                           req[q_weights::kOut],
+//                           F<mshadow_op::det_sign>(data / ScalarExp<DType>(scaling_factor)) * ScalarExp<DType>(scaling_factor));
+//                } else {
+//                    Tensor<xpu, 2, DType> abs = ctx.requested[q_weights::kTempSpace].get_space_typed<xpu, 2, DType>(data.shape_, data.stream_);
+//                    abs = F<mshadow_op::abs>(F<mshadow_op::tanh>(data));
+//
+//                    DType max = amax(abs);
+//
+////                    Tensor<xpu, 1, DType> reduced1 = NewTensor<cpu>(Shape1(abs.shape_.shape_[1]), DType(2.0));
+////                    reduced1 = reduce_except_dim<1, red::maximum>(abs);
+//
+//                    Assign(out,
+//                           req[q_weights::kOut],
+//                           scalar(DType(2.0)) *
+//                                  F<mshadow_op::quantize>(F<mshadow_op::tanh>(data) / scalar(DType(2.0) * max) + scalar(DType(0.5)),
+//                                                          scalar(DType(act_bit_)))
+//                                  - scalar(DType(1.0)));
+//                }
             }
 
             virtual void Backward(const OpContext &ctx,
