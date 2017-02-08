@@ -19,8 +19,43 @@ namespace mxnet {
         using mshadow::expr::ScalarExp;
         using mshadow::expr::scalar;
 
-        template<typename DType>
-        inline void quantize(mshadow::Tensor<cpu, 1, DType> &weights, mshadow::Tensor<cpu, 1, DType> &workspace,
+
+        // @todo naive implementation |==> this needs to be implemented nicely and with gpu support (see nvidia pdf on reduction with cuda)
+        // GPU (includes copy to CPU)
+        template<int dim, typename DType>
+        inline DType amax(const mshadow::Tensor<gpu, dim, DType> &tensor) {
+          mshadow::Tensor<cpu, 1, DType> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(1.0));
+
+          mshadow::Copy(tensor_cpu, tensor, tensor.stream_);
+
+          DType max = 0;
+          for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
+            if (tensor_cpu[i] > max) {
+              max = tensor_cpu[i];
+            }
+          }
+
+          mshadow::FreeSpace(&tensor_cpu);
+
+          return max;
+        }
+
+        // CPU only
+        template<int dim, typename DType>
+        inline DType amax(const mshadow::Tensor<cpu, dim, DType> &tensor) {
+          DType max = 0;
+          for (index_t i = 0; i < tensor.size(0); ++i) {
+            if (tensor[i] > max) {
+              max = tensor[i];
+            }
+          }
+
+          return max;
+        }
+
+
+        template<typename xpu, typename DType>
+        inline void quantize(mshadow::Tensor<xpu, 1, DType> &weights, mshadow::Tensor<xpu, 1, DType> &workspace,
                              unsigned int act_bit) {
           if (act_bit == 1) {
             real_t scaling_factor = 1;
@@ -29,12 +64,7 @@ namespace mxnet {
           } else if (act_bit < 32) {
             workspace = F<mshadow_op::abs>(F<mshadow_op::tanh>(weights));
 
-            DType max = 0;
-            for (index_t i = 0; i < workspace.size(0); ++i) {
-              if (workspace[i] > max) {
-                max = workspace[i];
-              }
-            }
+            DType max = amax(workspace);
 
             weights = scalar(DType(2.0)) *
                       F<mshadow_op::quantize>(
