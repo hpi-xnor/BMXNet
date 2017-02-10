@@ -14,8 +14,8 @@
 #include <string>
 #include <vector>
 #include <utility>
-#include "./operator_common.h"
-#include "./mshadow_op.h"
+#include "../../src/operator/operator_common.h"
+#include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
 
 namespace mxnet {
@@ -91,7 +91,7 @@ namespace mxnet {
                 Tensor<xpu, 1, DType> out = out_data[q_weights::kOut].FlatTo1D<xpu, DType>(s);
                 Tensor<xpu, 1, DType> workspace = ctx.requested[q_weights::kTempSpace].get_space_typed<xpu, 1, DType>(data.shape_, data.stream_);
 
-                helper::quantize(data, workspace, act_bit_);
+                //helper::quantize(data, workspace, act_bit_);
 
                 Assign(out, req[q_weights::kOut], data);
                 return;

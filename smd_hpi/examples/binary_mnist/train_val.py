@@ -63,26 +63,28 @@ def get_binary_lenet():
 	bn1 = mx.sym.BatchNorm(data=conv1)
 	tanh1 = mx.sym.QActivation(data=bn1, act_bit=BITA)
 
-	#tanh1 = mx.sym.Custom(data=tanh1, op_type='debug')
-
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
-	
+
 	# second conv layer
 	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)
+
 	bn2 = mx.sym.BatchNorm(data=conv2)
 
 	tanh2 = mx.sym.QActivation(data=bn2, act_bit=BITA)
 
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
 	# first fullc layer
-	flatten = mx.sym.Flatten(data=pool2)
+	flatten = mx.sym.Flatten(data=pool2)	
 	fc1 = mx.symbol.QFullyConnected(data=flatten, num_hidden=500, act_bit=BITW)
+	
+	#fc1 = mx.sym.Custom(data=fc1, op_type='debug')
+
 	bn3 = mx.sym.BatchNorm(data=fc1)
 
 	tanh3 = mx.sym.QActivation(data=bn3, act_bit=BITA)
 
 	# second fullc
-	fc2 = mx.sym.QFullyConnected(data=tanh3, num_hidden=10)
+	fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
 	# softmax loss
 	lenet = mx.sym.SoftmaxOutput(data=fc2, name='softmax')
 
@@ -130,17 +132,17 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu
 	device = mx.cpu()
 	if gpu_id >= 0:
 		device = mx.gpu(gpu_id)
-	# model = mx.model.FeedForward(
+	#model = mx.model.FeedForward(
 	# 	ctx = device,     # use GPU 0 for training, others are same as before
 	# 	symbol = lenet,   		  # network structure
 	# 	num_epoch = epochs,     	  # number of data passes for training
 	# 	optimizer='Adam')
-    #
-	# model.fit(
+    
+	#model.fit(
 	# 	X=train_iter,  			# training data
 	# 	eval_data=val_iter, 	# validation data
-	# 	batch_end_callback = mx.callback.Speedometer(batch_size, 5) # output progress for each 200 data batches
-	# )
+	# 	batch_end_callback = mx.callback.Speedometer(batch_size, 200) # output progress for each 200 data batches
+	#)
 
 	model = mx.mod.Module(lenet, context = device)
 

@@ -7,11 +7,11 @@
 #include "./q_fully_connected-inl.h"
 #if MXNET_USE_MKL2017 == 1
 #include <mkl_memory.h>
-#include "./mkl/mkl_memory-inl.h"
-#include "./mkl/mkl_fully_connected-inl.h"
+#include "../../src/operator/mkl/mkl_memory-inl.h"
+#include "../../src/operator/mkl/mkl_fully_connected-inl.h"
 #endif  // MXNET_USE_MKL2017
 #if MXNET_USE_NNPACK == 1
-#include "./nnpack/nnpack_fully_connected-inl.h"
+#include "../../src/operator/nnpack/nnpack_fully_connected-inl.h"
 #endif  // MXNET_USE_NNPACK
 
 namespace mxnet {

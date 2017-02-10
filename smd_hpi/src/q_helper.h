@@ -8,7 +8,7 @@
 #ifndef MXNET_Q_HELPER_H
 #define MXNET_Q_HELPER_H
 
-#include "./mshadow_op.h"
+#include "../../src/operator/mshadow_op.h"
 #include <mshadow/tensor.h>
 #include <mshadow/expression.h>
 

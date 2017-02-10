@@ -14,7 +14,7 @@
 #include <vector>
 #include <string>
 #include <utility>
-#include "./operator_common.h"
+#include "../../src/operator/operator_common.h"
 #include "./q_helper.h"
 
 

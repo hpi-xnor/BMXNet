@@ -18,8 +18,8 @@
 #include <vector>
 #include <string>
 #include <utility>
-#include "./operator_common.h"
-#include "./mshadow_op.h"
+#include "../../src/operator/operator_common.h"
+#include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
 
 

@@ -16,8 +16,8 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
-#include "./operator_common.h"
-#include "./mshadow_op.h"
+#include "../../src/operator/operator_common.h"
+#include "../../src/operator/mshadow_op.h"
 
 namespace mxnet {
 namespace op {
