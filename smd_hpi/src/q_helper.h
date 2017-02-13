@@ -12,6 +12,9 @@
 #include <mshadow/tensor.h>
 #include <mshadow/expression.h>
 
+typedef uint32_t BINARY_WORD;
+#define BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT)
+
 namespace mxnet {
   namespace op {
     namespace helper {
@@ -73,6 +76,54 @@ namespace mxnet {
                       - scalar(DType(1.0));
           }
         };
+
+        class BinaryLayer {
+        public:
+          BINARY_WORD *input;
+          BINARY_WORD *weights;
+          BINARY_WORD *output;
+          float *alpha;
+          float *beta;
+
+          int batchsize;
+          int channels;
+          int input_width;
+          int input_height;
+          int weight_width;
+          int weight_height;
+
+          BinaryLayer(int batchsize, int channels, int input_width, int input_height, int weight_width, int weight_height){
+            //malloc etc
+          }
+
+          ~BinaryLayer() {
+            //free
+          }
+
+          void set_inputs() {
+
+          }
+
+          void set_weights() {
+
+          }
+
+          void get_output() {
+
+          }
+        };
+
+//        void  SetBit( int A[],  int k )
+//        {
+//          int i = k/32;        //gives the corresponding index in the array A
+//          int pos = k%32;      //gives the corresponding bit position in A[i]
+//
+//          unsigned int flag = 1;   // flag = 0000.....00001
+//
+//          flag = flag << pos;      // flag = 0000...010...000   (shifted k positions)
+//
+//          A[i] = A[i] | flag;      // Set the bit at the k-th position in A[i]
+//        }
     }
   }
 }

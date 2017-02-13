@@ -45,6 +45,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   dmlc::optional<int> cudnn_tune;
   bool cudnn_off;
   dmlc::optional<int> layout;
+  // mf quantization and binarization variables
   unsigned int act_bit;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
@@ -152,6 +153,21 @@ class QConvolutionOp : public Operator {
     // mf /quantize weights
 
     const index_t nbatch = data.size(0);
+
+    helper::BinaryLayer binary_layer(nbatch,
+                                     param_.num_filter,
+                                     data.shape_[2],
+                                     data.shape_[3],
+                                     param_.kernel[0],
+                                     param_.kernel[1]);
+
+    binary_layer.set_weights(/* wmat */);
+
+    binary_layer.set_inputs(/* data */);
+
+    // data is now stored in binary_layer.input/weights/alpha/beta/output
+    // and should be accessed with bitshifts, as in darknet
+
     Tensor<xpu, 1, DType> workspace =
         ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
             Shape1(this->InitTemp(data.shape_, out.shape_)), s);
@@ -201,6 +217,8 @@ class QConvolutionOp : public Operator {
       Tensor<xpu, 1, DType> bias = in_data[q_conv::kBias].get<xpu, 1, DType>(s);
       out += broadcast<1>(bias, out.shape_);
     }
+
+    // binary_layer.get_output(); convert back binary output and copy into float for next layer
   }
 
   virtual void Backward(const OpContext &ctx,
