@@ -20,7 +20,6 @@
 #include <utility>
 #include "../../src/operator/operator_common.h"
 #include "../../src/operator/mshadow_op.h"
-#include "./q_helper.h"
 
 
 namespace mxnet {
@@ -46,7 +45,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   bool cudnn_off;
   dmlc::optional<int> layout;
   // mf quantization and binarization variables
-  unsigned int act_bit;
+  uint32_t act_bit;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
     DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -146,79 +145,7 @@ class QConvolutionOp : public Operator {
 //      LOG(INFO) << "wmat[" << i << "].size = " << wmat.size(i);
 //    }
 
-    Tensor<xpu, 1, DType> w1d = in_data[q_conv::kWeight].FlatTo1D<xpu, DType>(s);
-    Tensor<xpu, 1, DType> abs = ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
-
-    helper::quantize(w1d, abs, this->param_.act_bit);
-    // mf /quantize weights
-
-    const index_t nbatch = data.size(0);
-
-    helper::BinaryLayer binary_layer(nbatch,
-                                     param_.num_filter,
-                                     data.shape_[2],
-                                     data.shape_[3],
-                                     param_.kernel[0],
-                                     param_.kernel[1]);
-
-    binary_layer.set_weights(/* wmat */);
-
-    binary_layer.set_inputs(/* data */);
-
-    // data is now stored in binary_layer.input/weights/alpha/beta/output
-    // and should be accessed with bitshifts, as in darknet
-
-    Tensor<xpu, 1, DType> workspace =
-        ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
-            Shape1(this->InitTemp(data.shape_, out.shape_)), s);
-    for (index_t i = 0; i < nbatch; i += nstep_) {
-      const index_t step = std::min(nstep_, nbatch - i);
-      Tensor<xpu, 2, DType> temp_col = Tensor<xpu, 2, DType>(workspace.dptr_,
-                                               Shape2(shape_colunit_[0],
-                                                      shape_colunit_[1] * step), s);
-      Tensor<xpu, 3, DType> temp_dst = Tensor<xpu, 3, DType>(
-                                               workspace.dptr_ + temp_col.shape_.Size(),
-                                               Shape3(shape_dstunit_[0],
-                                                      shape_dstunit_[1],
-                                                      shape_dstunit_[2] * step), s);
-      if (param_.pad[0] == 0 && param_.pad[1] == 0) {
-        temp_col = unpack_patch2col(data.Slice(i, i + step),
-                                    param_.kernel[0],
-                                    param_.kernel[1],
-                                    param_.stride[0],
-                                    param_.stride[1],
-                                    param_.dilate[0],
-                                    param_.dilate[1]);
-      } else {
-        temp_col = unpack_patch2col(pad(data.Slice(i, i + step),
-                                    param_.pad[0], param_.pad[1]),
-                                    param_.kernel[0],
-                                    param_.kernel[1],
-                                    param_.stride[0],
-                                    param_.stride[1],
-                                    param_.dilate[0],
-                                    param_.dilate[1]);
-      }
-
-      const index_t gstride = temp_col.size(0) / param_.num_group;
-      for (uint32_t gid = 0; gid < param_.num_group; ++gid) {
-        mshadow::Tensor<xpu, 2, DType> tmpc = temp_col.Slice(gstride * gid,
-                                       gstride * (gid + 1));
-        temp_dst[gid] = dot(wmat[gid], tmpc);
-      }
-      out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,
-                                              mshadow::Shape4(param_.num_filter,
-                                                  step,
-                                                  out.size(2),
-                                                  out.size(3))));
-    }
-    if (!param_.no_bias) {
-      // add bias, broadcast bias to dim 1: channel
-      Tensor<xpu, 1, DType> bias = in_data[q_conv::kBias].get<xpu, 1, DType>(s);
-      out += broadcast<1>(bias, out.shape_);
-    }
-
-    // binary_layer.get_output(); convert back binary output and copy into float for next layer
+    QConvolutionForward(data, wmat, out, param_);
   }
 
   virtual void Backward(const OpContext &ctx,
@@ -461,52 +388,8 @@ class QConvolutionProp : public OperatorProperty {
           (param_.dilate[1] * (ksize_x - 1) + 1)) / param_.stride[1] + 1;
       SHAPE_ASSIGN_CHECK(*out_shape, 0, ConvertLayout(oshape, kNCHW, param_.layout.value()));
       return true;
-    } else if (param_.kernel.ndim() == 3) {
-      // 3d conv
-      CHECK_EQ(dshp.ndim(), 5) \
-        << "Input data should be 5D in batch-num_filter-depth-y-x";
-      Shape<5> dshape = ConvertLayout(dshp.get<5>(), param_.layout.value(), kNCDHW);
-      Shape<5> wshape = Shape5(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
-                               param_.kernel[0], param_.kernel[1], param_.kernel[2]);
-      wshape = ConvertLayout(wshape, kNCDHW, param_.layout.value());
-      wshape[0] *= param_.num_group;
-      SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
-      if (!param_.no_bias) {
-        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBias, Shape1(param_.num_filter));
-      }
-
-      const index_t ksize_d = static_cast<index_t>(param_.kernel[0]);
-      const index_t ksize_y = static_cast<index_t>(param_.kernel[1]);
-      const index_t ksize_x = static_cast<index_t>(param_.kernel[2]);
-      CHECK_EQ(dshape[1] % param_.num_group, 0)
-        << "input num_filter must divide group size";
-      CHECK_EQ(param_.num_filter % param_.num_group, 0)
-        << "output num_filter must divide group size";
-      CHECK_GT(param_.kernel.Size(), 0) \
-        << "incorrect kernel size: " << param_.kernel;
-      CHECK_GT(param_.stride.Size(), 0) \
-        << "incorrect stride size: " << param_.stride;
-      CHECK_GT(param_.dilate.Size(), 0) \
-        << "incorrect dilate size: " << param_.dilate;
-      CHECK(ksize_d < dshape[2] + 2 * param_.pad[0]
-            && ksize_y <= dshape[3] + 2 * param_.pad[1]
-            && ksize_x <= dshape[4] + 2 * param_.pad[2])
-        << "kernel size exceed input";
-      CHECK_EQ(param_.dilate.Size(), 1)
-        << "Dilate is not supported in 3d convolution";
-      Shape<5> oshape;
-      oshape[0] = dshape[0];
-      oshape[1] = param_.num_filter;
-      oshape[2] = (dshape[2] + 2 * param_.pad[0] -
-          (1 * (ksize_d - 1) + 1)) / param_.stride[0] + 1;
-      oshape[3] = (dshape[3] + 2 * param_.pad[1] -
-          (1 * (ksize_y - 1) + 1)) / param_.stride[1] + 1;
-      oshape[4] = (dshape[4] + 2 * param_.pad[2] -
-          (1 * (ksize_x - 1) + 1)) / param_.stride[2] + 1;
-      SHAPE_ASSIGN_CHECK(*out_shape, 0, ConvertLayout(oshape, kNCDHW, param_.layout.value()));
-      return true;
     } else {
-      LOG(FATAL) << "Unknown convolution type";
+      LOG(FATAL) << "Unknown convolution type (only 2d binary convolution supported)";
       return false;
     }
   }

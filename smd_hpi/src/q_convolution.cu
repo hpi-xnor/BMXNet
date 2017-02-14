@@ -12,8 +12,19 @@
 #include "../../src/operator/cudnn_convolution-inl.h"
 #endif  // MXNET_USE_CUDNN
 
+namespace mshadow {
+    template<typename Dtype>
+    inline void QConvolutionForward(const Tensor<gpu, 4, Dtype> &data,
+                                    const Tensor<gpu, 3, Dtype> &wmat,
+                                    const Tensor<gpu, 4, Dtype> &out,
+                                    const QConvolutionParam &param) {
+      // binary cuda convolution
+    }
+}
+
 namespace mxnet {
 namespace op {
+
 template<>
 Operator* CreateOp<gpu>(QConvolutionParam param, int dtype,
                         std::vector<TShape> *in_shape,

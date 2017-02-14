@@ -6,6 +6,10 @@
 */
 
 #include "./q_convolution-inl.h"
+#include <mshadow/base.h>
+#include <mshadow/tensor.h>
+#include <memory>
+#include "./q_helper.h"
 #if MXNET_USE_MKL2017 == 1
 #include <mkl_memory.h>
 #include "../../src/operator/mkl/mkl_memory-inl.h"
@@ -15,8 +19,42 @@
 #include "../../src/operator/nnpack/nnpack_convolution-inl.h"
 #endif  // MXNET_USE_NNPACK
 
+
+namespace mshadow {
+    template<typename Dtype>
+    inline void QConvolutionForward(const Tensor<cpu, 4, Dtype> &data,
+                                    const Tensor<cpu, 3, Dtype> &wmat,
+                                    const Tensor<cpu, 4, Dtype> &out,
+                                    const mxnet::op::QConvolutionParam &param) {
+
+      CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
+      CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
+      auto binary_layer = std::unique_ptr<mxnet::op::helper::BinaryLayer>(
+              new mxnet::op::helper::BinaryLayer(data.shape_[0], //   batch size
+                                      data.shape_[1], //   input depth
+                                      data.shape_[2], //   input x
+                                      data.shape_[3], //   input y
+                                      param.kernel[0], // weight x
+                                      param.kernel[1],//  weight y
+                                      param.pad[0],//     padding
+                                      param.pad[1]));//   padding
+
+      //param_.binary_layer->set_weights(wmat);
+
+      //param_.binary_layer->set_inputs(data);
+
+      // data is now stored in binary_layer.input/weights/alpha/beta/output
+      // and should be accessed with bitshifts, as in darknet
+
+
+      // binary_layer.get_output(out); convert back binary output and copy into float for next layer
+    }
+}
+
 namespace mxnet {
 namespace op {
+
+
 DMLC_REGISTER_PARAMETER(QConvolutionParam);
 
 template<>

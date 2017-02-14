@@ -91,9 +91,14 @@ namespace mxnet {
           int input_height;
           int weight_width;
           int weight_height;
+          int padding_x;
+          int padding_y;
+          int stride = 1;
 
-          BinaryLayer(int batchsize, int channels, int input_width, int input_height, int weight_width, int weight_height){
+          BinaryLayer(int batchsize, int channels, int input_width, int input_height, int weight_width, int weight_height, int padding_x, int padding_y){
             //malloc etc
+            float output_size = ((input_width - input_height + padding_x + padding_y) / stride) + 1;
+            //assert(false);
           }
 
           ~BinaryLayer() {
