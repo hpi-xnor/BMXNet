@@ -85,17 +85,26 @@ namespace mxnet {
           float *alpha;
           float *beta;
 
-          int batchsize;
-          int channels;
+          int input_channels;
           int input_width;
           int input_height;
-          int weight_width;
-          int weight_height;
+          int num_filters;
+          int kernel_width;
+          int kernel_height;
           int padding_x;
           int padding_y;
           int stride = 1;
 
-          BinaryLayer(int batchsize, int channels, int input_width, int input_height, int weight_width, int weight_height, int padding_x, int padding_y){
+          BinaryLayer(int channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y):
+                  input_channels(channels),
+                  input_width(input_width),
+                  input_height(input_height),
+                  num_filters(num_filters),
+                  kernel_width(kernel_width),
+                  kernel_height(kernel_height),
+                  padding_x(padding_x),
+                  padding_y(padding_y)
+            {
             //malloc etc
             float output_size = ((input_width - input_height + padding_x + padding_y) / stride) + 1;
             //assert(false);

@@ -17,7 +17,7 @@ namespace mshadow {
     inline void QConvolutionForward(const Tensor<gpu, 4, Dtype> &data,
                                     const Tensor<gpu, 3, Dtype> &wmat,
                                     const Tensor<gpu, 4, Dtype> &out,
-                                    const QConvolutionParam &param) {
+                                    const mxnet::op::QConvolutionParam &param) {
       // binary cuda convolution
     }
 }
