@@ -79,9 +79,9 @@ namespace mxnet {
 
         class BinaryLayer {
         public:
-          BINARY_WORD *input;
-          BINARY_WORD *weights;
-          BINARY_WORD *output;
+          BINARY_WORD *binary_input;
+          BINARY_WORD *binary_weights;
+          float *output;
           float *alpha;
           float *beta;
 
