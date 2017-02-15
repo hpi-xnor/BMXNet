@@ -9,7 +9,7 @@
 #include <mshadow/base.h>
 #include <mshadow/tensor.h>
 #include <memory>
-#include "./q_helper.h"
+#include "./binary_layer.h"
 #if MXNET_USE_MKL2017 == 1
 #include <mkl_memory.h>
 #include "../../src/operator/mkl/mkl_memory-inl.h"
@@ -29,8 +29,8 @@ namespace mshadow {
 
       CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
       CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
-      auto binary_layer = std::unique_ptr<mxnet::op::helper::BinaryLayer>(
-              new mxnet::op::helper::BinaryLayer(data.size(1), //   input depth
+      auto binary_layer = std::unique_ptr<mxnet::op::BinaryLayer>(
+              new mxnet::op::BinaryLayer(data.size(1), //   input depth
                                       data.size(2), //    input x
                                       data.size(3), //    input y
                                       param.num_filter,// number filters
