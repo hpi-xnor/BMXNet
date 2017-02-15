@@ -80,11 +80,11 @@ namespace mxnet {
 
         class BinaryLayer {
         public:
-          BINARY_WORD *binary_input = 0;
-          BINARY_WORD *binary_weights = 0;
-          float *output = 0;
-          float *alpha = 0;
-          float *beta = 0;
+          BINARY_WORD *binary_input = nullptr;
+          BINARY_WORD *binary_weights = nullptr;
+          float *output = nullptr;
+          float *alpha = nullptr;
+          float *beta = nullptr;
 
           int input_channels;
           int input_width;
@@ -130,12 +130,62 @@ namespace mxnet {
             if (beta) free(beta);
           }
 
-          void set_inputs() {
+#define SetBit(A,k)     ( A |= (1 << (k)) )
+#define ClearBit(A,k)   ( A &= ~(1 << (k)) )
+#define TestBit(A,k)    ( A & (1 << (k)) )
 
+          void float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_WORD *output) {
+            for (int i = 0; i < input.size(0) * input.size(1) * input.size(2); i += BITS_PER_BINARY_WORD) {
+              BINARY_WORD tmp = 0x00000000;
+              for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
+                float tmp_flt = input.dptr_[x + i];
+                if (signbit(input.dptr_[x + i]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x);
+              }
+              output[i / BITS_PER_BINARY_WORD] = tmp;
+            }
           }
 
-          void set_weights() {
+          // calculate mean of first dimension accross second and third dimension and save as 2d plane
+          void calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume) {
+            //layout of input_volume: depth|x|y
+            int depth = input_volume.size(0);
+            int width = input_volume.size(1);
+            int height = input_volume.size(2);
 
+            for (int y = 0; y < height; ++y) {
+              for (int x = 0; x < width; ++x) {
+                int out = y * width + x;
+                float accum = 0.0;
+                for (int z = 0; z < depth; ++z) {
+                  accum += input_volume.dptr_[out * depth + z];
+                }
+
+                output_plane[out] = accum / depth;
+              }
+            }
+          }
+
+          // ???
+          void calculate_beta(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume) {
+            calculate_alpha(output_plane, input_volume);
+          }
+
+          void set_inputs(mshadow::Tensor<cpu, 3, float> input) {
+            float_to_binary(input, binary_input);
+
+            if (beta) free(beta);
+            beta = (float *) calloc (input.size(1) * input.size(2), sizeof(float));
+
+            calculate_beta(beta, input);
+          }
+
+          void set_weights(const mshadow::Tensor<cpu, 3, float> &wmat) {
+            float_to_binary(wmat, binary_weights);
+
+            if (alpha) free(alpha);
+            alpha = (float *) calloc (wmat.size(1) * wmat.size(2), sizeof(float));
+
+            calculate_alpha(alpha, wmat);
           }
 
           void get_output() {
