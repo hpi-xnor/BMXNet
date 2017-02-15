@@ -30,10 +30,10 @@ namespace mshadow {
       CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
       CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
       auto binary_layer = std::unique_ptr<mxnet::op::helper::BinaryLayer>(
-              new mxnet::op::helper::BinaryLayer(data.shape_[0], //   batch size
-                                      data.shape_[1], //   input depth
-                                      data.shape_[2], //   input x
-                                      data.shape_[3], //   input y
+              new mxnet::op::helper::BinaryLayer(data.shape_[1], //   input depth
+                                      data.shape_[2], //  input x
+                                      data.shape_[3], //  input y
+                                      param.num_filter,// number filters
                                       param.kernel[0], // weight x
                                       param.kernel[1],//  weight y
                                       param.pad[0],//     padding

@@ -11,6 +11,7 @@
 #include "../../src/operator/mshadow_op.h"
 #include <mshadow/tensor.h>
 #include <mshadow/expression.h>
+#include <cstdlib>
 
 typedef uint32_t BINARY_WORD;
 #define BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT)
@@ -79,11 +80,11 @@ namespace mxnet {
 
         class BinaryLayer {
         public:
-          BINARY_WORD *binary_input;
-          BINARY_WORD *binary_weights;
-          float *output;
-          float *alpha;
-          float *beta;
+          BINARY_WORD *binary_input = 0;
+          BINARY_WORD *binary_weights = 0;
+          float *output = 0;
+          float *alpha = 0;
+          float *beta = 0;
 
           int input_channels;
           int input_width;
@@ -95,23 +96,38 @@ namespace mxnet {
           int padding_y;
           int stride = 1;
 
-          BinaryLayer(int channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y):
-                  input_channels(channels),
+          BinaryLayer(int input_channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y):
+                  input_channels(input_channels),
                   input_width(input_width),
                   input_height(input_height),
                   num_filters(num_filters),
                   kernel_width(kernel_width),
                   kernel_height(kernel_height),
                   padding_x(padding_x),
-                  padding_y(padding_y)
-            {
-            //malloc etc
-            float output_size = ((input_width - input_height + padding_x + padding_y) / stride) + 1;
-            //assert(false);
+                  padding_y(padding_y) {
+
+            CHECK_EQ(padding_x, padding_y) << "differing padding in x and y direction, unknown if supported";
+
+            float output_size = ((input_width - kernel_width + 2 * padding_x) / stride) + 1;
+
+            CHECK_EQ(ceilf(output_size), output_size) << "invalid output size of binary convolution layer: " << output_size;
+
+            // padded input size
+            int input_width_padded = input_width + 2 * padding_x;
+            int input_height_padded = input_height + 2 * padding_y;
+
+            binary_input = (BINARY_WORD *) calloc(input_channels * input_width_padded * input_height_padded / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
+            binary_weights = (BINARY_WORD *) calloc(num_filters * input_channels * kernel_width * kernel_height / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
+
+            output = (float *) calloc(input_channels * input_width_padded * input_height_padded, sizeof(float));
           }
 
           ~BinaryLayer() {
-            //free
+            if (binary_input) free(binary_input);
+            if (binary_weights) free(binary_weights);
+            if (output) free(output);
+            if (alpha) free(alpha);
+            if (beta) free(beta);
           }
 
           void set_inputs() {
