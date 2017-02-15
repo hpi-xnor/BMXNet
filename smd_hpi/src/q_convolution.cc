@@ -21,33 +21,46 @@
 
 
 namespace mshadow {
-    template<typename Dtype>
-    inline void QConvolutionForward(const Tensor<cpu, 4, Dtype> &data,
-                                    const Tensor<cpu, 3, Dtype> &wmat,
-                                    const Tensor<cpu, 4, Dtype> &out,
+
+    template<>
+    inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
+                                    const Tensor<cpu, 3, float> &wmat,
+                                    const Tensor<cpu, 4, float> &out,
                                     const mxnet::op::QConvolutionParam &param) {
 
       CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
       CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
       auto binary_layer = std::unique_ptr<mxnet::op::helper::BinaryLayer>(
-              new mxnet::op::helper::BinaryLayer(data.shape_[0], //   batch size
-                                      data.shape_[1], //   input depth
-                                      data.shape_[2], //   input x
-                                      data.shape_[3], //   input y
+              new mxnet::op::helper::BinaryLayer(data.size(1), //   input depth
+                                      data.size(2), //    input x
+                                      data.size(3), //    input y
+                                      param.num_filter,// number filters
                                       param.kernel[0], // weight x
                                       param.kernel[1],//  weight y
                                       param.pad[0],//     padding
                                       param.pad[1]));//   padding
 
-      //param_.binary_layer->set_weights(wmat);
+      for (int i=0; i<data.size(0); i++) {
+        Tensor<cpu, 3, float> single_batch = data[1];
 
-      //param_.binary_layer->set_inputs(data);
+        binary_layer->set_inputs(single_batch);
 
-      // data is now stored in binary_layer.input/weights/alpha/beta/output
-      // and should be accessed with bitshifts, as in darknet
+        binary_layer->set_weights(wmat);
 
+        // data is now stored in binary_layer.input/weights/alpha/beta/output
+        // and should be accessed with bitshifts, as in darknet
 
-      // binary_layer.get_output(out); convert back binary output and copy into float for next layer
+        // binary_layer.get_output(out); convert back binary output and copy into float for next layer
+      }
+
+    }
+
+    template<typename DType>
+    inline void QConvolutionForward(const Tensor<cpu, 4, DType> &data,
+                                    const Tensor<cpu, 3, DType> &wmat,
+                                    const Tensor<cpu, 4, DType> &out,
+                                    const mxnet::op::QConvolutionParam &param) {
+      CHECK(false) << "only float supported";
     }
 }
 
