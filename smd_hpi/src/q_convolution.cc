@@ -22,7 +22,6 @@
 
 namespace mshadow {
 
-    template<>
     inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
                                     const Tensor<cpu, 3, float> &wmat,
                                     const Tensor<cpu, 4, float> &out,
@@ -41,16 +40,15 @@ namespace mshadow {
                                       param.pad[1]));//   padding
 
       for (int i=0; i<data.size(0); i++) {
-        Tensor<cpu, 3, float> single_batch = data[1];
+        Tensor<cpu, 3, float> single_batch_slice = data[i];
 
-        binary_layer->set_inputs(single_batch);
-
+        binary_layer->set_inputs(single_batch_slice);
         binary_layer->set_weights(wmat);
 
         // data is now stored in binary_layer.input/weights/alpha/beta/output
         // and should be accessed with bitshifts, as in darknet
 
-        // binary_layer.get_output(out); convert back binary output and copy into float for next layer
+        binary_layer->get_output(out[i]); //convert back binary output and copy into float for next layer
       }
 
     }

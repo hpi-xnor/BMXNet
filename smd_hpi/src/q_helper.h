@@ -188,7 +188,7 @@ namespace mxnet {
             calculate_alpha(alpha, wmat);
           }
 
-          void get_output() {
+          void get_output(const mshadow::Tensor<cpu, 3, float> &out) {
 
           }
         };
