@@ -9,8 +9,7 @@
 #define MXNET_XNOR_CPU_H
 
 #include <dmlc/logging.h>
-#include "./q_helper.h"
-#include <stdio.h>
+#include "binary_layer.h"
 #include <stdlib.h>
 #include <inttypes.h>
 #include <assert.h>
