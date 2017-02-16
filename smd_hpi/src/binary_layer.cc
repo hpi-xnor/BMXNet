@@ -18,6 +18,9 @@ namespace op {
 #define TestBit(A,k)    ( A & (1 << (k)) )
 //#define TestBit(A,k)    ( A[(k/32)] & (1 << (k%32)) )
 
+
+//  public  ------------------------------------------------------------------------------------------------------------
+
 BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y):
         input_channels(input_channels),
         input_width(input_width),
@@ -51,6 +54,30 @@ BinaryLayer::~BinaryLayer() {
   if (beta) free(beta);
 }
 
+void BinaryLayer::set_inputs(const mshadow::Tensor<cpu, 3, float> input) {
+  float_to_binary(input, binary_input);
+
+  if (beta) free(beta);
+  beta = (float *) calloc (input.size(1) * input.size(2), sizeof(float));
+
+  calculate_beta(beta, input);
+}
+
+void BinaryLayer::set_weights(const mshadow::Tensor<cpu, 3, float> &wmat) {
+  float_to_binary(wmat, binary_weights);
+
+  if (alpha) free(alpha);
+  alpha = (float *) calloc (wmat.size(1) * wmat.size(2), sizeof(float));
+
+  calculate_alpha(alpha, wmat);
+}
+
+void BinaryLayer::get_output(const mshadow::Tensor<cpu, 3, float> &out) {
+  // @todo: what about padding?
+  memcpy(out.dptr_, output, out.size(0) * out.size(1) * out.size(2) * sizeof(float));
+  //binary_to_float(out);
+}
+//  private  -----------------------------------------------------------------------------------------------------------
 
 /* @brief converts a 3d float tensor into a bitset
  *
@@ -69,9 +96,44 @@ void BinaryLayer::float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_W
   }
 }
 
-// calculate mean of first dimension accross second and third dimension and save as 2d plane
+/* @brief converts a bitset into a float tensor
+ *
+ * @param out a 3d output tensor
+ */
+void BinaryLayer::binary_to_float(const mshadow::Tensor<cpu, 3, float> &out) {
+  CHECK(false) << "this method is untested!";
+  int total_elements = out.size(0) * out.size(1) * out.size(2);
+
+  for (int i = 0; i < total_elements; i += BITS_PER_BINARY_WORD) {
+    BINARY_WORD tmp = (BINARY_WORD) output[i / BITS_PER_BINARY_WORD];
+    for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
+      if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - x)) {
+        out.dptr_[i + x] = 1.f;
+      } else {
+        out.dptr_[i + x] = -1.f;
+      }
+    }
+  }
+  if (total_elements % BITS_PER_BINARY_WORD == 0) {
+    return;
+  }
+  // there are some bits left
+  BINARY_WORD tmp = (BINARY_WORD) output[total_elements / BITS_PER_BINARY_WORD];
+  for (int i = total_elements - (total_elements % BITS_PER_BINARY_WORD); i < total_elements; i++) {
+    if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - i % BITS_PER_BINARY_WORD)) {
+      out.dptr_[i] = 1.f;
+    } else {
+      out.dptr_[i] = -1.f;
+    }
+  }
+}
+
+/* @brief calculate mean of first dimension accross second and third dimension and save as 2d plane
+ *
+ * @param output_plane at every x,y this plane will contain the mean of all z values in input
+ * @param input_volume expected layout: z,x,y
+ */
 void BinaryLayer::calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume) {
-  //layout of input_volume: depth|x|y
   int depth = input_volume.size(0);
   int width = input_volume.size(1);
   int height = input_volume.size(2);
@@ -94,6 +156,7 @@ void BinaryLayer::calculate_beta(float *output_plane, mshadow::Tensor<cpu, 3, fl
   calculate_alpha(output_plane, input_volume);
 }
 
+<<<<<<< HEAD
 void BinaryLayer::set_inputs(const mshadow::Tensor<cpu, 3, float> input) {
   float_to_binary(input, binary_input);
 
@@ -129,3 +192,6 @@ void BinaryLayer::get_output(const mshadow::Tensor<cpu, 3, float> &out) {
 }
 
 }} // namespace mxnet { namespace op {
+=======
+}} // namespace mxnet { namespace op {
+>>>>>>> f231cb1b0c05accb92111ab4b30266e6b13b5c90

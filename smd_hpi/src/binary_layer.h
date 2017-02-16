@@ -28,7 +28,6 @@ namespace op {
         void set_weights(const mshadow::Tensor<cpu, 3, float> &wmat);
         void get_output(const mshadow::Tensor<cpu, 3, float> &out);
 
-    private:
         BINARY_WORD *binary_input = nullptr;
         BINARY_WORD *binary_weights = nullptr;
         float *output = nullptr;
@@ -45,12 +44,11 @@ namespace op {
         int padding_y;
         int stride = 1;
 
+    private:
         void float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_WORD *output);
-        // calculate mean of first dimension accross second and third dimension and save as 2d plane
+        void binary_to_float(const mshadow::Tensor<cpu, 3, float> &out);
         void calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume);
-        // ???
         void calculate_beta(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume);
-
     };
 
 }}
