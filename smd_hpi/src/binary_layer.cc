@@ -90,7 +90,7 @@ void BinaryLayer::float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_W
     BINARY_WORD tmp = 0x00000000;
     // @todo: why do we reverse the order inside one word? endianes?
     for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
-      if (signbit(input.dptr_[x + i]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x);
+      if (std::signbit(input.dptr_[x + i]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x);
     }
     output[i / BITS_PER_BINARY_WORD] = tmp;
   }
@@ -157,3 +157,4 @@ void BinaryLayer::calculate_beta(float *output_plane, mshadow::Tensor<cpu, 3, fl
 }
 
 }} // namespace mxnet { namespace op {
+
