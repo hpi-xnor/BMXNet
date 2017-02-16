@@ -160,7 +160,7 @@ inline void xnor_forward(std::unique_ptr<mxnet::op::BinaryLayer> const &binary_l
 
 
 	//======== TODO: able to support arbitrary channel size ==========//
-	CHECK(binary_layer->input_channels % 32 != 0) << "Channel is not divisible by 32."
+	CHECK(binary_layer->input_channels % 32 == 0) << "Channel is not divisible by 32."
 												"before supporting arbitrary channel size. For now, "
 												"set the channel size to the nearest multiple of 32 "
 												"and ignore any ''extra'' channels unused.";

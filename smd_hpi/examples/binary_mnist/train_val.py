@@ -59,7 +59,7 @@ def get_binary_lenet():
 	data = mx.symbol.Variable('data')
 
 	# first conv layer
-	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=20)
+	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=32)
 	bn1 = mx.sym.BatchNorm(data=conv1)
 	tanh1 = mx.sym.QActivation(data=bn1, act_bit=BITA)
 
