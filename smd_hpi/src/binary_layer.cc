@@ -90,7 +90,7 @@ void BinaryLayer::float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_W
     BINARY_WORD tmp = 0x00000000;
     // @todo: why do we reverse the order inside one word? endianes?
     for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
-      if (signbit(input.dptr_[x + i]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x);
+      if (std::signbit(input.dptr_[x + i]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x);
     }
     output[i / BITS_PER_BINARY_WORD] = tmp;
   }
@@ -156,42 +156,5 @@ void BinaryLayer::calculate_beta(float *output_plane, mshadow::Tensor<cpu, 3, fl
   calculate_alpha(output_plane, input_volume);
 }
 
-<<<<<<< HEAD
-void BinaryLayer::set_inputs(const mshadow::Tensor<cpu, 3, float> input) {
-  float_to_binary(input, binary_input);
-
-  if (beta) free(beta);
-  beta = (float *) calloc (input.size(1) * input.size(2), sizeof(float));
-
-  calculate_beta(beta, input);
-}
-
-void BinaryLayer::set_weights(const mshadow::Tensor<cpu, 3, float> &wmat) {
-  float_to_binary(wmat, binary_weights);
-
-  if (alpha) free(alpha);
-  alpha = (float *) calloc (wmat.size(1) * wmat.size(2), sizeof(float));
-
-  calculate_alpha(alpha, wmat);
-}
-
-void BinaryLayer::get_output(const mshadow::Tensor<cpu, 3, float> &out) {
-  for (int i = BITS_PER_BINARY_WORD; i < out.size(0) * out.size(1) * out.size(2); i += BITS_PER_BINARY_WORD) {
-
-    BINARY_WORD tmp = (BINARY_WORD) output[i / BITS_PER_BINARY_WORD];
-    for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
-      if (TestBit(tmp, x) == 1) {
-        out.dptr_[i + x] = 1.f;
-      } else {
-        out.dptr_[i + x] = -1.f;
-      }
-    }
-
-    // @todo: watch out for leftover bits
-  }
-}
-
 }} // namespace mxnet { namespace op {
-=======
-}} // namespace mxnet { namespace op {
->>>>>>> f231cb1b0c05accb92111ab4b30266e6b13b5c90
+
