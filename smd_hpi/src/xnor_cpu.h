@@ -160,14 +160,14 @@ inline void xnor_forward(std::unique_ptr<mxnet::op::BinaryLayer> const &binary_l
 
 
 	//======== TODO: able to support arbitrary channel size ==========//
-	CHECK(binary_layer->input_channels % 32 == 0) << "Channel is not divisible by 32."
+	CHECK_EQ(binary_layer->input_channels % 32, 0) << "Channel is not divisible by 32."
 												"before supporting arbitrary channel size. For now, "
 												"set the channel size to the nearest multiple of 32 "
 												"and ignore any ''extra'' channels unused.";
 
 	//smaller the input channel number, divided by 32, because we will process per word 32 bit number
 	//later.
-	binary_layer->input_channels = binary_layer->input_channels / BITS_PER_BINARY_WORD;   // 32
+	int input_channels_mod_bits = binary_layer->input_channels / BITS_PER_BINARY_WORD;   // 32
     //===============================================================//
 
     // padded input size
@@ -179,7 +179,7 @@ inline void xnor_forward(std::unique_ptr<mxnet::op::BinaryLayer> const &binary_l
     // do forward calc
     for (int z = 0; z < binary_layer->num_filters; ++z) {    // for each filter map
         BINARY_WORD *binary_input = binary_layer->binary_input;
-        for (int c = 0; c < binary_layer->input_channels; ++c) {    // for each input channel
+        for (int c = 0; c < input_channels_mod_bits; ++c) {    // for each input channel
         	binary_conv2D(binary_layer->output, binary_layer->binary_input, binary_layer->binary_weights,
         						binary_layer->input_width, binary_layer->input_height,
 								binary_layer->kernel_width, binary_layer->kernel_height,
