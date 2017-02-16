@@ -10,6 +10,7 @@
 #include <mshadow/tensor.h>
 #include <memory>
 #include "./binary_layer.h"
+#include "./xnor_cpu.h"
 #if MXNET_USE_MKL2017 == 1
 #include <mkl_memory.h>
 #include "../../src/operator/mkl/mkl_memory-inl.h"
@@ -44,6 +45,8 @@ namespace mshadow {
 
         binary_layer->set_inputs(single_batch_slice);
         binary_layer->set_weights(wmat);
+
+        mxnet::op::xnor_cpu::xnor_forward(binary_layer);
 
         // data is now stored in binary_layer.input/weights/alpha/beta/output
         // and should be accessed with bitshifts, as in darknet

@@ -9,7 +9,7 @@
 #define MXNET_XNOR_CPU_H
 
 #include <dmlc/logging.h>
-#include "./q_helper.h"
+#include "./binary_layer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -23,8 +23,6 @@
 namespace mxnet {
 namespace op {
 namespace xnor_cpu {
-
-using namespace helper;
 
 /**
  * binary convolution implementation. instead of standard dot product
@@ -154,12 +152,12 @@ inline void pointwise_mul_mm_2D(float *output, const float *alpha,
  * params:
  *  BinaryLayer: which contains structure and data that the binary convolution required.
  */
-inline void xnor_forward(BinaryLayer* binary_layer) {
-	CHECK_EQ(binary_layer->binary_input, NULL) << "xnor_forward: must init layer input";
-	CHECK_EQ(binary_layer->binary_weights, NULL) << "xnor_forward: must init layer weights";
-	CHECK_EQ(binary_layer->output, NULL) << "xnor_forward: must set layer output";
-	CHECK_EQ(binary_layer->alpha, NULL) << "xnor_forward: must init weight scaling factor alpha";
-	CHECK_EQ(binary_layer->beta, NULL) << "xnor_forward: must init input scaling factor beta";
+inline void xnor_forward(std::unique_ptr<mxnet::op::BinaryLayer> const &binary_layer) {
+	CHECK(binary_layer->binary_input != nullptr) << "xnor_forward: must init layer input";
+	CHECK(binary_layer->binary_weights != nullptr) << "xnor_forward: must init layer weights";
+	CHECK(binary_layer->output != nullptr) << "xnor_forward: must set layer output";
+	CHECK(binary_layer->alpha != nullptr) << "xnor_forward: must init weight scaling factor alpha";
+	CHECK(binary_layer->beta != nullptr) << "xnor_forward: must init input scaling factor beta";
 
 
 	//======== TODO: able to support arbitrary channel size ==========//
