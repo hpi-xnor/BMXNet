@@ -43,7 +43,8 @@ namespace op {
         int padding_x;
         int padding_y;
         int stride = 1;
-
+        int output_width;
+        int output_height;
     private:
         void float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_WORD *output);
         void binary_to_float(const mshadow::Tensor<cpu, 3, float> &out);

@@ -30,15 +30,16 @@ namespace mshadow {
 
       CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
       CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
-      auto binary_layer = std::unique_ptr<mxnet::op::BinaryLayer>(
-              new mxnet::op::BinaryLayer(data.size(1), //   input depth
-                                      data.size(2), //    input x
-                                      data.size(3), //    input y
-                                      param.num_filter,// number filters
-                                      param.kernel[0], // weight x
-                                      param.kernel[1],//  weight y
-                                      param.pad[0],//     padding
-                                      param.pad[1]));//   padding
+
+	  auto binary_layer = std::unique_ptr<mxnet::op::BinaryLayer>(
+		  new mxnet::op::BinaryLayer(data.size(1), //   input depth
+								  data.size(2), //    input x
+								  data.size(3), //    input y
+								  param.num_filter,// number filters
+								  param.kernel[0], // weight x
+								  param.kernel[1],//  weight y
+								  param.pad[0],//     padding
+								  param.pad[1]));//   padding
 
       for (int i=0; i<data.size(0); i++) {
         Tensor<cpu, 3, float> single_batch_slice = data[i];
@@ -50,10 +51,8 @@ namespace mshadow {
 
         // data is now stored in binary_layer.input/weights/alpha/beta/output
         // and should be accessed with bitshifts, as in darknet
-
         binary_layer->get_output(out[i]); //convert back binary output and copy into float for next layer
       }
-
     }
 
     template<typename DType>

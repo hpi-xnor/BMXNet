@@ -38,35 +38,37 @@ namespace xnor_cpu {
  */
 inline void binary_conv2D(float* output,  const BINARY_WORD *input,
 						  const BINARY_WORD *weights, int ix, int iy,
-						  int wx, int wy, int pad_x, int pad_y, int stride) {
+						  int wx, int wy, int pad_x, int pad_y, int stride,
+						  int output_width, int output_height, int filter_iter_base) {
     int r, rd, c, cd;
     int wx_2 = wx / 2;
     int wy_2 = wy / 2;
-
-    // Indexing for output (and input) pixels. since stride can only be 1 now,
-    // the output size equals input size
-    //x = [wx_2, ix + wx_2 - 1], y = [wy_2, iy + wy_2 - 1]
-    int sx = pad_x;               // start x
-    int ex = ix + pad_x - 1;      // end x
-    int sy = pad_y;               // start y
-    int ey = iy + pad_y - 1;      // end y
 
     // Indexing for weights
     int wsx, wex, wsy, wey;
     wsx = -wx_2;				// weight start x
     wsy = -wy_2;	 			// weight start y
-    if (wx % 2 == 1) {  		// odd weights
-        wex = wx_2 + 1;			// weight end x
-        wey = wy_2 + 1;			// weight end y
-    }else {
-        wex = wx_2;
-        wey = wy_2;
-    }
 
+    if (wx % 2 == 1)  		// odd weights w
+        wex = wx_2 + 1;			// weight end x
+    else
+        wex = wx_2;
+    if (wy % 2 == 1)  		// odd weights h
+		wey = wy_2 + 1;			// weight end y
+	else
+		wey = wy_2;
+
+    // Indexing for input pixels. since stride can only be 1 now,
+    int sx = pad_x + wx_2;               // start x
+    int ex = ix + pad_x - wx_2;      // end x
+    int sy = pad_y + wy_2;               // start y
+    int ey = iy + pad_y - wy_2;      // end y
+
+    //padded input width
     int px = ix + 2*pad_x;
 
-    for (r = sy; r <= ey; ++r) { 					// slide in y on input
-        for (c = sx; c <= ex; ++c) {				// slide in x on input
+    for (r = sy; r < ey; ++r) { 					// slide in y on input
+        for (c = sx; c < ex; ++c) {				// slide in x on input
             int accumulator = 0;
             for (rd = wsy; rd < wey; ++rd) {		//	slide in y on weight filter
                 for (cd = wsx; cd < wex; ++cd) {	//	slide in x on weight filter
@@ -83,9 +85,9 @@ inline void binary_conv2D(float* output,  const BINARY_WORD *input,
                     accumulator += __builtin_popcount(~(pixel ^ weight));
                 }
             }
-
             // write to output, padded space
-            int oidx = r*px + c;
+            int oidx = (r-wy_2)*output_width + (c-wx_2);
+            oidx += filter_iter_base;
             output[oidx] += (float) accumulator;
         }
     }
@@ -98,7 +100,7 @@ inline void pointwise_mul_mm(float *output, const float *input, int step_size){
     int i = 0;
 
     //!!!!! Why? !!!!!
-    while (i + 8 <= step_size) {
+    /*while (i + 8 <= step_size) {
         output[i+0] *= input[i+0];
         output[i+1] *= input[i+1];
         output[i+2] *= input[i+2];
@@ -109,7 +111,7 @@ inline void pointwise_mul_mm(float *output, const float *input, int step_size){
         output[i+7] *= input[i+7];
 
         i += 8;
-    }
+    }*/
 
     while (++i < step_size) // finish iteration leftover
          output[i] *= input[i];
@@ -180,24 +182,26 @@ inline void xnor_forward(std::unique_ptr<mxnet::op::BinaryLayer> const &binary_l
     for (int z = 0; z < binary_layer->num_filters; ++z) {    // for each filter map
         BINARY_WORD *binary_input = binary_layer->binary_input;
         for (int c = 0; c < input_channels_mod_bits; ++c) {    // for each input channel
-        	binary_conv2D(binary_layer->output, binary_layer->binary_input, binary_layer->binary_weights,
+        	binary_conv2D(binary_layer->output, binary_input, binary_weights,
         						binary_layer->input_width, binary_layer->input_height,
 								binary_layer->kernel_width, binary_layer->kernel_height,
-								binary_layer->padding_x, binary_layer->padding_y, binary_layer->stride);
+								binary_layer->padding_x, binary_layer->padding_y, binary_layer->stride,
+								binary_layer->output_width, binary_layer->output_height,
+								z*binary_layer->output_width*binary_layer->output_height);
 
         	// increment with next input image
         	//length of binary_input: input_channels(original) * input_w * input_h / BITS_PER_BINARY_WORD
-            binary_input += padded_w * padded_h;
+            *binary_input += padded_w * padded_h;
 
             //length of binary_weights: num_filters * input_channels(original) * kernel_width * kernel_heihgt / BITS_PER_BINARY_WORD
-            binary_weights += binary_layer->kernel_width * binary_layer->kernel_height;
+            *binary_weights += binary_layer->kernel_width * binary_layer->kernel_height;
 
             //====== !!NON-binary operations!! =======//
-            pointwise_mul_mm(binary_layer->output, binary_layer->beta, padded_w * padded_h);
-            pointwise_mul_mm_2D(binary_layer->output, binary_layer->alpha, binary_layer->input_width, binary_layer->input_height,
+            /*pointwise_mul_mm(binary_layer->output, binary_layer->beta, padded_w * padded_h);
+            pointwise_mul_mm_2D(binary_layer->output, binary_layer->alpha, binary_layer->output_width, binary_layer->output_height,
             		binary_layer->kernel_width, binary_layer->kernel_height,
 					binary_layer->padding_x, binary_layer->padding_y);
-            //=======================================//
+            *///=======================================//
         }
     }
 

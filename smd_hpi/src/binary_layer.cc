@@ -32,9 +32,10 @@ BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, 
         padding_y(padding_y) {
   CHECK_EQ(padding_x, padding_y) << "differing padding in x and y direction, unknown if supported";
 
-  float output_size = ((input_width - kernel_width + 2 * padding_x) / stride) + 1;
+  output_width = ((input_width - kernel_width + 2 * padding_x) / stride) + 1;
+  output_height = ((input_height - kernel_height + 2 * padding_y) / stride) + 1;
 
-  CHECK_EQ(ceilf(output_size), output_size) << "invalid output size of binary convolution layer: " << output_size;
+  //CHECK_EQ(ceilf(output_w), output_w) << "invalid output size of binary convolution layer: " << output_w;
 
   // padded input size
   int input_width_padded = input_width + 2 * padding_x;
@@ -43,7 +44,7 @@ BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, 
   binary_input = (BINARY_WORD *) calloc(input_channels * input_width_padded * input_height_padded / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
   binary_weights = (BINARY_WORD *) calloc(num_filters * input_channels * kernel_width * kernel_height / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
 
-  output = (float *) calloc(input_channels * input_width_padded * input_height_padded, sizeof(float));
+  output = (float *) calloc(num_filters * output_width * output_height, sizeof(float));
 }
 
 BinaryLayer::~BinaryLayer() {
