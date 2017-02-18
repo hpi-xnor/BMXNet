@@ -144,7 +144,7 @@ void BinaryLayer::calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, f
       int out = y * width + x;
       float accum = 0.0;
       for (int z = 0; z < depth; ++z) {
-        accum += input_volume.dptr_[out * depth + z];
+        accum += fabs(input_volume.dptr_[out * depth + z]);
       }
 
       output_plane[out] = accum / depth;
