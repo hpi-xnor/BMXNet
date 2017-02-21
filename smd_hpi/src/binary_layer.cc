@@ -55,7 +55,7 @@ BinaryLayer::~BinaryLayer() {
   if (beta) free(beta);
 }
 
-void BinaryLayer::set_inputs(const mshadow::Tensor<cpu, 3, float> input) {
+void BinaryLayer::set_inputs(const mshadow::Tensor<cpu, 3, float> &input) {
   float_to_binary(input, binary_input);
 
   if (beta) free(beta);
@@ -85,7 +85,7 @@ void BinaryLayer::get_output(const mshadow::Tensor<cpu, 3, float> &out) {
  * @param input 3d float tensor
  * @param output pointer to zero-initialized memory for the bitset
  */
-void BinaryLayer::float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_WORD *output) {
+void BinaryLayer::float_to_binary(const mshadow::Tensor<cpu, 3, float> &input, BINARY_WORD *output) {
   // @todo: does this work and not run over the size of dptr_/miss some of it if it doesnt divide by 32?
   for (int i = 0; i < input.size(0) * input.size(1) * input.size(2); i += BITS_PER_BINARY_WORD) {
     BINARY_WORD tmp = 0x00000000;
@@ -101,12 +101,12 @@ void BinaryLayer::float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_W
  *
  * @param out a 3d output tensor
  */
-void BinaryLayer::binary_to_float(const mshadow::Tensor<cpu, 3, float> &out) {
-  CHECK(false) << "this method is untested!";
+void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 3, float> &out) {
+  LOG(INFO) << "this method is untested!";
   int total_elements = out.size(0) * out.size(1) * out.size(2);
 
   for (int i = 0; i < total_elements; i += BITS_PER_BINARY_WORD) {
-    BINARY_WORD tmp = (BINARY_WORD) output[i / BITS_PER_BINARY_WORD];
+    BINARY_WORD tmp = (BINARY_WORD) input[i / BITS_PER_BINARY_WORD];
     for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
       if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - x)) {
         out.dptr_[i + x] = 1.f;
@@ -119,7 +119,7 @@ void BinaryLayer::binary_to_float(const mshadow::Tensor<cpu, 3, float> &out) {
     return;
   }
   // there are some bits left
-  BINARY_WORD tmp = (BINARY_WORD) output[total_elements / BITS_PER_BINARY_WORD];
+  BINARY_WORD tmp = (BINARY_WORD) input[total_elements / BITS_PER_BINARY_WORD];
   for (int i = total_elements - (total_elements % BITS_PER_BINARY_WORD); i < total_elements; i++) {
     if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - i % BITS_PER_BINARY_WORD)) {
       out.dptr_[i] = 1.f;
@@ -144,7 +144,7 @@ void BinaryLayer::calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, f
       int out = y * width + x;
       float accum = 0.0;
       for (int z = 0; z < depth; ++z) {
-        accum += fabs(input_volume.dptr_[out * depth + z]);
+        accum += input_volume.dptr_[out * depth + z];
       }
 
       output_plane[out] = accum / depth;
