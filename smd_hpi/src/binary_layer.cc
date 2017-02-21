@@ -9,7 +9,7 @@
 #include <cstdlib>
 
 namespace mxnet {
-namespace op {
+  namespace op {
 
 #define SetBit(A,k)     ( A |= (1 << (k)) )
 //#define SetBit(A,k)     ( A[(k/32)] |= (1 << (k%32)) )
@@ -21,7 +21,7 @@ namespace op {
 
 //  public  ------------------------------------------------------------------------------------------------------------
 
-BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y):
+BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y, int m, int n, int k):
         input_channels(input_channels),
         input_width(input_width),
         input_height(input_height),
@@ -35,16 +35,18 @@ BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, 
   output_width = ((input_width - kernel_width + 2 * padding_x) / stride) + 1;
   output_height = ((input_height - kernel_height + 2 * padding_y) / stride) + 1;
 
-  //CHECK_EQ(ceilf(output_w), output_w) << "invalid output size of binary convolution layer: " << output_w;
+  CHECK_EQ(m, num_filters);
+  CHECK_EQ(n, kernel_width * kernel_height * input_channels);
+  CHECK_EQ(k, output_width * output_height * 100);
 
   // padded input size
   int input_width_padded = input_width + 2 * padding_x;
   int input_height_padded = input_height + 2 * padding_y;
 
-  binary_input = (BINARY_WORD *) calloc(input_channels * input_width_padded * input_height_padded / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
-  binary_weights = (BINARY_WORD *) calloc(num_filters * input_channels * kernel_width * kernel_height / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
+  binary_input = (BINARY_WORD *) calloc(n * k / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
+  binary_weights = (BINARY_WORD *) calloc(m * n / BITS_PER_BINARY_WORD, sizeof(BINARY_WORD));
 
-  output = (float *) calloc(num_filters * output_width * output_height, sizeof(float));
+  output = (float *) calloc(m * k, sizeof(float));
 }
 
 BinaryLayer::~BinaryLayer() {
@@ -55,22 +57,22 @@ BinaryLayer::~BinaryLayer() {
   if (beta) free(beta);
 }
 
-void BinaryLayer::set_inputs(const mshadow::Tensor<cpu, 3, float> &input) {
+void BinaryLayer::set_input_as_col(const mshadow::Tensor<cpu, 2, float> &input) {
   float_to_binary(input, binary_input);
 
-  if (beta) free(beta);
-  beta = (float *) calloc (input.size(1) * input.size(2), sizeof(float));
-
-  calculate_beta(beta, input);
+//  if (beta) free(beta);
+//  beta = (float *) calloc (input.size(1) * input.size(2), sizeof(float));
+//
+//  calculate_beta(beta, input);
 }
 
-void BinaryLayer::set_weights(const mshadow::Tensor<cpu, 3, float> &wmat) {
+void BinaryLayer::set_weights(const mshadow::Tensor<cpu, 2, float> &wmat) {
   float_to_binary(wmat, binary_weights);
 
-  if (alpha) free(alpha);
-  alpha = (float *) calloc (wmat.size(1) * wmat.size(2), sizeof(float));
-
-  calculate_alpha(alpha, wmat);
+//      if (alpha) free(alpha);
+//      alpha = (float *) calloc (wmat.size(1) * wmat.size(2), sizeof(float));
+//
+//      calculate_alpha(alpha, wmat);
 }
 
 void BinaryLayer::get_output(const mshadow::Tensor<cpu, 3, float> &out) {
@@ -81,32 +83,34 @@ void BinaryLayer::get_output(const mshadow::Tensor<cpu, 3, float> &out) {
 //  private  -----------------------------------------------------------------------------------------------------------
 
 /* @brief converts a 3d float tensor into a bitset
- *
- * @param input 3d float tensor
- * @param output pointer to zero-initialized memory for the bitset
- */
-void BinaryLayer::float_to_binary(const mshadow::Tensor<cpu, 3, float> &input, BINARY_WORD *output) {
+*
+* @param input 3d float tensor
+* @param output pointer to zero-initialized memory for the bitset
+*/
+void BinaryLayer::float_to_binary(const mshadow::Tensor<cpu, 2, float> &input, BINARY_WORD *output) {
   // @todo: does this work and not run over the size of dptr_/miss some of it if it doesnt divide by 32?
-  for (int i = 0; i < input.size(0) * input.size(1) * input.size(2); i += BITS_PER_BINARY_WORD) {
+  int total_elements = input.size(0) * input.size(1);
+  for (int i = 0; i < total_elements; i += BITS_PER_BINARY_WORD) {
     BINARY_WORD tmp = 0x00000000;
+    int step_end = std::min<int>(total_elements, i + BITS_PER_BINARY_WORD);
     // @todo: why do we reverse the order inside one word? endianes?
-    for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
-      if (std::signbit(input.dptr_[x + i]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x);
+    for (int x = i; x < step_end; ++x) {
+      if (std::signbit(input.dptr_[x]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x % BITS_PER_BINARY_WORD);
     }
     output[i / BITS_PER_BINARY_WORD] = tmp;
   }
 }
 
 /* @brief converts a bitset into a float tensor
- *
- * @param out a 3d output tensor
- */
-void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 3, float> &out) {
-  int total_elements = out.size(0) * out.size(1) * out.size(2);
-
+*
+* @param out a 3d output tensor
+*/
+void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 2, float> &out) {
+  int total_elements = out.size(0) * out.size(1);
   for (int i = 0; i < (total_elements + (BITS_PER_BINARY_WORD - 1)); i += BITS_PER_BINARY_WORD) {
     BINARY_WORD tmp = (BINARY_WORD) input[i / BITS_PER_BINARY_WORD];
-    for (int x = i; x < std::min<int>(total_elements, i + BITS_PER_BINARY_WORD); ++x) {
+    int step_end = std::min<int>(total_elements, i + BITS_PER_BINARY_WORD);
+    for (int x = i; x < step_end; ++x) {
       if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - x % BITS_PER_BINARY_WORD)) {
         out.dptr_[x] = 1.f;
       } else {
@@ -117,10 +121,10 @@ void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu,
 }
 
 /* @brief calculate mean of first dimension accross second and third dimension and save as 2d plane
- *
- * @param output_plane at every x,y this plane will contain the mean of all z values in input
- * @param input_volume expected layout: z,x,y
- */
+*
+* @param output_plane at every x,y this plane will contain the mean of all z values in input
+* @param input_volume expected layout: z,x,y
+*/
 void BinaryLayer::calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume) {
   int depth = input_volume.size(0);
   int width = input_volume.size(1);

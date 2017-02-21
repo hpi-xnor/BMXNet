@@ -16,6 +16,8 @@ namespace mshadow {
     template<typename Dtype>
     inline void QConvolutionForward(const Tensor<gpu, 4, Dtype> &data,
                                     const Tensor<gpu, 3, Dtype> &wmat,
+                                    const Tensor<gpu, 2, Dtype> &in_col,
+                                    const Tensor<gpu, 3, Dtype> &temp_dst,
                                     const Tensor<gpu, 4, Dtype> &out,
                                     const mxnet::op::QConvolutionParam &param) {
       LOG(FATAL) << "binary cuda convolution not supported yet";

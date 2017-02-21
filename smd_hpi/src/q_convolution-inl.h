@@ -131,6 +131,57 @@ class QConvolutionOp : public Operator {
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
 #endif
+    const index_t nbatch = data.size(0);
+    Tensor<xpu, 1, DType> workspace =
+            ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
+                    Shape1(this->InitTemp(data.shape_, out.shape_)), s);
+    CHECK_EQ(data.shape_[0], nstep_) << "we dont support setting max. workspace size yet, look at mx conv again...";
+
+    Tensor<xpu, 2, DType> temp_col = Tensor<xpu, 2, DType>(workspace.dptr_,
+                                                           Shape2(shape_colunit_[0],
+                                                                  shape_colunit_[1] * nbatch), s);
+    Tensor<xpu, 3, DType> temp_dst = Tensor<xpu, 3, DType>(
+            workspace.dptr_ + temp_col.shape_.Size(),
+            Shape3(shape_dstunit_[0],
+                   shape_dstunit_[1],
+                   shape_dstunit_[2] * nbatch), s);
+    if (param_.pad[0] == 0 && param_.pad[1] == 0) {
+      temp_col = unpack_patch2col(data,
+                                  param_.kernel[0],
+                                  param_.kernel[1],
+                                  param_.stride[0],
+                                  param_.stride[1],
+                                  param_.dilate[0],
+                                  param_.dilate[1]);
+    } else {
+      temp_col = unpack_patch2col(pad(data,
+                                      param_.pad[0], param_.pad[1]),
+                                  param_.kernel[0],
+                                  param_.kernel[1],
+                                  param_.stride[0],
+                                  param_.stride[1],
+                                  param_.dilate[0],
+                                  param_.dilate[1]);
+    }
+
+      // @todo: skipped the param_.num_group, what is it for?
+
+      // temp_dst = dot(wmat, tmpc);
+
+//      out = swapaxis<1, 0>(reshape(temp_dst,
+//                           mshadow::Shape4(param_.num_filter, // 50
+//                           nbatch, // 100
+//                           out.size(2), // 8
+//                           out.size(3)))); // 8
+    QConvolutionForward(data, wmat, temp_col, temp_dst, out, param_);
+
+//    if (!param_.no_bias) {
+//      // add bias, broadcast bias to dim 1: channel
+//      Tensor<xpu, 1, DType> bias = in_data[conv::kBias].get<xpu, 1, DType>(s);
+//      out += broadcast<1>(bias, out.shape_);
+//    }
+
+
 
     // mf quantize weights
 //    LOG(INFO) << "------ QCONV -------";
@@ -145,7 +196,6 @@ class QConvolutionOp : public Operator {
 //      LOG(INFO) << "wmat[" << i << "].size = " << wmat.size(i);
 //    }
 
-    QConvolutionForward(data, wmat, out, param_);
   }
 
   virtual void Backward(const OpContext &ctx,

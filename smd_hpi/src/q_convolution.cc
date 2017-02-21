@@ -25,6 +25,8 @@ namespace mshadow {
 
     inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
                                     const Tensor<cpu, 3, float> &wmat,
+                                    const Tensor<cpu, 2, float> &in_col,
+                                    const Tensor<cpu, 3, float> &temp_dst,
                                     const Tensor<cpu, 4, float> &out,
                                     const mxnet::op::QConvolutionParam &param) {
 
@@ -39,25 +41,31 @@ namespace mshadow {
 								  param.kernel[0], // weight x
 								  param.kernel[1],//  weight y
 								  param.pad[0],//     padding
-								  param.pad[1]));//   padding
+								  param.pad[1],//     padding
+          wmat.shape_[1], // m*n with m=num_filter
+          wmat.shape_[2], // m*n with n=weight_x * weight_y * input depth
+          //in_col.shape_[0], // n*k with n=weight_x * weight_y * input depth
+          //in_col.shape_[1], // n*k with k=output_x * output_y * batch_size
+          //temp_dst.shape_[1], // m*k  with m=num_filter
+          temp_dst.shape_[2]));// m*k with k=output_x * output_y * batch_size
 
-      for (int i=0; i<data.size(0); i++) {
-        Tensor<cpu, 3, float> single_batch_slice = data[i];
+      binary_layer->set_input_as_col(in_col);
+      binary_layer->set_weights(wmat[0]); // disregard first dim, 'group'?
 
-        binary_layer->set_inputs(single_batch_slice);
-        binary_layer->set_weights(wmat);
+//      mxnet::op::xnor_cpu::xnor_forward(binary_layer);
 
-        mxnet::op::xnor_cpu::xnor_forward(binary_layer);
+      // data is now stored in binary_layer.input/weights/alpha/beta/output
+      // and should be accessed with bitshifts, as in darknet
 
-        // data is now stored in binary_layer.input/weights/alpha/beta/output
-        // and should be accessed with bitshifts, as in darknet
-        binary_layer->get_output(out[i]); //convert back binary output and copy into float for next layer
-      }
+//      binary_layer->get_output(out[i]); //convert back binary output and copy into float for next layer
+
     }
 
     template<typename DType>
     inline void QConvolutionForward(const Tensor<cpu, 4, DType> &data,
                                     const Tensor<cpu, 3, DType> &wmat,
+                                    const Tensor<cpu, 2, DType> &in_col,
+                                    const Tensor<cpu, 3, DType> &temp_dst,
                                     const Tensor<cpu, 4, DType> &out,
                                     const mxnet::op::QConvolutionParam &param) {
       CHECK(false) << "only float supported";
