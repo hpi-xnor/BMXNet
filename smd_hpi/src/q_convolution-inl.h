@@ -173,7 +173,7 @@ class QConvolutionOp : public Operator {
 //                           nbatch, // 100
 //                           out.size(2), // 8
 //                           out.size(3)))); // 8
-    QConvolutionForward(data, wmat, temp_col, temp_dst, out, param_);
+    QConvolutionForward(data, wmat[0], temp_col, temp_dst[0], out, param_);
 
 //    if (!param_.no_bias) {
 //      // add bias, broadcast bias to dim 1: channel

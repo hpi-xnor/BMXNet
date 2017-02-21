@@ -24,9 +24,9 @@
 namespace mshadow {
 
     inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
-                                    const Tensor<cpu, 3, float> &wmat,
+                                    const Tensor<cpu, 2, float> &wmat,
                                     const Tensor<cpu, 2, float> &in_col,
-                                    const Tensor<cpu, 3, float> &temp_dst,
+                                    const Tensor<cpu, 2, float> &temp_dst,
                                     const Tensor<cpu, 4, float> &out,
                                     const mxnet::op::QConvolutionParam &param) {
 
@@ -50,7 +50,7 @@ namespace mshadow {
           temp_dst.shape_[2]));// m*k with k=output_x * output_y * batch_size
 
       binary_layer->set_input_as_col(in_col);
-      binary_layer->set_weights(wmat[0]); // disregard first dim, 'group'?
+      binary_layer->set_weights(wmat); // disregard first dim, 'group'?
 
 //      mxnet::op::xnor_cpu::xnor_forward(binary_layer);
 
@@ -63,9 +63,9 @@ namespace mshadow {
 
     template<typename DType>
     inline void QConvolutionForward(const Tensor<cpu, 4, DType> &data,
-                                    const Tensor<cpu, 3, DType> &wmat,
+                                    const Tensor<cpu, 2, DType> &wmat,
                                     const Tensor<cpu, 2, DType> &in_col,
-                                    const Tensor<cpu, 3, DType> &temp_dst,
+                                    const Tensor<cpu, 2, DType> &temp_dst,
                                     const Tensor<cpu, 4, DType> &out,
                                     const mxnet::op::QConvolutionParam &param) {
       CHECK(false) << "only float supported";
