@@ -102,29 +102,16 @@ void BinaryLayer::float_to_binary(const mshadow::Tensor<cpu, 3, float> &input, B
  * @param out a 3d output tensor
  */
 void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 3, float> &out) {
-  LOG(INFO) << "this method is untested!";
   int total_elements = out.size(0) * out.size(1) * out.size(2);
 
-  for (int i = 0; i < total_elements; i += BITS_PER_BINARY_WORD) {
+  for (int i = 0; i < (total_elements + (BITS_PER_BINARY_WORD - 1)); i += BITS_PER_BINARY_WORD) {
     BINARY_WORD tmp = (BINARY_WORD) input[i / BITS_PER_BINARY_WORD];
-    for (int x = 0; x < BITS_PER_BINARY_WORD; ++x) {
-      if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - x)) {
-        out.dptr_[i + x] = 1.f;
+    for (int x = i; x < std::min<int>(total_elements, i + BITS_PER_BINARY_WORD); ++x) {
+      if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - x % BITS_PER_BINARY_WORD)) {
+        out.dptr_[x] = 1.f;
       } else {
-        out.dptr_[i + x] = -1.f;
+        out.dptr_[x] = -1.f;
       }
-    }
-  }
-  if (total_elements % BITS_PER_BINARY_WORD == 0) {
-    return;
-  }
-  // there are some bits left
-  BINARY_WORD tmp = (BINARY_WORD) input[total_elements / BITS_PER_BINARY_WORD];
-  for (int i = total_elements - (total_elements % BITS_PER_BINARY_WORD); i < total_elements; i++) {
-    if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - i % BITS_PER_BINARY_WORD)) {
-      out.dptr_[i] = 1.f;
-    } else {
-      out.dptr_[i] = -1.f;
     }
   }
 }
