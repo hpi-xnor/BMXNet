@@ -67,7 +67,7 @@ __device__ unsigned int concatenate(float* array)
     for (int i = 0; i < 32; i++)
     {
         sign = (array[i]>=0);
-        rvalue = rvalue | (sign<<i);
+        rvalue = rvalue | (sign<< (i));
     }
     
     return rvalue;
@@ -76,14 +76,7 @@ __device__ unsigned int concatenate(float* array)
 __global__ void concatenate_rows_kernel(float *a, unsigned int *b, int size)
 { 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if(i<size){
-    	float* array = new float[32];
-    	for(int x = 0; x < 32; ++x){
-    		array[x] = a[i*32 + x];
-    	}
-    	b[i] = concatenate(array);    	
-    	delete[] array;
-    }
+    if(i<size) b[i] = concatenate(&a[i*32]);
 }
 
 __global__ void concatenate_cols_kernel(float *a, unsigned int *b, int m, int n)
@@ -185,5 +178,6 @@ __global__ void xnor_gemm(unsigned int* A, unsigned int* B, float* C, int m, int
     
     // Write Csub to device memory
     // Each thread writes one element
-    if(col + blockCol* BLOCK_SIZE< k && row + blockRow* BLOCK_SIZE< m) Csub[row*k+col] = -(2*(float)Cvalue-32*n);
+    //if(col + blockCol* BLOCK_SIZE< k && row + blockRow* BLOCK_SIZE< m) Csub[row*k+col] = -(2*(float)Cvalue-32*n);
+    if(col + blockCol* BLOCK_SIZE< k && row + blockRow* BLOCK_SIZE< m) Csub[row*k+col] = (float)Cvalue;
 }

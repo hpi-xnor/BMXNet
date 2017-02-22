@@ -176,11 +176,11 @@ class QConvolutionOp : public Operator {
 //                           out.size(2), // 8
 //                           out.size(3)))); // 8
     // @todo: get rid of transpose op, do in unpack_patch2col?
-    Tensor<xpu, 2, DType> temp_col_T =
-            NewTensor<xpu>(Shape2(temp_col.shape_[1], temp_col.shape_[0]), DType(0.0));
-    temp_col_T = temp_col.T();
+    //Tensor<xpu, 2, DType> temp_col_T =
+    //        NewTensor<xpu>(Shape2(temp_col.shape_[1], temp_col.shape_[0]), DType(0.0),MSHADOW_ALLOC_PAD);
+    //temp_col_T = temp_col.T();
 
-    QConvolutionForward(data, wmat[0], temp_col_T, temp_dst[0], out, param_);
+    QConvolutionForward(data, wmat[0], temp_col, temp_dst[0], out, param_);
 
     out = swapaxis<1, 0>(reshape(temp_dst,
                                  mshadow::Shape4(param_.num_filter,

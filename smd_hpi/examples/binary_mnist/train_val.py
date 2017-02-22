@@ -35,7 +35,7 @@ def get_lenet():
 	# second conv layer
 	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=50)
 	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)
-	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
+	conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
 	tanh2 = mx.sym.Activation(data=conv2, act_type="tanh")
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
@@ -71,7 +71,7 @@ def get_binary_lenet():
 	# second conv layer
 	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)
 
-	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
+	conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
 	bn2 = mx.sym.BatchNorm(data=conv2)
 
