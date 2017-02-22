@@ -191,7 +191,7 @@ mxnet_source_group("mshadow\\Include\\packet"   GLOB "mshadow/mshadow/packet/*.h
 FILE(GLOB_RECURSE MSHADOWSOURCE "mshadow/mshadow/*.h")
 list(APPEND SOURCE ${MSHADOWSOURCE})
 
-# add smd_hpi source 
+# add smd_hpi
 ##========== add smd_hpi to source ============##
 mxnet_source_group("SMD_HPI\\Include"   GLOB "smd_hpi/src/*.h")
 mxnet_source_group("SMD_HPI\\Source"   GLOB "smd_hpi/src/*.cc")
@@ -201,6 +201,7 @@ FILE(GLOB_RECURSE SMD_HPI_CUDA "smd_hpi/src/*.cu")
 list(APPEND SOURCE ${SMD_HPI_SOURCE})
 list(APPEND CUDA ${SMD_HPI_CUDA})
 ##=============================================##
+add_subdirectory(smd_hpi)
 
 if(USE_PLUGINS_WARPCTC)
 	set(WARPCTC_INCLUDE  "" CACHE PATH "WARPCTC include")

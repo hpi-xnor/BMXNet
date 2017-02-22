@@ -21,11 +21,12 @@ namespace op {
 
     class BinaryLayer {
     public:
-        BinaryLayer(int input_channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y);
+        BinaryLayer(int input_channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y,
+                    int m, int n, int k);
         ~BinaryLayer();
 
-        void set_inputs(const mshadow::Tensor<cpu, 3, float> input);
-        void set_weights(const mshadow::Tensor<cpu, 3, float> &wmat);
+        void set_input_as_col(const mshadow::Tensor<cpu, 2, float> &input);
+        void set_weights(const mshadow::Tensor<cpu, 2, float> &wmat);
         void get_output(const mshadow::Tensor<cpu, 3, float> &out);
 
         BINARY_WORD *binary_input = nullptr;
@@ -45,13 +46,14 @@ namespace op {
         int stride = 1;
         int output_width;
         int output_height;
+        static void float_to_binary(const mshadow::Tensor<cpu, 2, float> &input, BINARY_WORD *output);
+        static void binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 2, float> &out);
+
     private:
-        void float_to_binary(mshadow::Tensor<cpu, 3, float> input, BINARY_WORD *output);
-        void binary_to_float(const mshadow::Tensor<cpu, 3, float> &out);
         void calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume);
         void calculate_beta(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume);
     };
 
-}}
+  }}
 
 #endif //MXNET_BINARYLAYER_H
