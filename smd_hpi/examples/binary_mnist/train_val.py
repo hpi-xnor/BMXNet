@@ -30,12 +30,12 @@ def get_lenet():
 	data = mx.symbol.Variable('data')
 	# first conv layer
 	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=32)
-	tanh1 = mx.sym.Activation(data=conv1, act_type="tanh")
+	tanh1 = mx.sym.Activation(data=conv1, act_type="tanh")	
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 	# second conv layer
 	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=50)
 	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)
-	conv2 = mx.sym.Custom(data=conv2, op_type='debug')
+	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
 	tanh2 = mx.sym.Activation(data=conv2, act_type="tanh")
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
@@ -156,6 +156,7 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu
 		eval_data=val_iter, 	# validation data
 		optimizer='Adam',
 		num_epoch=epochs,
+		initializer = mx.initializer.Xavier(),
 		batch_end_callback = mx.callback.Speedometer(batch_size, 5) # output progress for each 200 data batches
 	)
 

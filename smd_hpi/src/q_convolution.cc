@@ -24,11 +24,13 @@
 namespace mshadow {
 
     inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
-                                    const Tensor<cpu, 3, float> &wmat,
+                                    const Tensor<cpu, 2, float> &wmat,
                                     const Tensor<cpu, 4, float> &out,
-                                    const mxnet::op::QConvolutionParam &param) {
+                                    const mxnet::op::QConvolutionParam &param,
+									const Tensor<cpu, 2, float> &data_col,
+									const Tensor<cpu, 2, float> &temp_dst) {
 
-      CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
+/*      CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
       CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
 
 	  auto binary_layer = std::unique_ptr<mxnet::op::BinaryLayer>(
@@ -44,7 +46,7 @@ namespace mshadow {
       for (int i=0; i<data.size(0); i++) {
         Tensor<cpu, 3, float> single_batch_slice = data[i];
 
-        binary_layer->set_inputs(single_batch_slice);
+        /*binary_layer->set_inputs(single_batch_slice);
         binary_layer->set_weights(wmat);
 
         mxnet::op::xnor_cpu::xnor_forward(binary_layer);
@@ -52,14 +54,18 @@ namespace mshadow {
         // data is now stored in binary_layer.input/weights/alpha/beta/output
         // and should be accessed with bitshifts, as in darknet
         binary_layer->get_output(out[i]); //convert back binary output and copy into float for next layer
+
       }
+*/
     }
 
     template<typename DType>
     inline void QConvolutionForward(const Tensor<cpu, 4, DType> &data,
-                                    const Tensor<cpu, 3, DType> &wmat,
+                                    const Tensor<cpu, 2, DType> &wmat,
                                     const Tensor<cpu, 4, DType> &out,
-                                    const mxnet::op::QConvolutionParam &param) {
+                                    const mxnet::op::QConvolutionParam &param,
+									const Tensor<cpu, 2, DType> &data_col,
+									const Tensor<cpu, 2, DType> &temp_dst) {
       CHECK(false) << "only float supported";
     }
 }

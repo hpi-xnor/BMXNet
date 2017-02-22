@@ -131,7 +131,6 @@ class QConvolutionOp : public Operator {
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
 #endif
-
     // mf quantize weights
 //    LOG(INFO) << "------ QCONV -------";
 //    for (auto&& tblob : in_data) {
@@ -145,7 +144,54 @@ class QConvolutionOp : public Operator {
 //      LOG(INFO) << "wmat[" << i << "].size = " << wmat.size(i);
 //    }
 
-    QConvolutionForward(data, wmat, out, param_);
+    const index_t nbatch = data.size(0);
+    Tensor<xpu, 1, DType> workspace =
+        ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
+            Shape1(this->InitTemp(data.shape_, out.shape_)), s);
+    for (index_t i = 0; i < nbatch; i += nstep_) {
+      const index_t step = std::min(nstep_, nbatch - i);
+      Tensor<xpu, 2, DType> temp_col = Tensor<xpu, 2, DType>(workspace.dptr_,
+                                               Shape2(shape_colunit_[0],
+                                                      shape_colunit_[1] * step), s);
+      Tensor<xpu, 3, DType> temp_dst = Tensor<xpu, 3, DType>(
+                                               workspace.dptr_ + temp_col.shape_.Size(),
+                                               Shape3(shape_dstunit_[0],
+                                                      shape_dstunit_[1],
+                                                      shape_dstunit_[2] * step), s);
+      if (param_.pad[0] == 0 && param_.pad[1] == 0) {
+        temp_col = unpack_patch2col(data.Slice(i, i + step),
+                                    param_.kernel[0],
+                                    param_.kernel[1],
+                                    param_.stride[0],
+                                    param_.stride[1],
+                                    param_.dilate[0],
+                                    param_.dilate[1]);
+      } else {
+        temp_col = unpack_patch2col(pad(data.Slice(i, i + step),
+                                    param_.pad[0], param_.pad[1]),
+                                    param_.kernel[0],
+                                    param_.kernel[1],
+                                    param_.stride[0],
+                                    param_.stride[1],
+                                    param_.dilate[0],
+                                    param_.dilate[1]);
+      }
+
+      const index_t gstride = temp_col.size(0) / param_.num_group;
+      for (uint32_t gid = 0; gid < param_.num_group; ++gid) {
+        mshadow::Tensor<xpu, 2, DType> tmpc = temp_col.Slice(gstride * gid,
+                                       gstride * (gid + 1));
+
+        QConvolutionForward(data, wmat[gid], out, param_, tmpc, temp_dst[gid]);
+        //temp_dst[gid] = dot(wmat[gid], tmpc);
+      }
+      out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,
+                                              mshadow::Shape4(param_.num_filter,
+                                                  step,
+                                                  out.size(2),
+                                                  out.size(3))));
+    }
+
   }
 
   virtual void Backward(const OpContext &ctx,
