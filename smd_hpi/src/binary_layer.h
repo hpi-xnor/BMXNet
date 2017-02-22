@@ -27,7 +27,9 @@ namespace op {
 
         void set_input_as_col(const mshadow::Tensor<cpu, 2, float> &input);
         void set_weights(const mshadow::Tensor<cpu, 2, float> &wmat);
-        void get_output(const mshadow::Tensor<cpu, 3, float> &out);
+        void get_output(const mshadow::Tensor<cpu, 2, float> &out);
+
+        std::string weights_as_string();
 
         BINARY_WORD *binary_input = nullptr;
         BINARY_WORD *binary_weights = nullptr;
@@ -46,6 +48,9 @@ namespace op {
         int stride = 1;
         int output_width;
         int output_height;
+        int m;
+        int n;
+        int k;
         static void float_to_binary(const mshadow::Tensor<cpu, 2, float> &input, BINARY_WORD *output);
         static void binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 2, float> &out);
 

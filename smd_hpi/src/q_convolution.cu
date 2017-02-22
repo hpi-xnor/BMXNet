@@ -14,10 +14,10 @@ namespace cuda {
 
 inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
                                 const Tensor<gpu, 2, float> &wmat,
+                                const Tensor<gpu, 2, float> &in_col,
+                                const Tensor<gpu, 2, float> &temp_dst,
                                 const Tensor<gpu, 4, float> &out,
-                                const mxnet::op::QConvolutionParam &param,
-                                const Tensor<gpu, 2, float> &data_col,
-								const Tensor<gpu, 2, float> &temp_dst) {
+                                const mxnet::op::QConvolutionParam &param) {
 	//get matrix dimension
 	//wmat.size(1) should equal data_col.size(0)
 	//TODO: check temp_dst structure should be (m x k)
@@ -25,11 +25,11 @@ inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
 	int nchan_in = 32;
 	m = wmat.size(0);
 	n = wmat.size(1);
-	k = data_col.size(1);
+	k = in_col.size(1);
 
 	//set memory
 	float *fA = wmat.dptr_; 
-	float *fB = data_col.dptr_;
+	float *fB = in_col.dptr_;
 	float *fC;
 	cudaMalloc(&fC, m * k * sizeof(float));
 	cudaMemset(fC, 0, m * k * sizeof(int));
@@ -90,20 +90,20 @@ inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
 
 inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
                                 const Tensor<gpu, 2, float> &wmat,
+                                const Tensor<gpu, 2, float> &in_col,
+                                const Tensor<gpu, 2, float> &temp_dst,
                                 const Tensor<gpu, 4, float> &out,
-                                const mxnet::op::QConvolutionParam &param,
-                                const Tensor<gpu, 2, float> &data_col,
-								const Tensor<gpu, 2, float> &temp_dst) {
-	cuda::QConvolutionForward(data, wmat, out, param, data_col, temp_dst);
+                                const mxnet::op::QConvolutionParam &param) {
+	cuda::QConvolutionForward(data, wmat, in_col, temp_dst, out, param);
 }
 
 template<typename DType>
 inline void QConvolutionForward(const Tensor<gpu, 4, DType> &data,
                                 const Tensor<gpu, 2, DType> &wmat,
+                                const Tensor<gpu, 2, DType> &in_col,
+                                const Tensor<gpu, 2, DType> &temp_dst,
                                 const Tensor<gpu, 4, DType> &out,
-                                const mxnet::op::QConvolutionParam &param,
-								const Tensor<gpu, 2, DType> &data_col,
-								const Tensor<gpu, 2, DType> &temp_dst) {
+                                const mxnet::op::QConvolutionParam &param) {
 	CHECK(false) << "only float supported";
 }
 } // namespace mshadow

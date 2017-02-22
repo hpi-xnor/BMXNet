@@ -29,7 +29,10 @@ BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, 
         kernel_width(kernel_width),
         kernel_height(kernel_height),
         padding_x(padding_x),
-        padding_y(padding_y) {
+        padding_y(padding_y),
+        m(m),
+        n(n),
+        k(k){
   CHECK_EQ(padding_x, padding_y) << "differing padding in x and y direction, unknown if supported";
 
   output_width = ((input_width - kernel_width + 2 * padding_x) / stride) + 1;
@@ -75,10 +78,40 @@ void BinaryLayer::set_weights(const mshadow::Tensor<cpu, 2, float> &wmat) {
 //      calculate_alpha(alpha, wmat);
 }
 
-void BinaryLayer::get_output(const mshadow::Tensor<cpu, 3, float> &out) {
+void BinaryLayer::get_output(const mshadow::Tensor<cpu, 2, float> &out) {
   // @todo: what about padding?
-  memcpy(out.dptr_, output, out.size(0) * out.size(1) * out.size(2) * sizeof(float));
+  memcpy(out.dptr_, output, out.size(0) * out.size(1) * sizeof(float));
   //binary_to_float(out);
+}
+
+std::string BinaryLayer::weights_as_string() {
+  std::ostringstream output_stream;
+
+  output_stream << "WARN: not sure if order inside filters is correct!\n";
+
+  for (int filter = 0; filter < num_filters; filter++) {
+    output_stream << "filter[" << filter << "] ";
+    for (int input_channel = 0; input_channel < input_channels; input_channel++) {
+      output_stream << "channel[" << input_channel << "] <";
+      for (int kx = 0; kx < kernel_width; kx++) {
+        for (int ky = 0; ky < kernel_height; ky++) {
+          int position = filter * m +
+                         input_channel * kernel_height * kernel_width +
+                         kx * kernel_height + ky;
+          BINARY_WORD tmp = binary_weights[position / 32];
+          if (TestBit(tmp, position % 32)) {
+            output_stream << "1";
+          } else {
+            output_stream << "0";
+          }
+        }
+      }
+      output_stream << "> ";
+    }
+    output_stream << "\n";
+  }
+
+  return output_stream.str();
 }
 //  private  -----------------------------------------------------------------------------------------------------------
 
