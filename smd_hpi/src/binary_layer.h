@@ -53,6 +53,8 @@ namespace op {
         int k;
         static void float_to_binary(const mshadow::Tensor<cpu, 2, float> &input, BINARY_WORD *output);
         static void binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 2, float> &out);
+        static void float_to_binary_transposed(const mshadow::Tensor<cpu, 2, float> &input, BINARY_WORD *output);
+        static void binary_transposed_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 2, float> &out);
 
     private:
         void calculate_alpha(float *output_plane, mshadow::Tensor<cpu, 3, float> input_volume);
