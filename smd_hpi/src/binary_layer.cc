@@ -79,14 +79,11 @@ void BinaryLayer::set_weights(const mshadow::Tensor<cpu, 2, float> &wmat) {
 }
 
 void BinaryLayer::get_output(const mshadow::Tensor<cpu, 2, float> &out) {
-  // @todo: what about padding?
   memcpy(out.dptr_, output, out.size(0) * out.size(1) * sizeof(float));
-  //binary_to_float(out);
 }
 
 std::string BinaryLayer::weights_as_string() {
   std::ostringstream output_stream;
-
   output_stream << "WARN: not sure if order inside filters is correct!\n";
 
   for (int filter = 0; filter < num_filters; filter++) {
@@ -110,7 +107,6 @@ std::string BinaryLayer::weights_as_string() {
     }
     output_stream << "\n";
   }
-
   return output_stream.str();
 }
 //  private  -----------------------------------------------------------------------------------------------------------
@@ -128,7 +124,7 @@ void BinaryLayer::float_to_binary(const mshadow::Tensor<cpu, 2, float> &input, B
     int step_end = std::min<int>(total_elements, i + BITS_PER_BINARY_WORD);
     // @todo: why do we reverse the order inside one word? endianes?
     for (int x = i; x < step_end; ++x) {
-      if (std::signbit(input.dptr_[x]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x % BITS_PER_BINARY_WORD);
+      if (std::signbit(input.dptr_[x]) == 0) SetBit(tmp, x % BITS_PER_BINARY_WORD);
     }
     output[i / BITS_PER_BINARY_WORD] = tmp;
   }
@@ -144,7 +140,7 @@ void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu,
     BINARY_WORD tmp = (BINARY_WORD) input[i / BITS_PER_BINARY_WORD];
     int step_end = std::min<int>(total_elements, i + BITS_PER_BINARY_WORD);
     for (int x = i; x < step_end; ++x) {
-      if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - x % BITS_PER_BINARY_WORD)) {
+      if (TestBit(tmp, x % BITS_PER_BINARY_WORD)) {
         out.dptr_[x] = 1.f;
       } else {
         out.dptr_[x] = -1.f;

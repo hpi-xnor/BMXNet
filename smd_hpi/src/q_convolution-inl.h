@@ -131,6 +131,7 @@ class QConvolutionOp : public Operator {
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
 #endif
+    // @todo: skipped the param_.num_group, what is it for?
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
             ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
@@ -166,15 +167,6 @@ class QConvolutionOp : public Operator {
                                   param_.dilate[1]);
     }
 
-      // @todo: skipped the param_.num_group, what is it for?
-
-      // temp_dst = dot(wmat, tmpc);
-
-//      out = swapaxis<1, 0>(reshape(temp_dst,
-//                           mshadow::Shape4(param_.num_filter, // 50
-//                           nbatch, // 100
-//                           out.size(2), // 8
-//                           out.size(3)))); // 8
     // @todo: get rid of transpose op, do in unpack_patch2col?
     Tensor<xpu, 2, DType> temp_col_T =
             NewTensor<xpu>(Shape2(temp_col.shape_[1], temp_col.shape_[0]), DType(0.0));
