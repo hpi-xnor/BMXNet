@@ -42,23 +42,26 @@ namespace mshadow {
 								  param.kernel[1],//  weight y
 								  param.pad[0],//     padding
 								  param.pad[1],//     padding
-          wmat.shape_[1], // m*n with m=num_filter
-          wmat.shape_[2], // m*n with n=weight_x * weight_y * input depth
+          wmat.shape_[0], // m*n with m=num_filter
+          wmat.shape_[1], // m*n with n=weight_x * weight_y * input depth
           //in_col.shape_[0], // n*k with n=weight_x * weight_y * input depth
           //in_col.shape_[1], // n*k with k=output_x * output_y * batch_size
           //temp_dst.shape_[1], // m*k  with m=num_filter
-          temp_dst.shape_[2]));// m*k with k=output_x * output_y * batch_size
+          temp_dst.shape_[1]));// m*k with k=output_x * output_y * batch_size
 
       binary_layer->set_input_as_col(in_col);
-      binary_layer->set_weights(wmat); // disregard first dim, 'group'?
+      binary_layer->set_weights(wmat);
 
-//      mxnet::op::xnor_cpu::xnor_forward(binary_layer);
+      LOG(INFO) << "\n" << binary_layer->weights_as_string();
 
-      // data is now stored in binary_layer.input/weights/alpha/beta/output
-      // and should be accessed with bitshifts, as in darknet
+      mxnet::op::xnor_cpu::binary_gemm(binary_layer->binary_weights,
+                                       binary_layer->binary_input,
+                                       binary_layer->output,
+                                       binary_layer->m,
+                                       binary_layer->n,
+                                       binary_layer->k);
 
-//      binary_layer->get_output(out[i]); //convert back binary output and copy into float for next layer
-
+      binary_layer->get_output(temp_dst); //convert back binary output and copy into float for next layer
     }
 
     template<typename DType>

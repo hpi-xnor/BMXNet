@@ -136,6 +136,8 @@ class QConvolutionOp : public Operator {
             ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
                     Shape1(this->InitTemp(data.shape_, out.shape_)), s);
     CHECK_EQ(data.shape_[0], nstep_) << "we dont support setting max. workspace size yet, look at mx conv again...";
+    CHECK_EQ(param_.num_group, 1) << "only num_group == 1 is supported right now";
+    CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
 
     Tensor<xpu, 2, DType> temp_col = Tensor<xpu, 2, DType>(workspace.dptr_,
                                                            Shape2(shape_colunit_[0],
@@ -173,13 +175,23 @@ class QConvolutionOp : public Operator {
 //                           nbatch, // 100
 //                           out.size(2), // 8
 //                           out.size(3)))); // 8
-    QConvolutionForward(data, wmat[0], temp_col, temp_dst[0], out, param_);
+    // @todo: get rid of transpose op, do in unpack_patch2col?
+    Tensor<xpu, 2, DType> temp_col_T =
+            NewTensor<xpu>(Shape2(temp_col.shape_[1], temp_col.shape_[0]), DType(0.0));
+    temp_col_T = temp_col.T();
 
-//    if (!param_.no_bias) {
-//      // add bias, broadcast bias to dim 1: channel
-//      Tensor<xpu, 1, DType> bias = in_data[conv::kBias].get<xpu, 1, DType>(s);
-//      out += broadcast<1>(bias, out.shape_);
-//    }
+    QConvolutionForward(data, wmat[0], temp_col_T, temp_dst[0], out, param_);
+
+    out = swapaxis<1, 0>(reshape(temp_dst,
+                                 mshadow::Shape4(param_.num_filter,
+                                                 100,
+                                                 out.size(2),
+                                                 out.size(3))));
+    if (!param_.no_bias) {
+      // add bias, broadcast bias to dim 1: channel
+      Tensor<xpu, 1, DType> bias = in_data[q_conv::kBias].get<xpu, 1, DType>(s);
+      out += broadcast<1>(bias, out.shape_);
+    }
 
 
 

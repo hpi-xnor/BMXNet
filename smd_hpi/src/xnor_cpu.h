@@ -24,6 +24,37 @@ namespace op {
 namespace xnor_cpu {
 
 /**
+ * binary gemm. instead of standard dot product
+ * we apply binary_dot: _popcount( xnor() ) operators to perform the convolution
+ *
+ * params:
+ * 	weights: (m x n)
+ * 	col_input: inputs, unpacked via patch2col (NOT n x k, !BUT TRANSPOSED!: k x n)
+ * 	output: (m x k)
+ * 	m, n, k: size of matrices
+ */
+
+  inline void binary_gemm(BINARY_WORD* weights, BINARY_WORD* col_input, float* output, int m, int n, int k) {
+    CHECK_EQ(n % 32, 0) << "!!! no masking yet, only input channel % 32==0";
+
+    int bitwords_per_row = n / BITS_PER_BINARY_WORD;
+
+    for (int mi = 0; mi < m; mi++) {
+      for (int ki = 0; ki < k; ki++) {
+        float accum = 0;
+        for (int bitword_index_in_row = 0; bitword_index_in_row < bitwords_per_row; bitword_index_in_row++) {
+          // masking or only 32bit support important cause !gaah!
+          BINARY_WORD pixel = col_input[ki * bitwords_per_row + bitword_index_in_row];
+          BINARY_WORD weight = weights[mi * bitwords_per_row + bitword_index_in_row];
+          accum += __builtin_popcount(~(pixel ^ weight));
+        }
+
+        output[mi * k + ki] = accum;
+      }
+    }
+  }
+
+/**
  * binary convolution implementation. instead of standard dot product
  * we apply binary_dot: _popcount( xnor() ) operators to perform the convolution
  * on binary input(I) and weight matrix (W), the alpha is the scaling factor
@@ -36,6 +67,7 @@ namespace xnor_cpu {
  * 	input: input tensor
  * 	weights: weight filter
  */
+
 inline void binary_conv2D(float* output,  const BINARY_WORD *input,
 						  const BINARY_WORD *weights, int ix, int iy,
 						  int wx, int wy, int pad_x, int pad_y, int stride,
