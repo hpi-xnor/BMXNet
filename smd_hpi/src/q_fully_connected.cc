@@ -5,14 +5,27 @@
  * \author HPI-DeepLearning
 */
 #include "./q_fully_connected-inl.h"
-#if MXNET_USE_MKL2017 == 1
-#include <mkl_memory.h>
-#include "../../src/operator/mkl/mkl_memory-inl.h"
-#include "../../src/operator/mkl/mkl_fully_connected-inl.h"
-#endif  // MXNET_USE_MKL2017
-#if MXNET_USE_NNPACK == 1
-#include "../../src/operator/nnpack/nnpack_fully_connected-inl.h"
-#endif  // MXNET_USE_NNPACK
+#include "./binary_layer.h"
+#include "./xnor_cpu.h"
+
+
+namespace mshadow {
+
+    inline void QFullyConnectedForward(const Tensor<cpu, 2, float> &data,
+                                    const Tensor<cpu, 2, float> &wmat,
+                                    const Tensor<cpu, 2, float> &out,
+                                    const mxnet::op::QFullyConnectedParam &param) {
+    	CHECK(false) << "not implemented";
+    }
+
+    template<typename DType>
+    inline void QFullyConnectedForward(const Tensor<cpu, 2, DType> &data,
+                                    const Tensor<cpu, 2, DType> &wmat,
+                                    const Tensor<cpu, 2, DType> &out,
+                                    const mxnet::op::QFullyConnectedParam &param) {
+      CHECK(false) << "only float supported";
+    }
+}
 
 namespace mxnet {
 namespace op {
@@ -22,49 +35,9 @@ Operator* CreateOp<cpu>(QFullyConnectedParam param, int dtype,
                         std::vector<TShape> *out_shape,
                         Context ctx) {
   Operator *op = NULL;
-#if MXNET_USE_MKL2017 == 1
-  LOG(FATAL) << "quantized fc doesnt support usage of MXNET_USE_MKL2017";
-  switch (dtype) {
-  case mshadow::kFloat32:
-    return new MKLFullyConnectedOp<cpu, float>(param);
-  case mshadow::kFloat64:
-    return new MKLFullyConnectedOp<cpu, double>(param);
-  default:
-    LOG(INFO) << MKLFullyConnectedOp<cpu, float>::getName() << " Skip MKL optimization";
-    break;
-  }
-#endif
-#if MXNET_USE_NNPACK == 1
-  LOG(FATAL) << "quantized fc doesnt support usage of MXNET_USE_NNPACK";
-  const size_t batch_size = (*in_shape)[0][0];
-  // nnp_fully_connected_inference will do optimization for batch-size = 1
-  // nnp_fully_connected_output will do optimization for batch-size > 1
-  // but just found FullyConnected in NNPACK result is wrong when batch_size != 2^n
-  // so here only using NNPACK when batch_size = 2^n.
-  if ((batch_size == 1) || ((batch_size > 1) && (!(batch_size & (batch_size - 1))))) {
-    switch (dtype) {
-    case mshadow::kFloat32:
-      return new NNPACKFullyConnectedOp<cpu, float>(param);
-    default:
-      break;
-    }
-  }
-#endif
-  switch (dtype) {
-  case mshadow::kFloat32:
-    op = new QFullyConnectedOp<cpu, float>(param);
-    break;
-  case mshadow::kFloat64:
-    op = new QFullyConnectedOp<cpu, double>(param);
-    break;
-  case mshadow::kFloat16:
-    LOG(FATAL) << "float16 fully connected layer is currently"
-                  "only supported by CuDNN version.";
-    break;
-  default:
-    LOG(FATAL) << "Unsupported type " << dtype;
-  }
-
+  MSHADOW_REAL_TYPE_SWITCH(dtype, DType, {
+    op = new QFullyConnectedOp<cpu, DType>(param);
+  })
   return op;
 }
 
