@@ -52,7 +52,7 @@ namespace mshadow {
       binary_layer->set_input_as_col(in_col);
       binary_layer->set_weights(wmat);
 
-      LOG(INFO) << "\n" << binary_layer->weights_as_string();
+      //LOG(INFO) << "\n" << binary_layer->weights_as_string();
 
       mxnet::op::xnor_cpu::binary_gemm(binary_layer->binary_weights,
                                        binary_layer->binary_input,

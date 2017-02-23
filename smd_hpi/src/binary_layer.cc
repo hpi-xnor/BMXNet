@@ -20,7 +20,9 @@ namespace mxnet {
 
 
 //  public  ------------------------------------------------------------------------------------------------------------
-
+/**
+ * initialize memory for binary layer
+ */
 BinaryLayer::BinaryLayer(int input_channels, int input_width, int input_height, int num_filters, int kernel_width, int kernel_height, int padding_x, int padding_y, int m, int n, int k):
         input_channels(input_channels),
         input_width(input_width),
@@ -59,9 +61,11 @@ BinaryLayer::~BinaryLayer() {
   if (alpha) free(alpha);
   if (beta) free(beta);
 }
-
+/**
+ * binarize float input and pack into 32bit words. turn n * k into k * n/32 (so we can read it in one run later)
+ */
 void BinaryLayer::set_input_as_col(const mshadow::Tensor<cpu, 2, float> &input) {
-  float_to_binary(input, binary_input);
+  float_to_binary_transposed(input, binary_input);
 
 //  if (beta) free(beta);
 //  beta = (float *) calloc (input.size(1) * input.size(2), sizeof(float));
@@ -79,14 +83,11 @@ void BinaryLayer::set_weights(const mshadow::Tensor<cpu, 2, float> &wmat) {
 }
 
 void BinaryLayer::get_output(const mshadow::Tensor<cpu, 2, float> &out) {
-  // @todo: what about padding?
   memcpy(out.dptr_, output, out.size(0) * out.size(1) * sizeof(float));
-  //binary_to_float(out);
 }
 
 std::string BinaryLayer::weights_as_string() {
   std::ostringstream output_stream;
-
   output_stream << "WARN: not sure if order inside filters is correct!\n";
 
   for (int filter = 0; filter < num_filters; filter++) {
@@ -98,8 +99,8 @@ std::string BinaryLayer::weights_as_string() {
           int position = filter * m +
                          input_channel * kernel_height * kernel_width +
                          kx * kernel_height + ky;
-          BINARY_WORD tmp = binary_weights[position / 32];
-          if (TestBit(tmp, position % 32)) {
+          BINARY_WORD tmp = binary_weights[position / BITS_PER_BINARY_WORD];
+          if (TestBit(tmp, position % BITS_PER_BINARY_WORD)) {
             output_stream << "1";
           } else {
             output_stream << "0";
@@ -110,14 +111,13 @@ std::string BinaryLayer::weights_as_string() {
     }
     output_stream << "\n";
   }
-
   return output_stream.str();
 }
 //  private  -----------------------------------------------------------------------------------------------------------
 
-/* @brief converts a 3d float tensor into a bitset
+/* @brief binarize float input and pack into 32bit words. turn n * k into k * n/32 (so we can read it in one run later)
 *
-* @param input 3d float tensor
+* @param input 2d float tensor size n * k
 * @param output pointer to zero-initialized memory for the bitset
 */
 void BinaryLayer::float_to_binary(const mshadow::Tensor<cpu, 2, float> &input, BINARY_WORD *output) {
@@ -126,11 +126,23 @@ void BinaryLayer::float_to_binary(const mshadow::Tensor<cpu, 2, float> &input, B
   for (int i = 0; i < total_elements; i += BITS_PER_BINARY_WORD) {
     BINARY_WORD tmp = 0x00000000;
     int step_end = std::min<int>(total_elements, i + BITS_PER_BINARY_WORD);
-    // @todo: why do we reverse the order inside one word? endianes?
     for (int x = i; x < step_end; ++x) {
-      if (std::signbit(input.dptr_[x]) == 0) SetBit(tmp, (BITS_PER_BINARY_WORD - 1) - x % BITS_PER_BINARY_WORD);
+      if (std::signbit(input.dptr_[x]) == 0) SetBit(tmp, x % BITS_PER_BINARY_WORD);
     }
     output[i / BITS_PER_BINARY_WORD] = tmp;
+  }
+}
+
+void BinaryLayer::float_to_binary_transposed(const mshadow::Tensor<cpu, 2, float> &input, BINARY_WORD *output) {
+  //CHECK_EQ(input.size(0) % 32, 0) << "watch out! first dimension must have % 32 == 0";
+  for(int k = 0; k < input.size(1); k++) {
+    for (int n = 0; n < input.size(0); n++) {
+      int position_in_binary = k * input.size(0) / BITS_PER_BINARY_WORD + n / BITS_PER_BINARY_WORD;
+      //LOG(INFO) << "reading from: " << n * input.size(1) + k << " writing to: " << position_in_binary << " at bit: " << n % BITS_PER_BINARY_WORD << " [" << std::signbit(input.dptr_[n * input.size(1) + k]) << "]";
+      if (std::signbit(input.dptr_[n * input.size(1) + k]) == 0) {
+        SetBit(output[position_in_binary], n % BITS_PER_BINARY_WORD);
+      }
+    }
   }
 }
 
@@ -144,7 +156,7 @@ void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu,
     BINARY_WORD tmp = (BINARY_WORD) input[i / BITS_PER_BINARY_WORD];
     int step_end = std::min<int>(total_elements, i + BITS_PER_BINARY_WORD);
     for (int x = i; x < step_end; ++x) {
-      if (TestBit(tmp, (BITS_PER_BINARY_WORD - 1) - x % BITS_PER_BINARY_WORD)) {
+      if (TestBit(tmp, x % BITS_PER_BINARY_WORD)) {
         out.dptr_[x] = 1.f;
       } else {
         out.dptr_[x] = -1.f;
@@ -152,6 +164,22 @@ void BinaryLayer::binary_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu,
     }
   }
 }
+
+void BinaryLayer::binary_transposed_to_float(BINARY_WORD *input, const mshadow::Tensor<cpu, 2, float> &out) {
+  CHECK_EQ(out.size(0) % 32, 0) << "watch out! first dimension must have % 32 == 0";
+  for(int k = 0; k < out.size(1); k++) {
+    for (int n = 0; n < out.size(0); n++) {
+      int position_in_binary = k * out.size(0) / BITS_PER_BINARY_WORD + n / BITS_PER_BINARY_WORD;
+//      LOG(INFO) << "writing to: " << n * out.size(1) + k << " reading from: " << position_in_binary << " at bit: " << n % BITS_PER_BINARY_WORD << " [" << TestBit(input[position_in_binary], n % BITS_PER_BINARY_WORD) << "]";
+      if (TestBit(input[position_in_binary], n % BITS_PER_BINARY_WORD)) {
+        out.dptr_[n * out.size(1) + k] = 1.f;
+      } else {
+        out.dptr_[n * out.size(1) + k] = -1.f;
+      }
+    }
+  }
+}
+
 
 /* @brief calculate mean of first dimension accross second and third dimension and save as 2d plane
 *
