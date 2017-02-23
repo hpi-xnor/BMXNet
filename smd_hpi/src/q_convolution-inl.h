@@ -387,7 +387,7 @@ class QConvolutionProp : public OperatorProperty {
       if (param_.dilate.ndim() == 0) param_.dilate = Shape2(1, 1);
       if (param_.pad.ndim() == 0) param_.pad = Shape2(0, 0);
     } else {
-      CHECK_EQ(param_.kernel.ndim(), 3) << param_.kernel.ndim() << "D convolution not supported";
+      CHECK_EQ((int)param_.kernel.ndim(), 3) << param_.kernel.ndim() << "D convolution not supported";
       param_.layout = param_.layout ? param_.layout.value(): mshadow::kNCDHW;
       if (param_.stride.ndim() == 0) param_.stride = Shape3(1, 1, 1);
       if (param_.dilate.ndim() == 0) param_.dilate = Shape3(1, 1, 1);
@@ -404,9 +404,9 @@ class QConvolutionProp : public OperatorProperty {
                   std::vector<TShape> *aux_shape) const override {
     using namespace mshadow;
     if (!param_.no_bias) {
-      CHECK_EQ(in_shape->size(), 3) << "Input:[data, weight, bias]";
+      CHECK_EQ((int)in_shape->size(), 3) << "Input:[data, weight, bias]";
     } else {
-      CHECK_EQ(in_shape->size(), 2) << "Input:[data, weight]";
+      CHECK_EQ((int)in_shape->size(), 2) << "Input:[data, weight]";
     }
     // CHECK_EQ(out_shape->size(), 1) << "Output: [output]";
     out_shape->resize(1, TShape());
@@ -414,7 +414,7 @@ class QConvolutionProp : public OperatorProperty {
     if (dshp.ndim() ==  0) return false;
     if (param_.kernel.ndim() == 2) {
       // 2d conv
-      CHECK_EQ(dshp.ndim(), 4) \
+      CHECK_EQ((int)dshp.ndim(), 4) \
           << "Input data should be 4D in batch-num_filter-y-x";
       Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);
       Shape<4> wshape = Shape4(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
@@ -432,7 +432,7 @@ class QConvolutionProp : public OperatorProperty {
           << "input num_filter must divide group size";
       CHECK_EQ(param_.num_filter % param_.num_group, 0) \
           << "output num_filter must divide group size";
-      CHECK_GT(param_.kernel.Size(), 0) \
+      CHECK_GT((int)param_.kernel.Size(), 0) \
           << "incorrect kernel size: " << param_.kernel;
       CHECK_GT(param_.stride.Size(), 0) \
           << "incorrect stride size: " << param_.stride;
@@ -459,7 +459,7 @@ class QConvolutionProp : public OperatorProperty {
   bool InferType(std::vector<int> *in_type,
                  std::vector<int> *out_type,
                  std::vector<int> *aux_type) const override {
-    CHECK_GE(in_type->size(), 1);
+    CHECK_GE((int)in_type->size(), 1);
     int dtype = (*in_type)[0];
     CHECK_NE(dtype, -1) << "First input must have specified type";
     for (index_t i = 0; i < in_type->size(); ++i) {

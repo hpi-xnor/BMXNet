@@ -12,116 +12,62 @@
 namespace mshadow {
 namespace cuda {
 
-inline unsigned int concatenate(float* array)
-{
-    unsigned int rvalue=0;
-    unsigned int sign;
-
-    for (int i = 0; i < 32; i++)
-    {
-        sign = (array[i]>=0);
-        rvalue = rvalue | (sign<< (i));
-    }
-    
-    return rvalue;
-}
-
-inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
-                                const Tensor<gpu, 2, float> &wmat,
+inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
                                 const Tensor<gpu, 2, float> &in_col,
                                 const Tensor<gpu, 2, float> &temp_dst,
                                 const Tensor<gpu, 4, float> &out,
-                                const mxnet::op::QConvolutionParam &param) {
-	//get matrix dimension
-	//wmat.size(1) should equal in_col.size(0)
-	//TODO: check temp_dst structure should be (m x k)
+                                const mxnet::op::QConvolutionParam &param) {	    
+	//======== TODO: able to support arbitrary input channel size ==========//
+	CHECK_EQ(in_col.size(0) % BITS_PER_BINARY_WORD, 0) << "input channel number for binary convolution layer is not divisible by 32.";
+                            
+	//get matrix dimension		
 	int m, n, k;
-	int nchannel_input = 32;
+	int basic_factor_nchannel_input = BITS_PER_BINARY_WORD;
 	m = wmat.size(0);
 	n = wmat.size(1);
-	k = in_col.size(1);
-
+	k = in_col.size(1);	
+	
+	//check matrix dims:
+	// 	wmat.size(1) should equal in_col.size(0)
+	//	temp_dst should have dims (m x k)
+	CHECK_EQ((int)wmat.size(1), (int)in_col.size(0));
+	CHECK_EQ((int)temp_dst.size(0), (int)wmat.size(0));
+	CHECK_EQ((int)temp_dst.size(1), (int)in_col.size(1));
+	
+	cudaStream_t stream = Stream<gpu>::GetStream(out.stream_);
+	
 	//set memory
 	float *fA = wmat.dptr_; 
 	float *fB = in_col.dptr_;
-	float *fC = temp_dst.dptr_;
-	//cudaMalloc(&fC, m * k * sizeof(float));
-	cudaMemset(fC, 0, m * k * sizeof(int));
-		
+	float *fC = temp_dst.dptr_;	
+			
 	//set bit memory
 	//!!NOTE!! here we save 32 float numbers into one binary word
 	unsigned int *Aconc, *Bconc;
-	cudaMalloc(&Aconc, m*n/nchannel_input*sizeof(int));
-	cudaMalloc(&Bconc, n*k/nchannel_input*sizeof(int));
-		
-	unsigned int *Bconc_host = (unsigned int*)malloc(n*k/nchannel_input*sizeof(int));
-			
-	cudaStream_t stream = Stream<gpu>::GetStream(out.stream_);
-	int block = 1;
-	int grid = m * n / (block * nchannel_input);
-	concatenate_rows_kernel<<<grid, block>>>(fA, Aconc, m * n / nchannel_input);
+	cudaMalloc(&Aconc, m*n/basic_factor_nchannel_input*sizeof(int));
+	cudaMalloc(&Bconc, n*k/basic_factor_nchannel_input*sizeof(int));				
+	
+	//concatinates matrix (m x n) -> (m x n/32)
+	// kMaxThreadsPerBlock defined in "mxnet/mshadow/mshadow/cuda/tensor_gpu-inl.cuh"
+	int threads_per_block = kMaxThreadsPerBlock;
+	int blocks_per_grid = m * n / (threads_per_block * basic_factor_nchannel_input) + 1;
+	concatenate_rows_kernel<<<blocks_per_grid, threads_per_block, 0, stream>>>(fA, Aconc, m * n / basic_factor_nchannel_input);
+
+	//concatinates matrix (n x k) -> (n/32 x k)
+	threads_per_block = kMaxThreadsPerBlock;
+	blocks_per_grid = k / threads_per_block + 1;
+	concatenate_cols_kernel<<<blocks_per_grid, threads_per_block, 0, stream>>>(fB, Bconc, n, k);
 	cudaDeviceSynchronize();
-	
-	float* fB_host = (float*)malloc(n * k * sizeof(float));
-	cudaMemcpy(fB_host, fB, n * k * sizeof(float), cudaMemcpyDeviceToHost);
-	
-	for(int x=0; x < k; ++x){
-		for(int y=0; y<(n/32); y++){
-			float * array = new float[32];
-			for(int b=0; b<32; ++b){
-				//std::cout<< "fB height: ";
-				//std::cout << y*32+b << std::endl;
-				array[b] = fB_host[(y*32+b)*k + x];
-			}
-				//std::cout<< "Bconc index: ";
-				//std::cout << y*k + x << std::endl;
-			Bconc_host[y*k + x]=concatenate(array);			
-			delete[] array;
-		}
-	}
-	
-	cudaMemcpy(Bconc, Bconc_host, n*k/nchannel_input*sizeof(int), cudaMemcpyHostToDevice);
-	//grid = n / block;
-	//concatenate_cols_kernel<<<1, block>>>(fB, Bconc, n, k);
-	//cudaDeviceSynchronize();
 	
 	//perform xnor gemm
-	block = 16;
-	dim3 blockDim(block, block);
-	dim3 gridDim(k / block + 1, m / block + 1);
-	xnor_gemm<<<gridDim, blockDim>>>(Aconc, Bconc, fC, m, n / nchannel_input, k);		
-	//gemm<<<gridDim, blockDim>>>(fA, fB, fC, m, n, k);
-	cudaDeviceSynchronize();
-	
-	//cudaMemcpy(temp_dst.dptr_, fC, m * k * sizeof(float), cudaMemcpyDeviceToDevice);
-	
-	/*
-	float* result = (float*)malloc(m * k * sizeof(float));
-	cudaMemcpy(result, temp_dst.dptr_, m * k * sizeof(float), cudaMemcpyDeviceToHost);
-	for(int i = 0; i < 20; ++i){
-		std::cout << result[i];
-		std::cout << ", ";
-	}
-		
-	printf("\n");
-	free(result);
-	*/
+	threads_per_block = BLOCK_SIZE_XNOR;
+	dim3 blockDim(threads_per_block, threads_per_block);
+	dim3 gridDim(k / threads_per_block + 1, m / threads_per_block + 1);
+	xnor_gemm<<<gridDim, blockDim, 0, stream>>>(Aconc, Bconc, fC, m, n / basic_factor_nchannel_input, k);		
+	cudaDeviceSynchronize();	
 			
-	/*
-	int * result = (int*)malloc(m * n /nchannel_input*sizeof(int));
-	cudaMemcpy(result, Aconc,  m*n/nchannel_input*sizeof(int), cudaMemcpyDeviceToHost);
-	for(int i = 0; i < m*n/nchannel_input; ++i){	
-		std::cout << result[i];
-		std::cout << ", ";	
-	}		
-	printf("\n");
-	free(result);
-	*/
-
-	//cudaFree(fC);	
 	cudaFree(Aconc);
 	cudaFree(Bconc);
-	free(Bconc_host);
 }
 }  // namespace cuda
 
@@ -132,7 +78,7 @@ inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
                                 const Tensor<gpu, 2, float> &temp_dst,
                                 const Tensor<gpu, 4, float> &out,
                                 const mxnet::op::QConvolutionParam &param) {
-	cuda::QConvolutionForward(data, wmat, in_col, temp_dst, out, param);
+	cuda::QConvolutionForward(wmat, in_col, temp_dst, out, param);
 }
 
 template<typename DType>
