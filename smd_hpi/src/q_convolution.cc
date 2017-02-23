@@ -19,9 +19,62 @@
 #if MXNET_USE_NNPACK == 1
 #include "../../src/operator/nnpack/nnpack_convolution-inl.h"
 #endif  // MXNET_USE_NNPACK
-
+# include <chrono>
+using  ns = std::chrono::nanoseconds;
+using get_time = std::chrono::steady_clock ;
 
 namespace mshadow {
+	inline unsigned int concatenate(float* array)
+	{
+		unsigned int rvalue=0;
+		unsigned int sign;
+
+		for (int i = 0; i < BITS_PER_BINARY_WORD; i++)
+		{
+			sign = (array[i]>=0);
+			rvalue = rvalue | (sign<< (i));
+		}
+
+		return rvalue;
+	}
+	inline void get_binary_row(float* row, unsigned int * b_row, int size){
+		for (int i = 0; i < size; i+=32) {
+			float * array = new float[32];
+			for (int j = 0;j < 32; ++j) {
+				array[j] = row[i+j];
+			}
+			b_row[i/32] = concatenate(array);
+			delete[] array;
+		}
+	}
+
+	inline void get_binary_col(float* col, unsigned int * b_col, int n, int k){
+		for(int x=0; x < k; ++x){
+			for(int y=0; y<(n/32); y++){
+				float * array = new float[32];
+				for(int b=0; b<32; ++b){
+					array[b] = col[(y*32+b)*k + x];
+				}
+				b_col[y*k + x]=concatenate(array);
+				delete[] array;
+			}
+		}
+	}
+
+	inline void xnor_gemm(int M, int K, int N,
+							unsigned int *A, int lda,
+							unsigned int *B, int ldb,
+							float *C, int ldc){
+	    int i,n,k;
+	    for(i = 0; i < M; ++i){
+	        for(n = 0; n < N; ++n){
+	            register unsigned int A_PART = A[i*lda+n];
+	            for(k = 0; k < K; ++k){
+	            	C[i*ldc+k] += (float)__builtin_popcount(~(A_PART ^ B[n*ldb+k]));
+	            }
+	        }
+	    }
+	}
 
     inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
                                     const Tensor<cpu, 2, float> &wmat,
@@ -33,6 +86,29 @@ namespace mshadow {
       CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
       CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
 
+      /*
+      int m = wmat.size(0);
+      int n = wmat.size(1);
+      int k = in_col.size(1);
+      unsigned int* binary_row = (unsigned int*)malloc(m * n/32 * sizeof(int));
+	  unsigned int* binary_col = (unsigned int*)malloc(n * k/32 * sizeof(int));
+
+	  auto start = std::chrono::high_resolution_clock::now();
+
+	  get_binary_row(wmat.dptr_, binary_row, m*n);
+
+	  get_binary_col(in_col.dptr_, binary_col, n, k);
+
+	  xnor_gemm(m,k,n/32,binary_row,n/32,binary_col,k, temp_dst.dptr_, k);
+
+	  auto finish = std::chrono::high_resolution_clock::now();
+	  std::chrono::duration<double> elapsed = finish - start;
+	  std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+	  free(binary_row);
+	  free(binary_col);
+      */
+
+	  ///*
 	  auto binary_layer = std::unique_ptr<mxnet::op::BinaryLayer>(
 		  new mxnet::op::BinaryLayer(data.size(1), //   input depth
 								  data.size(2), //    input x
@@ -49,6 +125,8 @@ namespace mshadow {
           //temp_dst.shape_[1], // m*k  with m=num_filter
           temp_dst.shape_[1]));// m*k with k=output_x * output_y * batch_size
 
+	  auto start = std::chrono::high_resolution_clock::now();
+
       binary_layer->set_input_as_col(in_col);
       binary_layer->set_weights(wmat);
 
@@ -61,7 +139,14 @@ namespace mshadow {
                                        binary_layer->n,
                                        binary_layer->k);
 
+	  auto finish = std::chrono::high_resolution_clock::now();
+	  std::chrono::duration<double> elapsed = finish - start;
+	  std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+
+
       binary_layer->get_output(temp_dst); //convert back binary output and copy into float for next layer
+      //*/
+
     }
 
     template<typename DType>
