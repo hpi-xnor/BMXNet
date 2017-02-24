@@ -20,15 +20,16 @@
 #include "../../src/operator/nnpack/nnpack_convolution-inl.h"
 #endif  // MXNET_USE_NNPACK
 # include <chrono>
-using  ns = std::chrono::nanoseconds;
+using ns = std::chrono::nanoseconds;
 using get_time = std::chrono::steady_clock ;
 
 namespace mshadow {
-	inline unsigned int concatenate(float* array)
+	inline BINARY_WORD concatenate(float* array)
 	{
-		unsigned int rvalue=0;
-		unsigned int sign;
+		BINARY_WORD rvalue=0;
+		BINARY_WORD sign;
 
+		#pragma omp parallel for
 		for (int i = 0; i < BITS_PER_BINARY_WORD; i++)
 		{
 			sign = (array[i]>=0);
@@ -37,24 +38,32 @@ namespace mshadow {
 
 		return rvalue;
 	}
-	inline void get_binary_row(float* row, unsigned int * b_row, int size){
-		for (int i = 0; i < size; i+=32) {
-			float * array = new float[32];
-			for (int j = 0;j < 32; ++j) {
+	inline void get_binary_row(float* row, BINARY_WORD * b_row, int size){
+
+		for (int i = 0; i < size; i+=BITS_PER_BINARY_WORD) {
+			float * array = new float[BITS_PER_BINARY_WORD];
+
+			#pragma omp parallel for
+			for (int j = 0;j < BITS_PER_BINARY_WORD; ++j) {
 				array[j] = row[i+j];
 			}
-			b_row[i/32] = concatenate(array);
+
+			b_row[i/BITS_PER_BINARY_WORD] = concatenate(array);
 			delete[] array;
 		}
 	}
 
-	inline void get_binary_col(float* col, unsigned int * b_col, int n, int k){
+	inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){
+
 		for(int x=0; x < k; ++x){
-			for(int y=0; y<(n/32); y++){
-				float * array = new float[32];
-				for(int b=0; b<32; ++b){
-					array[b] = col[(y*32+b)*k + x];
+			for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
+				float * array = new float[BITS_PER_BINARY_WORD];
+
+				#pragma omp parallel for
+				for(int b=0; b<BITS_PER_BINARY_WORD; ++b){
+					array[b] = col[(y*BITS_PER_BINARY_WORD+b)*k + x];
 				}
+
 				b_col[y*k + x]=concatenate(array);
 				delete[] array;
 			}
@@ -62,15 +71,35 @@ namespace mshadow {
 	}
 
 	inline void xnor_gemm(int M, int K, int N,
-							unsigned int *A, int lda,
-							unsigned int *B, int ldb,
+							BINARY_WORD *A, int lda,
+							BINARY_WORD *B, int ldb,
+							float *C, int ldc){
+	    int i,n,k;
+
+		#pragma omp parallel for
+	    for(i = 0; i < M; ++i){
+			#pragma omp parallel for
+	        for(n = 0; n < N; ++n){
+	        	BINARY_WORD A_PART = A[i*lda+n];
+				#pragma omp parallel for
+	            for(k = 0; k < K; ++k){
+	            	C[i*ldc+k] += (float)__builtin_popcount(~(A_PART ^ B[n*ldb+k]));
+	            }
+	        }
+	    }
+	}
+
+
+	inline void baseline_gemm(int M, int K, int N,
+							float *A, int lda,
+							float *B, int ldb,
 							float *C, int ldc){
 	    int i,n,k;
 	    for(i = 0; i < M; ++i){
 	        for(n = 0; n < N; ++n){
-	            register unsigned int A_PART = A[i*lda+n];
+	        	float A_PART = A[i*lda+n];
 	            for(k = 0; k < K; ++k){
-	            	C[i*ldc+k] += (float)__builtin_popcount(~(A_PART ^ B[n*ldb+k]));
+	            	C[i*ldc+k] += A_PART * B[n*ldb+k];
 	            }
 	        }
 	    }
@@ -86,29 +115,39 @@ namespace mshadow {
       CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
       CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
 
-      /*
+      ///*
       int m = wmat.size(0);
       int n = wmat.size(1);
       int k = in_col.size(1);
-      unsigned int* binary_row = (unsigned int*)malloc(m * n/32 * sizeof(int));
-	  unsigned int* binary_col = (unsigned int*)malloc(n * k/32 * sizeof(int));
-
-	  auto start = std::chrono::high_resolution_clock::now();
+      BINARY_WORD* binary_row = (BINARY_WORD*)malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+      BINARY_WORD* binary_col = (BINARY_WORD*)malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 
 	  get_binary_row(wmat.dptr_, binary_row, m*n);
-
 	  get_binary_col(in_col.dptr_, binary_col, n, k);
 
-	  xnor_gemm(m,k,n/32,binary_row,n/32,binary_col,k, temp_dst.dptr_, k);
+	  auto start = std::chrono::high_resolution_clock::now();
+	  ///*
+	  xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+			  binary_row, n/BITS_PER_BINARY_WORD,
+			  binary_col, k,
+			  temp_dst.dptr_, k);
+	  //*/
 
+	  /*
+	  //test using baseline gemm kernel
+	  baseline_gemm(m, k, n,
+			  	  	wmat.dptr_, n,
+					in_col.dptr_, k,
+					temp_dst.dptr_, k);
+	  */
 	  auto finish = std::chrono::high_resolution_clock::now();
 	  std::chrono::duration<double> elapsed = finish - start;
-	  std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+	  std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
 	  free(binary_row);
 	  free(binary_col);
-      */
+      //*/
 
-	  ///*
+	  /*
 	  auto binary_layer = std::unique_ptr<mxnet::op::BinaryLayer>(
 		  new mxnet::op::BinaryLayer(data.size(1), //   input depth
 								  data.size(2), //    input x
@@ -145,7 +184,7 @@ namespace mshadow {
 
 
       binary_layer->get_output(temp_dst); //convert back binary output and copy into float for next layer
-      //*/
+      */
 
     }
 
