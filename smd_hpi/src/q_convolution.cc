@@ -119,32 +119,32 @@ namespace mshadow {
       int m = wmat.size(0);
       int n = wmat.size(1);
       int k = in_col.size(1);
-      BINARY_WORD* binary_row = (BINARY_WORD*)malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
-      BINARY_WORD* binary_col = (BINARY_WORD*)malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+      BINARY_WORD* binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+      BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 
-	  get_binary_row(wmat.dptr_, binary_row, m*n);
-	  get_binary_col(in_col.dptr_, binary_col, n, k);
+			get_binary_row(wmat.dptr_, binary_row, m*n);
+			get_binary_col(in_col.dptr_, binary_col, n, k);
 
-	  auto start = std::chrono::high_resolution_clock::now();
-	  ///*
-	  xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-			  binary_row, n/BITS_PER_BINARY_WORD,
-			  binary_col, k,
-			  temp_dst.dptr_, k);
-	  //*/
-
-	  /*
-	  //test using baseline gemm kernel
-	  baseline_gemm(m, k, n,
-			  	  	wmat.dptr_, n,
-					in_col.dptr_, k,
+			auto start = std::chrono::high_resolution_clock::now();
+			///*
+			xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+					binary_row, n/BITS_PER_BINARY_WORD,
+					binary_col, k,
 					temp_dst.dptr_, k);
-	  */
-	  auto finish = std::chrono::high_resolution_clock::now();
-	  std::chrono::duration<double> elapsed = finish - start;
-	  std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
-	  free(binary_row);
-	  free(binary_col);
+			//*/
+
+			/*
+			//test using baseline gemm kernel
+			baseline_gemm(m, k, n,
+								wmat.dptr_, n,
+						in_col.dptr_, k,
+						temp_dst.dptr_, k);
+			*/
+			auto finish = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double> elapsed = finish - start;
+			std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+			free(binary_row);
+			free(binary_col);
     }
 
     template<typename DType>
