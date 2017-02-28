@@ -145,47 +145,6 @@ namespace mshadow {
 	  std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
 	  free(binary_row);
 	  free(binary_col);
-      //*/
-
-	  /*
-	  auto binary_layer = std::unique_ptr<mxnet::op::BinaryLayer>(
-		  new mxnet::op::BinaryLayer(data.size(1), //   input depth
-								  data.size(2), //    input x
-								  data.size(3), //    input y
-								  param.num_filter,// number filters
-								  param.kernel[0], // weight x
-								  param.kernel[1],//  weight y
-								  param.pad[0],//     padding
-								  param.pad[1],//     padding
-          wmat.shape_[0], // m*n with m=num_filter
-          wmat.shape_[1], // m*n with n=weight_x * weight_y * input depth
-          //in_col.shape_[0], // n*k with n=weight_x * weight_y * input depth
-          //in_col.shape_[1], // n*k with k=output_x * output_y * batch_size
-          //temp_dst.shape_[1], // m*k  with m=num_filter
-          temp_dst.shape_[1]));// m*k with k=output_x * output_y * batch_size
-
-	  auto start = std::chrono::high_resolution_clock::now();
-
-      binary_layer->set_input_as_col(in_col);
-      binary_layer->set_weights(wmat);
-
-      //LOG(INFO) << "\n" << binary_layer->weights_as_string();
-
-      mxnet::op::xnor_cpu::binary_gemm(binary_layer->binary_weights,
-                                       binary_layer->binary_input,
-                                       binary_layer->output,
-                                       binary_layer->m,
-                                       binary_layer->n,
-                                       binary_layer->k);
-
-	  auto finish = std::chrono::high_resolution_clock::now();
-	  std::chrono::duration<double> elapsed = finish - start;
-	  std::cout << "Elapsed time: " << elapsed.count() << " s\n";
-
-
-      binary_layer->get_output(temp_dst); //convert back binary output and copy into float for next layer
-      */
-
     }
 
     template<typename DType>
