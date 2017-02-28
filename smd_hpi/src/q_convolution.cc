@@ -55,10 +55,10 @@ namespace mshadow {
 
 	inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){
 
+		#pragma omp parallel for collapse(2)
 		for(int x=0; x < k; ++x){
 			for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
 				float * array = new float[BITS_PER_BINARY_WORD];
-
 				#pragma omp parallel for
 				for(int b=0; b<BITS_PER_BINARY_WORD; ++b){
 					array[b] = col[(y*BITS_PER_BINARY_WORD+b)*k + x];
@@ -76,9 +76,8 @@ namespace mshadow {
 							float *C, int ldc){
 	    int i,n,k;
 
-		#pragma omp parallel for
+		#pragma omp parallel for collapse(2)
 	    for(i = 0; i < M; ++i){
-			#pragma omp parallel for
 	        for(n = 0; n < N; ++n){
 	        	BINARY_WORD A_PART = A[i*lda+n];
 				#pragma omp parallel for

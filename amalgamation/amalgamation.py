@@ -9,7 +9,7 @@ blacklist = [
     'malloc.h', 'mkl.h', 'mkl_cblas.h', 'mkl_vsl.h', 'mkl_vsl_functions.h',
     'nvml.h', 'opencv2/opencv.hpp', 'sys/stat.h', 'sys/types.h', 'cuda.h', 'cuda_fp16.h',
     'omp.h'
-
+]
 minimum = int(sys.argv[6]) if len(sys.argv) > 5 else 0
 android = int(sys.argv[7]) if len(sys.argv) > 6 else 0
 

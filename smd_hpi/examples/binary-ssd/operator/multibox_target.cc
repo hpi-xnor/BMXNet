@@ -5,7 +5,7 @@
  * \author Joshua Zhang
 */
 #include "./multibox_target-inl.h"
-#include "./operator_common.h"
+#include "../../../../src/operator/mshadow_op.h"
 #include <algorithm>
 
 namespace mshadow {

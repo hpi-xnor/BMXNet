@@ -12,7 +12,7 @@
 #include <mshadow/base.h>
 
 //uint32_t, uint64_t, __int128
-typedef uint32_t BINARY_WORD;
+typedef __int128 BINARY_WORD;
 #define BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT)
 
 namespace mxnet {

@@ -200,6 +200,9 @@ FILE(GLOB_RECURSE SMD_HPI_SOURCE "smd_hpi/src/*.cc" "smd_hpi/src/*.h")
 FILE(GLOB_RECURSE SMD_HPI_CUDA "smd_hpi/src/*.cu")
 list(APPEND SOURCE ${SMD_HPI_SOURCE})
 list(APPEND CUDA ${SMD_HPI_CUDA})
+# add build_in popcnt
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
 ##=============================================##
 add_subdirectory(smd_hpi)
 
@@ -257,7 +260,8 @@ if (NOT (EXTRA_OPERATORS STREQUAL ""))
 	mxnet_source_group("Extra\\Cuda"   GLOB_RECURSE "${EXTRA_OPERATORS}/*.cu")
 	FILE(GLOB_RECURSE EXTRA_SRC "${EXTRA_OPERATORS}/*.cc")
 	FILE(GLOB_RECURSE EXTRA_CUSRC "${EXTRA_OPERATORS}/*.cu")
-	list(APPEND SOURCE ${EXTRA_SRC} ${EXTRA_CUSRC})
+	list(APPEND SOURCE ${EXTRA_SRC})
+	list(APPEND CUDA ${EXTRA_CUSRC})
 endif()
 
 if(MSVC)
