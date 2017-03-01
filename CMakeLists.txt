@@ -208,7 +208,7 @@ IF(SSE4_2_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
 else()
-  message(STATUS "no sse4.2 detected, will NOT enable popcnt")
+  message(STATUS "will NOT enable popcnt...")
 ENDIF(SSE4_2_FOUND)
 ##=============================================##
 add_subdirectory(smd_hpi)
