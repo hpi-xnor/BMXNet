@@ -5,7 +5,6 @@
  * \author HPI-DeepLearning
 */
 #include "./q_fully_connected-inl.h"
-#include "./binary_layer.h"
 #include "./xnor_cpu.h"
 
 
