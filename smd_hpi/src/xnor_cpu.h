@@ -144,7 +144,7 @@ namespace xnor_cpu {
     BINARY_WORD rvalue=0;
     BINARY_WORD sign;
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < BITS_PER_BINARY_WORD; i++)
     {
       sign = (array[i]>=0);
@@ -163,7 +163,7 @@ namespace xnor_cpu {
     for (int i = 0; i < size; i+=BITS_PER_BINARY_WORD) {
       float * array = new float[BITS_PER_BINARY_WORD];
 
-#pragma omp parallel for
+      #pragma omp parallel for
       for (int j = 0;j < BITS_PER_BINARY_WORD; ++j) {
         array[j] = row[i+j];
       }
@@ -179,16 +179,16 @@ namespace xnor_cpu {
   */
   inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){
 
+    #pragma omp parallel for collapse(2)
     for(int x=0; x < k; ++x){
       for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
         float * array = new float[BITS_PER_BINARY_WORD];
-
-#pragma omp parallel for
+        #pragma omp parallel for
         for(int b=0; b<BITS_PER_BINARY_WORD; ++b){
           array[b] = col[(y*BITS_PER_BINARY_WORD+b)*k + x];
         }
 
-        b_col[y*k + x]=concatenate(array);
+        b_col[y*k + x] = concatenate(array);
         delete[] array;
       }
     }
@@ -204,12 +204,11 @@ namespace xnor_cpu {
                         float *C, int ldc){
     int i,n,k;
 
-#pragma omp parallel for
+    #pragma omp parallel for collapse(2)
     for(i = 0; i < M; ++i){
-#pragma omp parallel for
       for(n = 0; n < N; ++n){
         BINARY_WORD A_PART = A[i*lda+n];
-#pragma omp parallel for
+        #pragma omp parallel for
         for(k = 0; k < K; ++k){
           C[i*ldc+k] += (float)__builtin_popcount(~(A_PART ^ B[n*ldb+k]));
         }

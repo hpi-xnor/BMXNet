@@ -16,14 +16,13 @@ else
 	DEFS+=-DMSHADOW_USE_SSE=0
 endif
 
-
 .PHONY: all clean
 
 DEFS+=-DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_MKL=0 -DMSHADOW_RABIT_PS=0 -DMSHADOW_DIST_PS=0 -DMSHADOW_FORCE_STREAM -DMXNET_USE_OPENCV=1 -DMXNET_PREDICT_ONLY=1 -DDISABLE_OPENMP=1
 CFLAGS=-std=c++11 -Wno-unknown-pragmas -Wall $(DEFS)
 ifneq ($(MIN), 1)
-	CFLAGS += -I${OPENBLAS_ROOT} -I${OPENBLAS_ROOT}/include
-	LDFLAGS+= -L${OPENBLAS_ROOT} -L${OPENBLAS_ROOT}/lib -lopenblas
+	CFLAGS += -I${OPENBLAS_ROOT} -I${OPENBLAS_ROOT}/include -I/home/fb10dl02/workspace/opencv3.0/install/include -I/usr/lib/jvm/java-8-openjdk-amd64/include/ -I/usr/lib/jvm/java-8-openjdk-amd64/include/linux
+	LDFLAGS+= -L${OPENBLAS_ROOT} -L${OPENBLAS_ROOT}/lib -lopenblas -L/home/fb10dl02/workspace/opencv3.0/install/lib -lopencv_core
 endif
 
 

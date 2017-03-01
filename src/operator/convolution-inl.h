@@ -173,10 +173,11 @@ class ConvolutionOp : public Operator {
         temp_dst[gid] = dot(wmat[gid], tmpc);
       }
 
+      ///*
       auto finish = std::chrono::high_resolution_clock::now();
 	  std::chrono::duration<double> elapsed = finish - start;
 	  std::cout << "conv dot elapsed time: " << elapsed.count() << " s\n";
-
+       //*/
       out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,
                                               mshadow::Shape4(param_.num_filter,
                                                   step,
