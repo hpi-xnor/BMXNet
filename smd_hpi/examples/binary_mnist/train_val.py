@@ -80,8 +80,8 @@ def get_binary_lenet():
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)	
-	#fc1 = mx.symbol.QFullyConnected(data=flatten, num_hidden=500, act_bit=BITW)
-	fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
+	fc1 = mx.symbol.QFullyConnected(data=flatten, num_hidden=500, act_bit=BITW)
+	#fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
 	
 	#fc1 = mx.sym.Custom(data=fc1, op_type='debug')
 
