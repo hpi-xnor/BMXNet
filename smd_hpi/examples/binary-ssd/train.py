@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--devkit-path', dest='devkit_path', help='VOCdevkit path',
                         default=os.path.join(os.getcwd(), 'data', 'VOCdevkit'), type=str)
     parser.add_argument('--network', dest='network', type=str, default='vgg16_reduced',
-                        choices=['vgg16_reduced'], help='which network to use')
+                        choices=['vgg16_reduced', 'vgg16_reduced_binary'], help='which network to use')
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=32,
                         help='training batch size')
     parser.add_argument('--resume', dest='resume', type=int, default=-1,
@@ -68,9 +68,9 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    #ctx = [mx.gpu(int(i)) for i in args.gpus.split(',')]
-    #ctx = mx.cpu() if not ctx else ctx
-    ctx = [mx.cpu(0)]
+    ctx = [mx.gpu(int(i)) for i in args.gpus.split(',')]
+    ctx = mx.cpu() if not ctx else ctx
+    #ctx = [mx.cpu(0)]
     train_net(args.network, args.dataset, args.image_set, args.year,
               args.devkit_path, args.batch_size,
               args.data_shape, [args.mean_r, args.mean_g, args.mean_b],

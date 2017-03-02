@@ -168,4 +168,4 @@ class Detector(object):
         for k, det in enumerate(dets):
             img = cv2.imread(im_list[k])
             img[:, :, (0, 1, 2)] = img[:, :, (2, 1, 0)]
-            self.visualize_detection(img, det, classes, thresh)
+#            self.visualize_detection(img, det, classes, thresh)
