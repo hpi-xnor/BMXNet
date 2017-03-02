@@ -201,8 +201,15 @@ FILE(GLOB_RECURSE SMD_HPI_CUDA "smd_hpi/src/*.cu")
 list(APPEND SOURCE ${SMD_HPI_SOURCE})
 list(APPEND CUDA ${SMD_HPI_CUDA})
 # add build_in popcnt
-set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
+INCLUDE(FindSSE)
+FindSSE()
+IF(SSE4_2_FOUND)
+  message(STATUS "enabling popcnt...")
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mpopcnt")
+else()
+  message(STATUS "will NOT enable popcnt...")
+ENDIF(SSE4_2_FOUND)
 ##=============================================##
 add_subdirectory(smd_hpi)
 

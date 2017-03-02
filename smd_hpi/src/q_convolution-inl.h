@@ -46,6 +46,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   dmlc::optional<int> layout;
   // mf quantization and binarization variables
   uint32_t act_bit;
+  bool scaling_factor;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
     DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -61,7 +62,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
               "partitions, apply convolution on each, then concatenate the results");
     DMLC_DECLARE_FIELD(workspace).set_default(1024).set_range(0, 8192)
     .describe("Maximum tmp workspace allowed for convolution (MB).");
-    DMLC_DECLARE_FIELD(no_bias).set_default(false)
+    DMLC_DECLARE_FIELD(no_bias).set_default(true)
     .describe("Whether to disable bias parameter.");
     DMLC_DECLARE_FIELD(cudnn_tune)
     .add_enum("off", q_conv::kOff)
@@ -88,7 +89,9 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
     .describe("Set layout for input, output and weight. Empty for\n    "
               "default layout: NCHW for 2d and NCDHW for 3d.");
     DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
-    .describe("Number of bits to quantize weights to.");
+            .describe("Number of bits to quantize weights to.");
+    DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
+            .describe("Enable alpha and beta scaling factors.");
   }
 };
 
@@ -131,69 +134,63 @@ class QConvolutionOp : public Operator {
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
 #endif
-    // @todo: skipped the param_.num_group, what is it for?
-    const index_t nbatch = data.size(0);
-    Tensor<xpu, 1, DType> workspace =
-            ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
-                    Shape1(this->InitTemp(data.shape_, out.shape_)), s);
-    CHECK_EQ(data.shape_[0], nstep_) << "we dont support setting max. workspace size yet, look at mx conv again...";
-    CHECK_EQ(param_.num_group, 1) << "only num_group == 1 is supported right now";
+    // xnor related check
     CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
 
-    Tensor<xpu, 2, DType> temp_col = Tensor<xpu, 2, DType>(workspace.dptr_,
-                                                           Shape2(shape_colunit_[0],
-                                                                  shape_colunit_[1] * nbatch), s);
-    Tensor<xpu, 3, DType> temp_dst = Tensor<xpu, 3, DType>(
-            workspace.dptr_ + temp_col.shape_.Size(),
-            Shape3(shape_dstunit_[0],
-                   shape_dstunit_[1],
-                   shape_dstunit_[2] * nbatch), s);
-    if (param_.pad[0] == 0 && param_.pad[1] == 0) {
-      temp_col = unpack_patch2col(data,
-                                  param_.kernel[0],
-                                  param_.kernel[1],
-                                  param_.stride[0],
-                                  param_.stride[1],
-                                  param_.dilate[0],
-                                  param_.dilate[1]);
-    } else {
-      temp_col = unpack_patch2col(pad(data,
-                                      param_.pad[0], param_.pad[1]),
-                                  param_.kernel[0],
-                                  param_.kernel[1],
-                                  param_.stride[0],
-                                  param_.stride[1],
-                                  param_.dilate[0],
-                                  param_.dilate[1]);
+    const index_t nbatch = data.size(0);
+    Tensor<xpu, 1, DType> workspace =
+        ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
+            Shape1(this->InitTemp(data.shape_, out.shape_)), s);
+    for (index_t i = 0; i < nbatch; i += nstep_) {
+      const index_t step = std::min(nstep_, nbatch - i);
+      Tensor<xpu, 2, DType> temp_col = Tensor<xpu, 2, DType>(workspace.dptr_,
+                                               Shape2(shape_colunit_[0],
+                                                      shape_colunit_[1] * step), s);
+      Tensor<xpu, 3, DType> temp_dst = Tensor<xpu, 3, DType>(
+                                               workspace.dptr_ + temp_col.shape_.Size(),
+                                               Shape3(shape_dstunit_[0],
+                                                      shape_dstunit_[1],
+                                                      shape_dstunit_[2] * step), s);
+      if (param_.pad[0] == 0 && param_.pad[1] == 0) {
+        temp_col = unpack_patch2col(data.Slice(i, i + step),
+                                    param_.kernel[0],
+                                    param_.kernel[1],
+                                    param_.stride[0],
+                                    param_.stride[1],
+                                    param_.dilate[0],
+                                    param_.dilate[1]);
+      } else {
+        temp_col = unpack_patch2col(pad(data.Slice(i, i + step),
+                                    param_.pad[0], param_.pad[1]),
+                                    param_.kernel[0],
+                                    param_.kernel[1],
+                                    param_.stride[0],
+                                    param_.stride[1],
+                                    param_.dilate[0],
+                                    param_.dilate[1]);
+      }
+
+      const index_t gstride = temp_col.size(0) / param_.num_group;
+
+      for (uint32_t gid = 0; gid < param_.num_group; ++gid) {
+        mshadow::Tensor<xpu, 2, DType> tmpc = temp_col.Slice(gstride * gid,
+                                       gstride * (gid + 1));
+        //xnor based convolution
+        QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+      }
+
+
+      out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,
+                                              mshadow::Shape4(param_.num_filter,
+                                                  step,
+                                                  out.size(2),
+                                                  out.size(3))));
     }
-
-    QConvolutionForward(data, wmat[0], temp_col, temp_dst[0], out, param_);
-
-    out = swapaxis<1, 0>(reshape(temp_dst,
-                                 mshadow::Shape4(param_.num_filter,
-                                                 100,
-                                                 out.size(2),
-                                                 out.size(3))));
     if (!param_.no_bias) {
       // add bias, broadcast bias to dim 1: channel
       Tensor<xpu, 1, DType> bias = in_data[q_conv::kBias].get<xpu, 1, DType>(s);
       out += broadcast<1>(bias, out.shape_);
     }
-
-
-
-    // mf quantize weights
-//    LOG(INFO) << "------ QCONV -------";
-//    for (auto&& tblob : in_data) {
-//      LOG(INFO) << "TBlob with ndim()=" << tblob.ndim() << " and Size()=" << tblob.Size();
-//      for (int i = 0; i < tblob.ndim(); i++) {
-//        LOG(INFO) << "  [" << i << "] = " << tblob.size(i);
-//      }
-//    }
-//    LOG(INFO) << "Tensor<xpu, 3, DType> wmat:";
-//    for (int i = 0; i < wmat.shape_.kDimension; i++) {
-//      LOG(INFO) << "wmat[" << i << "].size = " << wmat.size(i);
-//    }
 
   }
 
