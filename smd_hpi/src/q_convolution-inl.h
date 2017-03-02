@@ -46,6 +46,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   dmlc::optional<int> layout;
   // mf quantization and binarization variables
   uint32_t act_bit;
+  bool scaling_factor;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
     DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -88,7 +89,9 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
     .describe("Set layout for input, output and weight. Empty for\n    "
               "default layout: NCHW for 2d and NCDHW for 3d.");
     DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
-    .describe("Number of bits to quantize weights to.");
+            .describe("Number of bits to quantize weights to.");
+    DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
+            .describe("Enable alpha and beta scaling factors.");
   }
 };
 

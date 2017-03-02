@@ -64,18 +64,18 @@ def get_binary_lenet():
 	# first conv layer
 	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=32)
 	bn1 = mx.sym.BatchNorm(data=conv1)
-	tanh1 = mx.sym.QActivation(data=bn1, act_bit=BITA)
+	tanh1 = mx.sym.Activation(data=bn1, act_type="tanh")
 
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 
 	# second conv layer
-	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)
+	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=100, act_bit=BITW, scaling_factor=False)
 
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
 	bn2 = mx.sym.BatchNorm(data=conv2)
 
-	tanh2 = mx.sym.QActivation(data=bn2, act_bit=BITA)
+	tanh2 = mx.sym.Activation(data=bn2, act_type="tanh")
 
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
 	# first fullc layer
@@ -87,7 +87,7 @@ def get_binary_lenet():
 
 	bn3 = mx.sym.BatchNorm(data=fc1)
 
-	tanh3 = mx.sym.QActivation(data=bn3, act_bit=BITA)
+	tanh3 = mx.sym.Activation(data=bn3, act_type="tanh")
 
 	# second fullc
 	fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
