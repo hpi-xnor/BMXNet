@@ -42,11 +42,11 @@ mxnet_predict0.d: mxnet_predict0.cc nnvm.d dmlc.d
 	-I ${MXNET_ROOT}/ -I ${MXNET_ROOT}/mshadow/ -I ${MXNET_ROOT}/dmlc-core/include \
 	-I ${MXNET_ROOT}/nnvm/include \
 	-I ${MXNET_ROOT}/include \
-	-D__MIN__=$(MIN) mxnet_predict0.cc > mxnet_predict0.d
+	-D__MIN__=$(MIN) mxnet_predict0.cc mxnet_hpi0.cc > mxnet_predict0.d
 	cat dmlc.d >> mxnet_predict0.d
 	cat nnvm.d >> mxnet_predict0.d
 
-mxnet_predict-all.cc:  mxnet_predict0.d dmlc-minimum0.cc nnvm.cc mxnet_predict0.cc
+mxnet_predict-all.cc:  mxnet_predict0.d dmlc-minimum0.cc nnvm.cc mxnet_predict0.cc mxnet_hpi0.cc
 	@echo "Generating amalgamation to " $@
 	python ./amalgamation.py $+ $@ $(MIN) $(ANDROID)
 
