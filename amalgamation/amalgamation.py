@@ -10,8 +10,8 @@ blacklist = [
     'nvml.h', 'opencv2/opencv.hpp', 'sys/stat.h', 'sys/types.h', 'cuda.h', 'cuda_fp16.h',
     'omp.h'
 ]
-minimum = int(sys.argv[6]) if len(sys.argv) > 5 else 0
-android = int(sys.argv[7]) if len(sys.argv) > 6 else 0
+minimum = int(sys.argv[7]) if len(sys.argv) > 5 else 0
+android = int(sys.argv[8]) if len(sys.argv) > 6 else 0
 
 def pprint(lst):
     for item in lst:
@@ -102,10 +102,11 @@ def expand(x, pending, stage):
 expand(sys.argv[2], [], "dmlc")
 expand(sys.argv[3], [], "nnvm")
 expand(sys.argv[4], [], "src")
+expand(sys.argv[5], [], "smd_hpi")
 
 
 
-f = open(sys.argv[5], 'wb')
+f = open(sys.argv[6], 'wb')
 
 if minimum != 0:
     print >>f, "#define MSHADOW_STAND_ALONE 1"
