@@ -28,11 +28,11 @@ def parse_args():
     parser.add_argument('--finetune', dest='finetune', type=int, default=-1,
                         help='finetune from epoch n, rename the model before doing this')
     parser.add_argument('--pretrained', dest='pretrained', help='pretrained model prefix',
-                        default=os.path.join(os.getcwd(), 'model', 'vgg16_reduced'), type=str)
+                        default=os.path.join(os.getcwd(), 'model', 'ssd_300'), type=str)
     parser.add_argument('--epoch', dest='epoch', help='epoch of pretrained model',
-                        default=1, type=int)
+                        default=0, type=int)
     parser.add_argument('--prefix', dest='prefix', help='new model prefix',
-                        default=os.path.join(os.getcwd(), 'model', 'ssd'), type=str)
+                        default=os.path.join(os.getcwd(), 'model', 'ssd-binary'), type=str)
     parser.add_argument('--gpus', dest='gpus', help='GPU devices to train with',
                         default='0', type=str)
     parser.add_argument('--begin-epoch', dest='begin_epoch', help='begin epoch of training',
@@ -40,7 +40,7 @@ def parse_args():
     parser.add_argument('--end-epoch', dest='end_epoch', help='end epoch of training',
                         default=100, type=int)
     parser.add_argument('--frequent', dest='frequent', help='frequency of logging',
-                        default=20, type=int)
+                        default=5, type=int)
     parser.add_argument('--data-shape', dest='data_shape', type=int, default=300,
                         help='set image shape')
     parser.add_argument('--lr', dest='learning_rate', type=float, default=0.001,

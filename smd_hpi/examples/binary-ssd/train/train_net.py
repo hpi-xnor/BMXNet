@@ -220,6 +220,7 @@ def train_net(net, dataset, image_set, year, devkit_path, batch_size,
             .format(ctx_str, pretrained))
         _, args, auxs = mx.model.load_checkpoint(pretrained, epoch)
         args = convert_pretrained(pretrained, args)
+        fixed_param_names = None
     else:
         logger.info("Experimental: start training from scratch with {}"
             .format(ctx_str))
