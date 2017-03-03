@@ -89,6 +89,7 @@ def get_symbol_train(num_classes=20):
     relu7 = mx.symbol.Activation(data=conv7, act_type="relu", name="relu7")
     # drop7 = mx.symbol.Dropout(data=relu7, p=0.5, name="drop7")
 
+    '''
     ### ssd extra layers ###
     conv8_1, relu8_1 = conv_act_layer(relu7, "8_1", 256, kernel=(1,1), pad=(0,0), \
         stride=(1,1), act_type="relu", use_batchnorm=False)
@@ -105,6 +106,7 @@ def get_symbol_train(num_classes=20):
     # global Pooling
     pool10 = mx.symbol.Pooling(data=relu10_2, pool_type="avg",
         global_pool=True, kernel=(1,1), name='pool10')
+    
 
     # specific parameters for VGG16 network
     from_layers = [relu4_3, relu7, relu8_2, relu9_2, relu10_2, pool10]
@@ -112,6 +114,18 @@ def get_symbol_train(num_classes=20):
     ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
         [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
     normalizations = [20, -1, -1, -1, -1, -1]
+    num_channels = [512]
+    '''
+    #reduced version
+    conv8_1, relu8_1 = conv_act_layer(relu7, "8_1", 256, kernel=(1,1), pad=(0,0), \
+        stride=(1,1), act_type="relu", use_batchnorm=False)
+    conv8_2, relu8_2 = conv_act_layer(relu8_1, "8_2", 512, kernel=(3,3), pad=(1,1), \
+        stride=(2,2), act_type="relu", use_batchnorm=False)
+
+    from_layers = [relu4_3, relu7, relu8_2]
+    sizes = [[.1], [.2,.276], [.38, .461]]
+    ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
+    normalizations = [20, -1, -1]
     num_channels = [512]
 
     loc_preds, cls_preds, anchor_boxes = multibox_layer(from_layers, \

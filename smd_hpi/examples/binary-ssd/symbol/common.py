@@ -30,8 +30,8 @@ def conv_act_layer(from_layer, name, num_filter, kernel=(1,1), pad=(0,0), \
     (conv, relu) mx.Symbols
     """
     assert not use_batchnorm, "batchnorm not yet supported"
-    conv = mx.symbol.QConvolution(data=from_layer, kernel=kernel, pad=pad, \
-        stride=stride, num_filter=num_filter, name="conv{}".format(name), act_bit=1)
+    conv = mx.symbol.Convolution(data=from_layer, kernel=kernel, pad=pad, \
+        stride=stride, num_filter=num_filter, name="conv{}".format(name))
     relu = mx.symbol.Activation(data=conv, act_type=act_type, \
         name="{}{}".format(act_type, name))
     if use_batchnorm:
@@ -125,9 +125,9 @@ def multibox_layer(from_layers, num_classes, sizes=[.2, .95],
             # scale = mx.symbol.Reshape(data=scale, shape=(1, 512, 1, 1))
             from_layer = normalization[k] * mx.symbol.broadcast_mul(lhs=scale, rhs=from_layer)
         if interm_layer > 0:
-            from_layer = mx.symbol.QConvolution(data=from_layer, kernel=(3,3), \
+            from_layer = mx.symbol.Convolution(data=from_layer, kernel=(3,3), \
                 stride=(1,1), pad=(1,1), num_filter=interm_layer, \
-                name="{}_inter_conv".format(from_name), act_bit=1)
+                name="{}_inter_conv".format(from_name))
             from_layer = mx.symbol.Activation(data=from_layer, act_type="relu", \
                 name="{}_inter_relu".format(from_name))
 
@@ -144,18 +144,18 @@ def multibox_layer(from_layers, num_classes, sizes=[.2, .95],
 
         # create location prediction layer
         num_loc_pred = num_anchors * 4
-        loc_pred = mx.symbol.QConvolution(data=from_layer, kernel=(3,3), \
+        loc_pred = mx.symbol.Convolution(data=from_layer, kernel=(3,3), \
             stride=(1,1), pad=(1,1), num_filter=num_loc_pred, \
-            name="{}_loc_pred_conv".format(from_name), act_bit=1)
+            name="{}_loc_pred_conv".format(from_name))
         loc_pred = mx.symbol.transpose(loc_pred, axes=(0,2,3,1))
         loc_pred = mx.symbol.Flatten(data=loc_pred)
         loc_pred_layers.append(loc_pred)
 
         # create class prediction layer
         num_cls_pred = num_anchors * num_classes
-        cls_pred = mx.symbol.QConvolution(data=from_layer, kernel=(3,3), \
+        cls_pred = mx.symbol.Convolution(data=from_layer, kernel=(3,3), \
             stride=(1,1), pad=(1,1), num_filter=num_cls_pred, \
-            name="{}_cls_pred_conv".format(from_name), act_bit=1)
+            name="{}_cls_pred_conv".format(from_name))
         cls_pred = mx.symbol.transpose(cls_pred, axes=(0,2,3,1))
         cls_pred = mx.symbol.Flatten(data=cls_pred)
         cls_pred_layers.append(cls_pred)
