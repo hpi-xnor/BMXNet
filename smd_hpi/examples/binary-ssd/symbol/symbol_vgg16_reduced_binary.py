@@ -89,7 +89,7 @@ def get_symbol_train(num_classes=20):
     relu7 = mx.symbol.Activation(data=conv7, act_type="relu", name="relu7")
     # drop7 = mx.symbol.Dropout(data=relu7, p=0.5, name="drop7")
 
-    '''
+    
     ### ssd extra layers ###
     conv8_1, relu8_1 = conv_act_layer(relu7, "8_1", 256, kernel=(1,1), pad=(0,0), \
         stride=(1,1), act_type="relu", use_batchnorm=False)
@@ -115,6 +115,7 @@ def get_symbol_train(num_classes=20):
         [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
     normalizations = [20, -1, -1, -1, -1, -1]
     num_channels = [512]
+        
     '''
     #reduced version
     conv8_1, relu8_1 = conv_act_layer(relu7, "8_1", 256, kernel=(1,1), pad=(0,0), \
@@ -127,6 +128,7 @@ def get_symbol_train(num_classes=20):
     ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
     normalizations = [20, -1, -1]
     num_channels = [512]
+    '''
 
     loc_preds, cls_preds, anchor_boxes = multibox_layer(from_layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
