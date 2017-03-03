@@ -242,7 +242,7 @@ def train_net(net, dataset, image_set, year, devkit_path, batch_size,
     iter_refactor = lr_refactor_epoch * imdb.num_images // train_iter.batch_size
     lr_scheduler = mx.lr_scheduler.FactorScheduler(iter_refactor, lr_refactor_ratio)
     optimizer_params={'learning_rate':learning_rate,
-                      'momentum':momentum,
+                      #'momentum':momentum,
                       'wd':weight_decay,
                       'lr_scheduler':lr_scheduler,
                       'clip_gradient':None,
