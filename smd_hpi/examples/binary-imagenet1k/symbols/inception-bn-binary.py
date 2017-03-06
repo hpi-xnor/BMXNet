@@ -14,7 +14,7 @@ import mxnet as mx
 eps = 1e-10 + 1e-5
 bn_mom = 0.9
 fix_gamma = False
-
+BITW = 1
 
 def ConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, suffix='', attr={}):
     bn = mx.symbol.BatchNorm(data=data, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))
