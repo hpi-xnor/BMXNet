@@ -32,12 +32,12 @@ if __name__ == '__main__':
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
         lr               = 0.01,
-        batch-size       = 32,
+        batch_size     = 32,
         optimizer        = 'Adam',
-        disp-batches     = 10,
-        top-k            = 5,
-        data-train       = '/data/haojin/imagenet1k/imagenet1k-train',
-        data-val         = '/data/haojin/imagenet1k/imagenet1k-val'
+        disp_batches     = 10,
+        top_k            = 5,
+        data_train       = '/data/haojin/imagenet1k/imagenet1k-val',
+        data_val         = '/data/haojin/imagenet1k/imagenet1k-val'
     )
     args = parser.parse_args()
 
