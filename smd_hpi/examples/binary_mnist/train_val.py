@@ -33,7 +33,7 @@ def get_lenet():
 	tanh1 = mx.sym.Activation(data=conv1, act_type="tanh")	
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 	# second conv layer
-	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=100, act_bit=BITW)	
+	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)	
 	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=50)	
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
@@ -80,8 +80,8 @@ def get_binary_lenet():
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)	
-	#fc1 = mx.symbol.QFullyConnected(data=flatten, num_hidden=500, act_bit=BITW)
-	fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
+	fc1 = mx.symbol.QFullyConnected(data=flatten, num_hidden=500, act_bit=BITW)
+	#fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
 	
 	#fc1 = mx.sym.Custom(data=fc1, op_type='debug')
 

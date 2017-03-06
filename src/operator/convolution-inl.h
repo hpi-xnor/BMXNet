@@ -165,7 +165,7 @@ class ConvolutionOp : public Operator {
 
       const index_t gstride = temp_col.size(0) / param_.num_group;
 
-      auto start = std::chrono::high_resolution_clock::now();
+      //auto start = std::chrono::high_resolution_clock::now();
 
       for (uint32_t gid = 0; gid < param_.num_group; ++gid) {
         mshadow::Tensor<xpu, 2, DType> tmpc = temp_col.Slice(gstride * gid,
@@ -173,11 +173,11 @@ class ConvolutionOp : public Operator {
         temp_dst[gid] = dot(wmat[gid], tmpc);
       }
 
-      ///*
+      /*
       auto finish = std::chrono::high_resolution_clock::now();
 	  std::chrono::duration<double> elapsed = finish - start;
 	  std::cout << "conv dot elapsed time: " << elapsed.count() << " s\n";
-       //*/
+       */
       out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,
                                               mshadow::Shape4(param_.num_filter,
                                                   step,

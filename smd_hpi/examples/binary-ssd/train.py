@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--devkit-path', dest='devkit_path', help='VOCdevkit path',
                         default=os.path.join(os.getcwd(), 'data', 'VOCdevkit'), type=str)
     parser.add_argument('--network', dest='network', type=str, default='vgg16_reduced',
-                        choices=['vgg16_reduced'], help='which network to use')
+                        choices=['vgg16_reduced', 'vgg16_reduced_binary'], help='which network to use')
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=32,
                         help='training batch size')
     parser.add_argument('--resume', dest='resume', type=int, default=-1,
@@ -28,11 +28,11 @@ def parse_args():
     parser.add_argument('--finetune', dest='finetune', type=int, default=-1,
                         help='finetune from epoch n, rename the model before doing this')
     parser.add_argument('--pretrained', dest='pretrained', help='pretrained model prefix',
-                        default=os.path.join(os.getcwd(), 'model', 'vgg16_reduced'), type=str)
+                        default=os.path.join(os.getcwd(), 'model', 'ssd_300'), type=str)
     parser.add_argument('--epoch', dest='epoch', help='epoch of pretrained model',
-                        default=1, type=int)
+                        default=0, type=int)
     parser.add_argument('--prefix', dest='prefix', help='new model prefix',
-                        default=os.path.join(os.getcwd(), 'model', 'ssd'), type=str)
+                        default=os.path.join(os.getcwd(), 'model', 'ssd-binary'), type=str)
     parser.add_argument('--gpus', dest='gpus', help='GPU devices to train with',
                         default='0', type=str)
     parser.add_argument('--begin-epoch', dest='begin_epoch', help='begin epoch of training',
@@ -40,10 +40,10 @@ def parse_args():
     parser.add_argument('--end-epoch', dest='end_epoch', help='end epoch of training',
                         default=100, type=int)
     parser.add_argument('--frequent', dest='frequent', help='frequency of logging',
-                        default=20, type=int)
+                        default=5, type=int)
     parser.add_argument('--data-shape', dest='data_shape', type=int, default=300,
                         help='set image shape')
-    parser.add_argument('--lr', dest='learning_rate', type=float, default=0.001,
+    parser.add_argument('--lr', dest='learning_rate', type=float, default=0.0005,
                         help='learning rate')
     parser.add_argument('--momentum', dest='momentum', type=float, default=0.9,
                         help='momentum')
@@ -55,7 +55,7 @@ def parse_args():
                         help='green mean value')
     parser.add_argument('--mean-b', dest='mean_b', type=float, default=104,
                         help='blue mean value')
-    parser.add_argument('--lr-epoch', dest='lr_refactor_epoch', type=int, default=50,
+    parser.add_argument('--lr-epoch', dest='lr_refactor_epoch', type=int, default=2,
                         help='refactor learning rate every N epoch')
     parser.add_argument('--lr-ratio', dest='lr_refactor_ratio', type=float, default=0.9,
                         help='ratio to refactor learning rate')
@@ -68,9 +68,9 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    #ctx = [mx.gpu(int(i)) for i in args.gpus.split(',')]
-    #ctx = mx.cpu() if not ctx else ctx
-    ctx = [mx.cpu(0)]
+    ctx = [mx.gpu(int(i)) for i in args.gpus.split(',')]
+    ctx = mx.cpu() if not ctx else ctx
+    #ctx = [mx.cpu(0)]
     train_net(args.network, args.dataset, args.image_set, args.year,
               args.devkit_path, args.batch_size,
               args.data_shape, [args.mean_r, args.mean_g, args.mean_b],
