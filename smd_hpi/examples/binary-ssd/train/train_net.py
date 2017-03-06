@@ -63,7 +63,7 @@ def convert_pretrained(name, args):
     ---------
     processed arguments as dict
     """
-    if name == 'vgg16_reduced':
+    if name == 'vgg16_reduced' or name == 'vgg16_reduced_binary':
         args['conv6_bias'] = args.pop('fc6_bias')
         args['conv6_weight'] = args.pop('fc6_weight')
         args['conv7_bias'] = args.pop('fc7_bias')
@@ -220,7 +220,6 @@ def train_net(net, dataset, image_set, year, devkit_path, batch_size,
             .format(ctx_str, pretrained))
         _, args, auxs = mx.model.load_checkpoint(pretrained, epoch)
         args = convert_pretrained(pretrained, args)
-        fixed_param_names = None
     else:
         logger.info("Experimental: start training from scratch with {}"
             .format(ctx_str))
@@ -242,7 +241,7 @@ def train_net(net, dataset, image_set, year, devkit_path, batch_size,
     iter_refactor = lr_refactor_epoch * imdb.num_images // train_iter.batch_size
     lr_scheduler = mx.lr_scheduler.FactorScheduler(iter_refactor, lr_refactor_ratio)
     optimizer_params={'learning_rate':learning_rate,
-                      'momentum':momentum,
+                      #'momentum':momentum,
                       'wd':weight_decay,
                       'lr_scheduler':lr_scheduler,
                       'clip_gradient':None,
@@ -256,7 +255,7 @@ def train_net(net, dataset, image_set, year, devkit_path, batch_size,
             eval_metric=MultiBoxMetric(),
             batch_end_callback=batch_end_callback,
             epoch_end_callback=epoch_end_callback,
-            optimizer='sgd',
+            optimizer='Adam',
             optimizer_params=optimizer_params,
             kvstore = kv,
             begin_epoch=begin_epoch,
