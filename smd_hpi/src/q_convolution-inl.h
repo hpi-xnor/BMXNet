@@ -135,7 +135,7 @@ class QConvolutionOp : public Operator {
         << "Must init CuBLAS handle in stream";
 #endif
     // xnor related check
-    CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
+    //CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
 
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
