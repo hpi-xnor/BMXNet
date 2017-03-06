@@ -1,3 +1,30 @@
+# HPI-DeepLearning fork of mxnet 
+
+A fork of the deep learning framework mxnet to study and implement quantization and binarization in neural networks.
+
+Our current efforts are focused on binarizing the inputs and weights of convolutional layers, enabling the use of performant bit operations instead of expensive matrix multiplications as described in:
+
+[XNOR-Net: ImageNet Classification Using Binary Convolutional Neural Networks](https://arxiv.org/abs/1603.05279)
+
+# usage
+
+We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](http://mxnet.io/get_started/setup.html#prerequisites)
+
+```shell
+$ mkdir build-debug && cd build-debug
+$ ccmake ..
+$ make
+```
+Adjust settings in cmake (build-type ``Release`` or ``Debug``, enable CUDA, OpenMP etc.)  
+This will generate the mxnet library. To be able to use it from python, be sure to add the location of the libray to your ``LD_LIBRARY_PATH``:
+```shell
+$ export LD_LIBRARY_PATH=<mxnet-root>/build-debug
+```
+Have a look at our [source and examples](smd_hpi)
+
+----------
+``<default mxnet readme appended for reference>``
+
 <img src=https://raw.githubusercontent.com/dmlc/dmlc.github.io/master/img/logo-m/mxnet2.png width=135/> *for Deep Learning*
 =====
 
