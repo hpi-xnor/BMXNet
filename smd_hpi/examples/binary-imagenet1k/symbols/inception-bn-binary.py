@@ -21,7 +21,7 @@ def ConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, s
 #    conv = mx.symbol.QConvolution(data=bn, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)    
 #    act = mx.symbol.Activation(data=conv, act_type='relu', name='relu_%s%s' %(name, suffix), attr=attr)
 
-    conv = mx.symbol.Convolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)
+    conv = mx.symbol.QConvolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)
     bn = mx.symbol.BatchNorm(data=conv, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))
     act = mx.symbol.Activation(data=bn, act_type='relu', name='relu_%s%s' %(name, suffix), attr=attr)
     return act
