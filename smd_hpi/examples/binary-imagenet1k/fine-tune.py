@@ -20,6 +20,14 @@ def get_fine_tune_model(symbol, arg_params, num_classes, layer_name):
     new_args = dict({k:arg_params[k] for k in arg_params if 'fc' not in k})
     return (net, new_args)
 
+def _save_model(args, rank=0):
+    if args.model_prefix is None:
+        return None
+    dst_dir = os.path.dirname(args.model_prefix)
+    if not os.path.isdir(dst_dir):
+        os.mkdir(dst_dir)
+    return mx.callback.do_checkpoint(args.model_prefix if rank == 0 else "%s-%d" % (
+        args.model_prefix, rank))
 
 if __name__ == "__main__":
     # parse args
@@ -36,9 +44,9 @@ if __name__ == "__main__":
     data.set_data_aug_level(parser, 1)
     # use a small learning rate and less regularizations
   
-
     parser.set_defaults(
         # network
+        network          = 'inception-bn-binary',
         # data
         num_classes      = 1000,
         num_examples     = 1281167,
@@ -49,7 +57,7 @@ if __name__ == "__main__":
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
         lr               = 0.01,
-        batch_size     = 32,
+        batch_size       = 32,
         optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
@@ -58,21 +66,36 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # load pretrained model
-#    dir_path = os.path.dirname(os.path.realpath(__file__))
-#    (prefix, epoch) = modelzoo.download_model(
-#        args.pretrained_model, os.path.join(dir_path, 'model'))
-#    if prefix is None:
-    (prefix, epoch) = (args.pretrained_model, args.load_epoch)
-    new_sym, new_args, aux_params = mx.model.load_checkpoint(prefix, 126)
+    #load pretrained model
+    if args.pretrained_model:
+        sym, args_params, aux_params = mx.model.load_checkpoint(args.pretrained_model, 126)#inception-bn
 
-    # remove the last fullc layer
-#    (new_sym, new_args) = get_fine_tune_model(
-#        sym, arg_params, args.num_classes, args.layer_before_fullc)
+    # save model
+    checkpoint = _save_model(args, kv.rank)
+    
+    optimizer_params = {
+            'learning_rate': lr,
+            'momentum' : args.mom,
+            'wd' : args.wd,
+            'lr_scheduler': lr_scheduler}
+
+    monitor = mx.mon.Monitor(args.monitor, pattern=".*") if args.monitor > 0 else None
+
+    initializer   = mx.init.Xavier(
+       rnd_type='gaussian', factor_type="in", magnitude=2)
 
     # train
-    fit.fit(args        = args,
-            network     = new_sym,
-            data_loader = data.get_rec_iter,
-            arg_params  = new_args,
-            aux_params  = aux_params)
+    fit.fit(args               = args,
+            network            = sym,
+            data_loader        = data.get_rec_iter,
+            arg_params         = args_params,
+            aux_params         = aux_params,
+            begin_epoch        = args.load_epoch if args.load_epoch else 0,
+            optimizer          = args.optimizer,
+            optimizer_params   = optimizer_params,
+            initializer        = initializer,
+            arg_params         = arg_params,
+            aux_params         = aux_params,
+            epoch_end_callback = checkpoint,
+            allow_missing      = True,
+            monitor            = monitor)
