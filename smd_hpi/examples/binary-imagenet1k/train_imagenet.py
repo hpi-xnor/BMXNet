@@ -67,6 +67,7 @@ if __name__ == '__main__':
         new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 126)#inception-bn-0126.params
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(ctx), args.pretrained))
+        assert sym.tojson() == new_sym.tojson()
 
     # train
     fit.fit(
