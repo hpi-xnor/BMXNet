@@ -84,39 +84,14 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    kv = mx.kvstore.create(args.kv_store)
-
     #load pretrained model
     if args.pretrained_model:
         sym, args_params, aux_params = mx.model.load_checkpoint(args.pretrained_model, 126)#inception-bn
-
-    # save model
-    checkpoint = _save_model(args, kv.rank)
-
-    # learning rate
-    lr, lr_scheduler = _get_lr_scheduler(args, kv)
-    
-    optimizer_params = {
-            'learning_rate': lr,
-            'momentum' : args.mom,
-            'wd' : args.wd,
-            'lr_scheduler': lr_scheduler}
-
-    monitor = mx.mon.Monitor(args.monitor, pattern=".*") if args.monitor > 0 else None
-
-    initializer   = mx.init.Xavier(
-       rnd_type='gaussian', factor_type="in", magnitude=2)
 
     # train
     fit.fit(args               = args,
             network            = sym,
             data_loader        = data.get_rec_iter,
             arg_params         = args_params,
-            aux_params         = aux_params,
-            optimizer          = args.optimizer,
-            optimizer_params   = optimizer_params,
-            initializer        = initializer,
-            epoch_end_callback = checkpoint,
-            allow_missing      = True,
-            monitor            = monitor
-)
+            aux_params         = aux_params,    
+    )
