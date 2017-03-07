@@ -74,7 +74,7 @@ if __name__ == '__main__':
     # train
     fit.fit(
         args, 
-        new_sym, 
+        sym, 
         data.get_rec_iter, 
         arg_params=args_params, 
         aux_params=auxs_params)
