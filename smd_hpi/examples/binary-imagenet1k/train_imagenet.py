@@ -35,9 +35,9 @@ if __name__ == '__main__':
         # train
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
-        lr               = 0.01,
+        lr               = 0.001,
         batch_size     = 32,
-        optimizer        = 'sgd',
+        optimizer        = 'Adam',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train',
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 39)#inception-bn-0126.params
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 39)#inception-bn-0039.params
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(ctx), args.pretrained))
 
