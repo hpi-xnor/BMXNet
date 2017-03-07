@@ -64,14 +64,14 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 39)#inception-bn-0126.params
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 126)#inception-bn-0126.params
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(ctx), args.pretrained))
 
     # train
     fit.fit(
         args, 
-        new_sym, 
+        sym, 
         data.get_rec_iter, 
         arg_params=args_params, 
         aux_params=auxs_params)
