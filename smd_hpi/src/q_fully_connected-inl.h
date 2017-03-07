@@ -90,7 +90,7 @@ class QFullyConnectedOp : public Operator {
               NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);
       wmat_T = wmat.T();
     	QFullyConnectedForward(data, wmat_T, out, param_);
-    	//mshadow::FreeSpace(&wmat_T);
+    	mshadow::FreeSpace(&wmat_T);
     }else{
   		// mf quantize weights
   		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
