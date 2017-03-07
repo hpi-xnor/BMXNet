@@ -6,7 +6,6 @@ with convolutions." arXiv preprint arXiv:1409.4842 (2014).
 
 """
 
-import find_mxnet
 import mxnet as mx
 
 BITW = 1
