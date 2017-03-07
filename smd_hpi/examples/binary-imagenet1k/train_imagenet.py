@@ -35,7 +35,7 @@ if __name__ == '__main__':
         # train
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
-        lr               = 0.001,
+        lr               = 0.1,
         batch_size     = 32,
         optimizer        = 'Adam',
         disp_batches     = 10,
@@ -64,14 +64,20 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 39)#inception-bn-0039.params
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 39)#inception-bn-0039.param
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(ctx), args.pretrained))
 
     # train
-    fit.fit(
-        args, 
-        sym, 
-        data.get_rec_iter, 
-        arg_params=args_params, 
-        aux_params=auxs_params)
+    if args_params and auxs_params:
+        fit.fit(
+            args, 
+            sym, 
+            data.get_rec_iter, 
+            arg_params=args_params, 
+            aux_params=auxs_params)
+    else:
+        fit.fit(
+            args, 
+            sym, 
+            data.get_rec_iter)
