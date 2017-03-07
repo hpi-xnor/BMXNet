@@ -7,6 +7,7 @@ from common.util import download_file
 import mxnet as mx
 
 if __name__ == '__main__':
+
     # parse args
     parser = argparse.ArgumentParser(description="train imagenet1K",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -17,6 +18,8 @@ if __name__ == '__main__':
     data.set_data_aug_level(parser, 3)
     parser.add_argument('--pretrained', type=str,
                     help='the pre-trained model')
+    parser.add_argument('--log', dest='log_file', type=str, default="train.log",
+                    help='save training log to file')
 
     parser.set_defaults(
         # network
@@ -41,13 +44,28 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
+    # set up logger    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    if log_file:
+        fh = logging.FileHandler(log_file)
+        logger.addHandler(fh)
+    
+    ctx = [mx.gpu(int(i)) for i in args.gpus.split(',')]
+    ctx = mx.cpu() if not ctx else ctx
+
     # load network
     from importlib import import_module
     net = import_module('symbols.'+args.network)
     sym = net.get_symbol(**vars(args))
 
     #load pretrained
-    _, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 126)#inception-bn-0126.params
+    args_params=None
+    auxs_params=None
+    if args.pretrained:
+        _, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 126)#inception-bn-0126.params
+        logger.info("Start training with {} from pretrained model {}"
+                .format(str(ctx), args.pretrained))
 
     # train
     fit.fit(args, sym, data.get_rec_iter, arg_params=args_params, aux_params=auxs_params)
