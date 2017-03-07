@@ -118,7 +118,9 @@ def fit(args, network, data_loader, **kwargs):
 
     # load model
     if 'arg_params' in kwargs and 'aux_params' in kwargs:
-        logging.info('Training model initialized from trained model {}', str{args.pretrained})        
+        logging.info('Training model initialized from trained model')        
+        print kwargs['arg_params']
+        print kwargs['aux_params']
         arg_params = kwargs['arg_params']
         aux_params = kwargs['aux_params']
     else:
