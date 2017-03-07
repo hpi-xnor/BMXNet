@@ -19,7 +19,7 @@ def ConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, s
 def QConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, suffix=''):
     bn = mx.sym.BatchNorm(data=data)
     act_q = mx.sym.QActivation(data=bn,  act_bit=BITA)
-    conv = mx.symbol.QConvolution(data=act_q, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)
+    conv = mx.symbol.QConvolution(data=act, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)
     return act
 
 def InceptionFactory(data, num_1x1, num_3x3red, num_3x3, num_d5x5red, num_d5x5, pool, proj, name):
@@ -42,8 +42,8 @@ def get_symbol(num_classes = 1000, **kwargs):
     data = mx.sym.Variable("data")
     conv1 = ConvFactory(data, 64, kernel=(7, 7), stride=(2,2), pad=(3, 3), name="conv1")
     pool1 = mx.sym.Pooling(conv1, kernel=(3, 3), stride=(2, 2), pool_type="max")
-    conv2 = QConvFactory(pool1, 64, kernel=(1, 1), stride=(1,1), name="conv2")
-    conv3 = QConvFactory(conv2, 192, kernel=(3, 3), stride=(1, 1), pad=(1,1), name="conv3")
+    conv2 = ConvFactory(pool1, 64, kernel=(1, 1), stride=(1,1), name="conv2")
+    conv3 = ConvFactory(conv2, 192, kernel=(3, 3), stride=(1, 1), pad=(1,1), name="conv3")
     pool3 = mx.sym.Pooling(conv3, kernel=(3, 3), stride=(2, 2), pool_type="max")
 
     in3a = InceptionFactory(pool3, 64, 96, 128, 16, 32, "max", 32, name="in3a")

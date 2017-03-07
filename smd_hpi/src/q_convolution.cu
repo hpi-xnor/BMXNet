@@ -17,7 +17,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
                                 const Tensor<gpu, 2, float> &temp_dst,
                                 const Tensor<gpu, 4, float> &out) {	    
 	//======== TODO: able to support arbitrary input channel size ==========//
-	//CHECK_EQ(in_col.size(0) % BITS_PER_BINARY_WORD, 0) << "input channel number for binary convolution layer is not divisible by 32.";
+	CHECK_EQ(in_col.size(0) % BITS_PER_BINARY_WORD, 0) << "input channel number for binary convolution layer is not divisible by 32.";
                             
 	//get matrix dimension		
 	int m, n, k;
