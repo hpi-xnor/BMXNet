@@ -18,6 +18,7 @@ if __name__ == '__main__':
     data.set_data_aug_level(parser, 3)
     parser.add_argument('--pretrained', type=str,
                     help='the pre-trained model')
+    log_file=None
     parser.add_argument('--log', dest='log_file', type=str, default="train.log",
                     help='save training log to file')
 
