@@ -35,22 +35,40 @@ if __name__ == "__main__":
     # use less augmentations for fine-tune
     data.set_data_aug_level(parser, 1)
     # use a small learning rate and less regularizations
-    parser.set_defaults(image_shape='3,224,224', num_epochs=30,
-                        lr=.01, lr_step_epochs='20', wd=0, mom=0)
+  
 
+    parser.set_defaults(
+        # network
+        # data
+        num_classes      = 1000,
+        num_examples     = 1281167,
+        image_shape      = '3,224,224',
+        min_random_scale = 1, # if input image has min size k, suggest to use
+                              # 256.0/x, e.g. 0.533 for 480
+        # train
+        num_epochs       = 60,
+        lr_step_epochs   = '20,30,40,50',
+        lr               = 0.01,
+        batch_size     = 32,
+        optimizer        = 'sgd',
+        disp_batches     = 10,
+        top_k            = 5,
+        data_train       = '/data/haojin/imagenet1k/imagenet1k-train',
+        data_val         = '/data/haojin/imagenet1k/imagenet1k-val'
+    )
     args = parser.parse_args()
 
     # load pretrained model
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    (prefix, epoch) = modelzoo.download_model(
-        args.pretrained_model, os.path.join(dir_path, 'model'))
-    if prefix is None:
-        (prefix, epoch) = (args.pretrained_model, args.load_epoch)
-    sym, arg_params, aux_params = mx.model.load_checkpoint(prefix, epoch)
+#    dir_path = os.path.dirname(os.path.realpath(__file__))
+#    (prefix, epoch) = modelzoo.download_model(
+#        args.pretrained_model, os.path.join(dir_path, 'model'))
+#    if prefix is None:
+    (prefix, epoch) = (args.pretrained_model, args.load_epoch)
+    new_sym, new_args, aux_params = mx.model.load_checkpoint(prefix, 126)
 
     # remove the last fullc layer
-    (new_sym, new_args) = get_fine_tune_model(
-        sym, arg_params, args.num_classes, args.layer_before_fullc)
+#    (new_sym, new_args) = get_fine_tune_model(
+#        sym, arg_params, args.num_classes, args.layer_before_fullc)
 
     # train
     fit.fit(args        = args,

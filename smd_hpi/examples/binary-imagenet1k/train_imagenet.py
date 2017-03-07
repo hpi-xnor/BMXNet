@@ -37,7 +37,7 @@ if __name__ == '__main__':
         lr_step_epochs   = '20,30,40,50',
         lr               = 0.01,
         batch_size     = 32,
-        optimizer        = 'Adam',
+        optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train',
