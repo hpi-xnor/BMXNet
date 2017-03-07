@@ -20,8 +20,10 @@ def ConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, s
 #    bn = mx.symbol.BatchNorm(data=data, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))
 #    conv = mx.symbol.QConvolution(data=bn, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)    
 #    act = mx.symbol.Activation(data=conv, act_type='relu', name='relu_%s%s' %(name, suffix), attr=attr)
-
-    conv = mx.symbol.QConvolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)
+    if num_filter < 32:
+        conv = mx.symbol.Convolution(data=bn, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix))    
+    else:
+        conv = mx.symbol.QConvolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)
     bn = mx.symbol.BatchNorm(data=conv, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))
     act = mx.symbol.Activation(data=bn, act_type='relu', name='relu_%s%s' %(name, suffix), attr=attr)
     return act
