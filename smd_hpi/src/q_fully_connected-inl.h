@@ -90,19 +90,19 @@ class QFullyConnectedOp : public Operator {
               NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);
       wmat_T = wmat.T();
     	QFullyConnectedForward(data, wmat_T, out, param_);
-    	mshadow::FreeSpace(&wmat_T);
+    	//mshadow::FreeSpace(&wmat_T);
     }else{
-		// mf quantize weights
-		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-		Tensor<xpu, 1, DType> abs = ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
-		helper::quantize(w1d, abs, this->param_.act_bit);
-		// /mf quantize weights
+  		// mf quantize weights
+  		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+  		Tensor<xpu, 1, DType> abs = ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
+  		helper::quantize(w1d, abs, this->param_.act_bit);
+  		// /mf quantize weights
 
-		out = dot(data, wmat.T());
-		if (!param_.no_bias) {
-		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
-		  out += repmat(bias, data.size(0));
-		}
+  		out = dot(data, wmat.T());
+  		if (!param_.no_bias) {
+  		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
+  		  out += repmat(bias, data.size(0));
+  		}
     }
   }
 
