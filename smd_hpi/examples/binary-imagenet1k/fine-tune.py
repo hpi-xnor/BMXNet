@@ -29,6 +29,24 @@ def _save_model(args, rank=0):
     return mx.callback.do_checkpoint(args.model_prefix if rank == 0 else "%s-%d" % (
         args.model_prefix, rank))
 
+def _get_lr_scheduler(args, kv):
+    if 'lr_factor' not in args or args.lr_factor >= 1:
+        return (args.lr, None)
+    epoch_size = args.num_examples / args.batch_size
+    if 'dist' in args.kv_store:
+        epoch_size /= kv.num_workers
+    begin_epoch = args.load_epoch if args.load_epoch else 0
+    step_epochs = [int(l) for l in args.lr_step_epochs.split(',')]
+    lr = args.lr
+    for s in step_epochs:
+        if begin_epoch >= s:
+            lr *= args.lr_factor
+    if lr != args.lr:
+        logging.info('Adjust learning rate to %e for epoch %d' %(lr, begin_epoch))
+
+    steps = [epoch_size * (x-begin_epoch) for x in step_epochs if x-begin_epoch > 0]
+    return (lr, mx.lr_scheduler.MultiFactorScheduler(step=steps, factor=args.lr_factor))
+
 if __name__ == "__main__":
     # parse args
     parser = argparse.ArgumentParser(description="fine-tune a dataset",
@@ -41,12 +59,12 @@ if __name__ == "__main__":
     parser.add_argument('--layer-before-fullc', type=str, default='flatten0',
                         help='the name of the layer before the last fullc layer')
     # use less augmentations for fine-tune
-    data.set_data_aug_level(parser, 1)
+    data.set_data_aug_level(parser, 3)
     # use a small learning rate and less regularizations
   
     parser.set_defaults(
         # network
-        network          = 'inception-bn-binary',
+        network          = 'inception-bn',
         # data
         num_classes      = 1000,
         num_examples     = 1281167,
@@ -66,12 +84,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    kv = mx.kvstore.create(args.kv_store)
+
     #load pretrained model
     if args.pretrained_model:
         sym, args_params, aux_params = mx.model.load_checkpoint(args.pretrained_model, 126)#inception-bn
 
     # save model
     checkpoint = _save_model(args, kv.rank)
+
+    # learning rate
+    lr, lr_scheduler = _get_lr_scheduler(args, kv)
     
     optimizer_params = {
             'learning_rate': lr,
@@ -90,12 +113,10 @@ if __name__ == "__main__":
             data_loader        = data.get_rec_iter,
             arg_params         = args_params,
             aux_params         = aux_params,
-            begin_epoch        = args.load_epoch if args.load_epoch else 0,
             optimizer          = args.optimizer,
             optimizer_params   = optimizer_params,
             initializer        = initializer,
-            arg_params         = arg_params,
-            aux_params         = aux_params,
             epoch_end_callback = checkpoint,
             allow_missing      = True,
-            monitor            = monitor)
+            monitor            = monitor
+)
