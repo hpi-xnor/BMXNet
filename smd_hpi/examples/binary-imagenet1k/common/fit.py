@@ -147,7 +147,7 @@ def fit(args, network, data_loader, **kwargs):
     lr_scheduler  = lr_scheduler
     optimizer_params = {
             'learning_rate': lr,
-#            'momentum' : args.mom,
+            'momentum' : args.mom,
             'wd' : args.wd,
             'lr_scheduler': lr_scheduler}
 
