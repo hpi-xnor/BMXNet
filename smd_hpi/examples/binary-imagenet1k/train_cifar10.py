@@ -34,16 +34,15 @@ if __name__ == '__main__':
         data_val       = '/data/haojin/cifar/cifar10/cifar10_val.rec',
         num_classes    = 10,
         num_examples   = 50000,
-        image_shape    = '3,28,28',
-        pad_size       = 4,
+        image_shape    = '3,32,32',        
         # train
         batch_size     = 256,
         num_epochs     = 100,
-        lr_step_epochs = '20,40,60,80',
-        optimizer        = 'Adam',
+        lr_step_epochs = '10,20,30,40,50,60,70,80,90',
+        optimizer        = 'sgd',
         disp_batches     = 10,
-        lr               = 0.01,
-	lr_factor        = 0.5
+        lr               = 0.5,
+	    lr_factor        = 0.5
     )
     args = parser.parse_args()
 
