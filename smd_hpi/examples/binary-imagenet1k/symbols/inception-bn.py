@@ -11,7 +11,7 @@ arXiv:1502.03167, 2015.
 """
 import mxnet as mx
 
-eps = 1e-10 + 1e-5
+eps = 1e-4#1e-10 + 1e-5
 bn_mom = 0.9
 fix_gamma = False
 
@@ -99,11 +99,11 @@ def get_symbol(num_classes, image_shape, **kwargs):
     else:
         # stage 1
         conv1 = ConvFactory(data=data, num_filter=64, kernel=(7, 7), stride=(2, 2), pad=(3, 3), name='1')
-        pool1 = mx.symbol.Pooling(data=conv1, kernel=(3, 3), stride=(2, 2), name='pool_1', pool_type='max')
+        pool1 = mx.symbol.Pooling(data=conv1, kernel=(3, 3), stride=(2, 2), name='max_pool_1', pool_type='max')
         # stage 2
-        conv2red = ConvFactory(data=pool1, num_filter=64, kernel=(1, 1), stride=(1, 1), name='2_red')
+        conv2red = ConvFactory(data=pool1, num_filter=64, kernel=(1, 1), stride=(1, 1), name='2_reduce')
         conv2 = ConvFactory(data=conv2red, num_filter=192, kernel=(3, 3), stride=(1, 1), pad=(1, 1), name='2')
-        pool2 = mx.symbol.Pooling(data=conv2, kernel=(3, 3), stride=(2, 2), name='pool_2', pool_type='max')
+        pool2 = mx.symbol.Pooling(data=conv2, kernel=(3, 3), stride=(2, 2), name='max_pool_2', pool_type='max')
         # stage 2
         in3a = InceptionFactoryA(pool2, 64, 64, 64, 64, 96, "avg", 32, '3a')
         in3b = InceptionFactoryA(in3a, 64, 64, 96, 64, 96, "avg", 64, '3b')
@@ -121,7 +121,7 @@ def get_symbol(num_classes, image_shape, **kwargs):
         pool = mx.symbol.Pooling(data=in5b, kernel=(7, 7), stride=(1, 1), name="global_pool", pool_type='avg')
 
     # linear classifier
-    flatten = mx.symbol.Flatten(data=pool)
-    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=num_classes)
+    flatten = mx.symbol.Flatten(data=pool, name="flatten")
+    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=num_classes, name="fc")
     softmax = mx.symbol.SoftmaxOutput(data=fc1, name='softmax')
     return softmax

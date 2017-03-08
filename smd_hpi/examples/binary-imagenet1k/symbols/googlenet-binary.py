@@ -8,9 +8,17 @@ with convolutions." arXiv preprint arXiv:1409.4842 (2014).
 
 import mxnet as mx
 
+BITW = 1
+
 def ConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, suffix=''):
     conv = mx.symbol.Convolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix))
     act = mx.symbol.Activation(data=conv, act_type='relu', name='relu_%s%s' %(name, suffix))
+    return act
+
+def QConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, suffix=''):
+    bn = mx.sym.BatchNorm(data=data)
+    act_q = mx.sym.QActivation(data=bn,  act_bit=BITA)
+    conv = mx.symbol.QConvolution(data=act, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BITW)
     return act
 
 def InceptionFactory(data, num_1x1, num_3x3red, num_3x3, num_d5x5red, num_d5x5, pool, proj, name):

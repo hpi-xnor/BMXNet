@@ -24,11 +24,6 @@ namespace mshadow {
                                     const Tensor<cpu, 4, float> &out,
                                     const mxnet::op::QConvolutionParam &param) {
 
-		CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
-		CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
-		CHECK_EQ(param.pad[0], 0) << "cant create beta scaling factor with padded input yet";
-		CHECK_EQ(param.pad[1], 0) << "cant create beta scaling factor with padded input yet";
-
 			///*
 		int m = wmat.size(0);
 		int n = wmat.size(1);
@@ -46,6 +41,10 @@ namespace mshadow {
 		float *K_planes = nullptr;
 
 		if (param.scaling_factor) {
+			CHECK_EQ(param.stride[0], 1) << "binary convolution currently only supported with stride==1";
+			CHECK_EQ(param.stride[1], 1) << "binary convolution currently only supported with stride==1";
+			CHECK_EQ(param.pad[0], 0) << "cant create beta scaling factor with padded input yet";
+			CHECK_EQ(param.pad[1], 0) << "cant create beta scaling factor with padded input yet";
 			alpha_plane = (float *) malloc(param.num_filter * sizeof(float));
 			A_planes = (float *) malloc(input_width * input_height * batch_size * sizeof(float));
 			K_planes = (float *) malloc(output_width * output_height * batch_size * sizeof(float));

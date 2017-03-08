@@ -117,7 +117,7 @@ def fit(args, network, data_loader, **kwargs):
 
 
     # load model
-    if 'arg_params' in kwargs and 'aux_params' in kwargs:
+    if 'arg_params' in kwargs and 'aux_params' in kwargs:    
         arg_params = kwargs['arg_params']
         aux_params = kwargs['aux_params']
     else:
@@ -125,6 +125,8 @@ def fit(args, network, data_loader, **kwargs):
         if sym is not None:
             assert sym.tojson() == network.tojson()
 
+    fixed_param_names = [name for name in network.list_arguments() \
+        if name.startswith('conv')]
     # save model
     checkpoint = _save_model(args, kv.rank)
 
@@ -138,13 +140,14 @@ def fit(args, network, data_loader, **kwargs):
     # create model
     model = mx.mod.Module(
         context       = devs,
-        symbol        = network
+        symbol        = network,
+        fixed_param_names = fixed_param_names
     )
 
     lr_scheduler  = lr_scheduler
     optimizer_params = {
             'learning_rate': lr,
-            #'momentum' : args.mom,
+            'momentum' : args.mom,
             'wd' : args.wd,
             'lr_scheduler': lr_scheduler}
 
