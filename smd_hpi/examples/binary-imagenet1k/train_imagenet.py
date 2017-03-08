@@ -34,7 +34,7 @@ if __name__ == '__main__':
         # train
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
-        lr               = 0.01,
+        lr               = 0.1,
         batch_size     = 32,
         optimizer        = 'sgd',
         disp_batches     = 10,

@@ -19,7 +19,7 @@ if __name__ == '__main__':
 #    (train_fname, val_fname) = download_cifar10()
 
     # parse args
-    parser = argparse.ArgumentParser(description="train cifar10",
+    parser = argparse.ArgumentParser(description="train cifar100",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     fit.add_fit_args(parser)
     data.add_data_args(parser)
@@ -28,11 +28,11 @@ if __name__ == '__main__':
     parser.set_defaults(
         # network
         network        = 'cifar10',
-        num_layers     = 5,
+        num_layers     = 8,
         # data
-        data_train     = '/data/haojin/cifar/cifar10/cifar10_train.rec',
-        data_val       = '/data/haojin/cifar/cifar10/cifar10_val.rec',
-        num_classes    = 10,
+        data_train     = '/data/haojin/cifar/cifar100/train.rec',
+        data_val       = '/data/haojin/cifar/cifar100/test.rec',
+        num_classes    = 100,
         num_examples   = 50000,
         image_shape    = '3,32,32',
         #pad_size       = 4,
@@ -43,6 +43,7 @@ if __name__ == '__main__':
         optimizer        = 'sgd',
         disp_batches     = 10,
         lr               = 0.1,
+        top_k            = 5,
     )
     args = parser.parse_args()
 
