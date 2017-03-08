@@ -40,7 +40,7 @@ if __name__ == '__main__':
         batch_size     = 256,
         num_epochs     = 200,
         lr_step_epochs = '50,100,150',
-        optimizer        = 'sgd',
+        optimizer        = 'Adam',
         disp_batches     = 10,
         lr               = 0.1,
     )
