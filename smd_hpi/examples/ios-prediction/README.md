@@ -4,19 +4,21 @@ This is an example project for running mxnet prediction on the iPhone.
 
 ## Usage
 
-We need the amalgamated MXNet source, the c predict headers and set some additional environment variables in xcode.
+The xcode project is self contained. Just ``build`` away!
 
-- execute ``amalgamate_mxnet.sh``
-- open ``predict-ios.xcodeproj``
-- ``build`` away!
+## What it does
 
-The script will amalgamate mxnet and perform the changes described below in the original readme file of the WhatsThis ios demo.
+Under the hood, we need the amalgamated MXNet source, the c predict headers, a trained and saved model from mxnet and set some additional environment variables in xcode.
+
+The script ``MXNet/amalgamate_mxnet.sh`` will be run as pre build script and amalgamate mxnet and perform the changes necessary for ios as described in the amalgamation readme file.
 
 The xcode project already contains the preprocessor settings required to build mxnet for ios:
 - ``"MXNET_PREDICT_ONLY=1"``
 - ``"MXNET_USE_OPENCV=0"``
 - ``"MSHADOW_USE_CUDA=0"``
 - ``"MSHADOW_USE_SSE=0"``
+
+There is a pre-trained Inception-BN model included in this repo (``predict-ios/Inception``)
 
 # \<original readme\> WhatsThis-iOS
 

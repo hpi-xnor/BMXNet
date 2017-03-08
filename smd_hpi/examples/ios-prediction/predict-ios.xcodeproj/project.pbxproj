@@ -21,6 +21,7 @@
 		472E1CE81C546868005E3FE0 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE71C546868005E3FE0 /* LICENSE */; };
 		472E1CEB1C5478A5005E3FE0 /* mean_224.bin in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CEA1C5478A5005E3FE0 /* mean_224.bin */; };
 		472E1CED1C5484FA005E3FE0 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CEC1C5484FA005E3FE0 /* LICENSE */; };
+		C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */ = {isa = PBXBuildFile; fileRef = C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 		472E1CE71C546868005E3FE0 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		472E1CEA1C5478A5005E3FE0 /* mean_224.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = mean_224.bin; sourceTree = "<group>"; };
 		472E1CEC1C5484FA005E3FE0 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = amalgamate_mxnet.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +105,7 @@
 		472E1CD81C545B4E005E3FE0 /* MXNet */ = {
 			isa = PBXGroup;
 			children = (
+				C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */,
 				472E1CEC1C5484FA005E3FE0 /* LICENSE */,
 				472E1CD91C545B53005E3FE0 /* mxnet_predict-all.cc */,
 				472E1CDA1C545B53005E3FE0 /* c_predict_api.h */,
@@ -129,6 +132,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 472E1CD51C545B31005E3FE0 /* Build configuration list for PBXNativeTarget "predict-ios" */;
 			buildPhases = (
+				C8FA00301E7022C40063DD50 /* ShellScript */,
 				472E1CBA1C545B31005E3FE0 /* Sources */,
 				472E1CBB1C545B31005E3FE0 /* Frameworks */,
 				472E1CBC1C545B31005E3FE0 /* Resources */,
@@ -138,7 +142,7 @@
 			dependencies = (
 			);
 			name = "predict-ios";
-			productName = predict-ios;
+			productName = "predict-ios";
 			productReference = 472E1CBE1C545B31005E3FE0 /* predict-ios.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -189,10 +193,27 @@
 				472E1CED1C5484FA005E3FE0 /* LICENSE in Resources */,
 				472E1CCC1C545B31005E3FE0 /* Main.storyboard in Resources */,
 				472E1CE31C546859005E3FE0 /* Inception_BN-0039.params in Resources */,
+				C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		C8FA00301E7022C40063DD50 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/Users/mtin/GoogleDrive/DOCS/thesis/mxnet/smd_hpi/examples/ios-prediction/predict-ios/MXNet/amalgamate_mxnet.sh";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		472E1CBA1C545B31005E3FE0 /* Sources */ = {
@@ -273,7 +294,6 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
 				MTL_ENABLE_DEBUG_INFO = YES;
-				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -328,7 +348,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				DEVELOPMENT_TEAM = 2W5FFJ2T2K;
-				INFOPLIST_FILE = predict-ios/Info.plist;
+				INFOPLIST_FILE = "predict-ios/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.hpi.smd.object-detection";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -344,7 +364,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				DEVELOPMENT_TEAM = 2W5FFJ2T2K;
-				INFOPLIST_FILE = predict-ios/Info.plist;
+				INFOPLIST_FILE = "predict-ios/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.hpi.smd.object-detection";
 				PRODUCT_NAME = "$(TARGET_NAME)";
