@@ -35,7 +35,7 @@ def get_symbol(num_classes, **kwargs):
     
     # stage 4
     flatten = mx.symbol.Flatten(data=pool3)
-    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=4096)
+    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=512)
     bn4 = mx.sym.BatchNorm(data=fc1, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
     relu4 = mx.symbol.Activation(data=bn4, act_type="relu") 
 
