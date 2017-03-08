@@ -15,17 +15,16 @@ if __name__ == '__main__':
     data.add_data_args(parser)
     data.add_data_aug_args(parser)
     # use a large aug level
-    data.set_data_aug_level(parser, 3)
+    data.set_data_aug_level(parser, 1)
     parser.add_argument('--pretrained', type=str,
                     help='the pre-trained model')
-    log_file=None
+  
     parser.add_argument('--log', dest='log_file', type=str, default="train.log",
                     help='save training log to file')
-
+ 
     parser.set_defaults(
         # network
-        network          = 'inception-bn-binary',
-        num_layers       = 22,
+        network          = 'alexnet',
         # data
         num_classes      = 1000,
         num_examples     = 1281167,
@@ -35,9 +34,9 @@ if __name__ == '__main__':
         # train
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
-        lr               = 0.1,
+        lr               = 0.01,
         batch_size     = 32,
-        optimizer        = 'Adam',
+        optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train',
@@ -46,6 +45,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # set up logger    
+    log_file = args.log_file
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     if log_file:
