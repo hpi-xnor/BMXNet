@@ -64,6 +64,9 @@ if __name__ == '__main__':
     net = import_module('symbols.'+args.network)
     sym = net.get_symbol(**vars(args))
 
+    devs = mx.cpu() if args.gpus is None or args.gpus is '' else [
+    mx.gpu(int(i)) for i in args.gpus.split(',')]
+    
     #load pretrained
     args_params=None
     auxs_params=None
