@@ -89,7 +89,10 @@ class QFullyConnectedOp : public Operator {
       Tensor<xpu, 2, DType> wmat_T =
               NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);
       wmat_T = wmat.T();
+auto start = std::chrono::high_resolution_clock::now();
     	QFullyConnectedForward(data, wmat_T, out, param_);
+auto finish = std::chrono::high_resolution_clock::now();
+std::cout << "fc elapsed time: " << std::chrono::duration<double>(finish - start).count() << " s\n";
     	mshadow::FreeSpace(&wmat_T);
     }else{
   		// mf quantize weights
