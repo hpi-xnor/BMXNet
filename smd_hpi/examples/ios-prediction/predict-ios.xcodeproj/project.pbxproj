@@ -18,9 +18,11 @@
 		472E1CE31C546859005E3FE0 /* Inception_BN-0039.params in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CDF1C546859005E3FE0 /* Inception_BN-0039.params */; };
 		472E1CE41C546859005E3FE0 /* Inception_BN-symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */; };
 		472E1CE61C546859005E3FE0 /* synset.txt in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE21C546859005E3FE0 /* synset.txt */; };
-		472E1CE81C546868005E3FE0 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE71C546868005E3FE0 /* LICENSE */; };
 		472E1CEB1C5478A5005E3FE0 /* mean_224.bin in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CEA1C5478A5005E3FE0 /* mean_224.bin */; };
-		472E1CED1C5484FA005E3FE0 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CEC1C5484FA005E3FE0 /* LICENSE */; };
+		C8D9F5621E718E27005DD292 /* LICENSE_MXNet in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5611E718E27005DD292 /* LICENSE_MXNet */; };
+		C8D9F5641E718E35005DD292 /* LICENSE_Inception_BN in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */; };
+		C8D9F5671E719578005DD292 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8D9F5661E719578005DD292 /* AVFoundation.framework */; };
+		C8D9F5691E7197BF005DD292 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8D9F5681E7197BF005DD292 /* CoreMedia.framework */; };
 		C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */ = {isa = PBXBuildFile; fileRef = C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */; };
 /* End PBXBuildFile section */
 
@@ -41,9 +43,11 @@
 		472E1CDF1C546859005E3FE0 /* Inception_BN-0039.params */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inception_BN-0039.params"; sourceTree = "<group>"; };
 		472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "Inception_BN-symbol.json"; sourceTree = "<group>"; };
 		472E1CE21C546859005E3FE0 /* synset.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = synset.txt; sourceTree = "<group>"; };
-		472E1CE71C546868005E3FE0 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		472E1CEA1C5478A5005E3FE0 /* mean_224.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = mean_224.bin; sourceTree = "<group>"; };
-		472E1CEC1C5484FA005E3FE0 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		C8D9F5611E718E27005DD292 /* LICENSE_MXNet */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_MXNet; sourceTree = "<group>"; };
+		C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_Inception_BN; sourceTree = "<group>"; };
+		C8D9F5661E719578005DD292 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		C8D9F5681E7197BF005DD292 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = amalgamate_mxnet.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -52,6 +56,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C8D9F5691E7197BF005DD292 /* CoreMedia.framework in Frameworks */,
+				C8D9F5671E719578005DD292 /* AVFoundation.framework in Frameworks */,
 				472E1CDD1C545B9A005E3FE0 /* Accelerate.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -65,6 +71,7 @@
 				472E1CDC1C545B9A005E3FE0 /* Accelerate.framework */,
 				472E1CC01C545B31005E3FE0 /* predict-ios */,
 				472E1CBF1C545B31005E3FE0 /* Products */,
+				C8D9F5651E719578005DD292 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -105,8 +112,8 @@
 		472E1CD81C545B4E005E3FE0 /* MXNet */ = {
 			isa = PBXGroup;
 			children = (
+				C8D9F5611E718E27005DD292 /* LICENSE_MXNet */,
 				C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */,
-				472E1CEC1C5484FA005E3FE0 /* LICENSE */,
 				472E1CD91C545B53005E3FE0 /* mxnet_predict-all.cc */,
 				472E1CDA1C545B53005E3FE0 /* c_predict_api.h */,
 			);
@@ -116,13 +123,22 @@
 		472E1CDE1C546859005E3FE0 /* Inception */ = {
 			isa = PBXGroup;
 			children = (
-				472E1CE71C546868005E3FE0 /* LICENSE */,
+				C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */,
 				472E1CDF1C546859005E3FE0 /* Inception_BN-0039.params */,
 				472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */,
 				472E1CEA1C5478A5005E3FE0 /* mean_224.bin */,
 				472E1CE21C546859005E3FE0 /* synset.txt */,
 			);
 			path = Inception;
+			sourceTree = "<group>";
+		};
+		C8D9F5651E719578005DD292 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C8D9F5681E7197BF005DD292 /* CoreMedia.framework */,
+				C8D9F5661E719578005DD292 /* AVFoundation.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -152,7 +168,7 @@
 		472E1CB61C545B31005E3FE0 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0720;
+				LastUpgradeCheck = 0820;
 				ORGANIZATIONNAME = HPI;
 				TargetAttributes = {
 					472E1CBD1C545B31005E3FE0 = {
@@ -185,12 +201,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				472E1CD11C545B31005E3FE0 /* LaunchScreen.storyboard in Resources */,
-				472E1CE81C546868005E3FE0 /* LICENSE in Resources */,
+				C8D9F5621E718E27005DD292 /* LICENSE_MXNet in Resources */,
+				C8D9F5641E718E35005DD292 /* LICENSE_Inception_BN in Resources */,
 				472E1CE41C546859005E3FE0 /* Inception_BN-symbol.json in Resources */,
 				472E1CEB1C5478A5005E3FE0 /* mean_224.bin in Resources */,
 				472E1CCE1C545B31005E3FE0 /* Assets.xcassets in Resources */,
 				472E1CE61C546859005E3FE0 /* synset.txt in Resources */,
-				472E1CED1C5484FA005E3FE0 /* LICENSE in Resources */,
 				472E1CCC1C545B31005E3FE0 /* Main.storyboard in Resources */,
 				472E1CE31C546859005E3FE0 /* Inception_BN-0039.params in Resources */,
 				C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */,
@@ -262,8 +278,10 @@
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -294,6 +312,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
 				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -311,8 +330,10 @@
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
