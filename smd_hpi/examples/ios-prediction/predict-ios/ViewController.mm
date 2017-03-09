@@ -7,6 +7,10 @@
 //
 
 #import "ViewController.h"
+#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVCaptureDevice.h> // For access to the camera
+#import <AVFoundation/AVCaptureInput.h> // For adding a data input to the camera
+#import <AVFoundation/AVCaptureSession.h>
 
 @interface ViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 
@@ -109,7 +113,7 @@
             }
         }
         
-        //< Visualize the Mean Data
+        /*//< Visualize the Mean Data
         std::vector<uint8_t> mean_with_alpha(kDefaultWidth*kDefaultHeight*(kDefaultChannels+1), 0);
         float *p_mean[3] = {
             model_mean,
@@ -144,7 +148,7 @@
         meanImage = [UIImage imageWithCGImage:imageRef];
         CGImageRelease(imageRef);
         CGDataProviderRelease(provider);
-        self.imageViewPhoto.image = meanImage;
+        self.imageViewPhoto.image = meanImage;*/
     }
 }
 
@@ -188,6 +192,104 @@
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
     [picker dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (IBAction)startDetectionButtonTapped:(id)sender {
+    [self.detectionButton setTitle:@"Stop Detection" forState:UIControlStateNormal];
+    [self.detectionButton addTarget:self
+                             action:@selector(stopDetectionButtonTapped:)
+                   forControlEvents:UIControlEventTouchUpInside];
+    if (!captureSession) {
+        captureSession = [self createCaptureSession];
+    }
+    [captureSession startRunning];
+}
+
+- (IBAction)stopDetectionButtonTapped:(id)sender {
+    [self.detectionButton setTitle:@"Start Detection" forState:UIControlStateNormal];
+    [self.detectionButton addTarget:self
+                             action:@selector(startDetectionButtonTapped:)
+                   forControlEvents:UIControlEventTouchUpInside];
+    [captureSession stopRunning];
+}
+
+- (AVCaptureSession *)createCaptureSession
+{
+    AVCaptureSession *session = [[AVCaptureSession alloc] init];
+    session.sessionPreset = AVCaptureSessionPresetHigh;
+    
+    AVCaptureDevice *device = [self selectCameraAt:AVCaptureDevicePositionBack];
+    
+    
+    NSError *error = nil;
+    AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
+    if (!input) {
+        // Handle the error appropriately.
+        NSLog(@"no input.....");
+    }
+    [session addInput:input];
+    
+    AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
+    [session addOutput:output];
+    output.videoSettings = @{ (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA) };
+    
+    dispatch_queue_t queue = dispatch_queue_create("MyQueue", NULL);
+    
+    [output setSampleBufferDelegate:self queue:queue];
+    
+    return session;
+}
+
+- (AVCaptureDevice *)selectCameraAt:(AVCaptureDevicePosition)chosenPosition {
+    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    for (AVCaptureDevice *device in devices) {
+        if ([device position] == chosenPosition) {
+            return device;
+        }
+    }
+    return nil;
+}
+
+- (void)captureOutput:(AVCaptureOutput *)captureOutput
+didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
+       fromConnection:(AVCaptureConnection *)connection {
+    
+    
+    CGImageRef cgImage = [self imageFromSampleBuffer:sampleBuffer];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
+        dispatch_async(dispatch_get_main_queue(), ^(){
+            [self.imageViewPhoto setImage:[UIImage imageWithCGImage: cgImage scale:0.0 orientation:UIImageOrientationLeft]]; // <!!! set image to ui view here !!!!
+            CGImageRelease( cgImage );
+        });
+    });
+    
+    
+//    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+//    NSString *documentsPath = [paths objectAtIndex:0];
+//    NSString *filePath = [documentsPath stringByAppendingPathComponent:@"image.png"];
+//    NSData* data = UIImagePNGRepresentation(self.theImage);
+//    [data writeToFile:filePath atomically:YES];
+}
+
+- (CGImageRef) imageFromSampleBuffer:(CMSampleBufferRef) sampleBuffer
+{
+    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    CVPixelBufferLockBaseAddress(imageBuffer,0);
+    uint8_t *baseAddress = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+    size_t width = CVPixelBufferGetWidth(imageBuffer);
+    size_t height = CVPixelBufferGetHeight(imageBuffer);
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    
+    CGContextRef newContext = CGBitmapContextCreate(baseAddress, width, height, 8, bytesPerRow, colorSpace, kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
+    CGImageRef newImage = CGBitmapContextCreateImage(newContext);
+    CGContextRelease(newContext);
+    
+    CGColorSpaceRelease(colorSpace);
+    CVPixelBufferUnlockBaseAddress(imageBuffer,0);
+    
+    return newImage;
 }
 
 @end

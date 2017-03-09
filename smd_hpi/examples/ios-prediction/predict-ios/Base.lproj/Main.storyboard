@@ -27,29 +27,36 @@
                                 <rect key="frame" x="80" y="30" width="168" height="518"/>
                                 <subviews>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" verticalHuggingPriority="249" verticalCompressionResistancePriority="749" translatesAutoresizingMaskIntoConstraints="NO" id="5uT-4f-HMh">
-                                        <rect key="frame" x="0.0" y="0.0" width="168" height="224.5"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="168" height="225"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="5uT-4f-HMh" secondAttribute="height" multiplier="3:4" id="nXE-N0-lXr"/>
                                         </constraints>
                                     </imageView>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="This is ..." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dje-xX-ydn">
-                                        <rect key="frame" x="50.5" y="232.5" width="67.5" height="20.5"/>
+                                        <rect key="frame" x="50.5" y="233" width="67.5" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <color key="textColor" cocoaTouchSystemColor="darkTextColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
-                                    <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="YFi-JG-R39">
-                                        <rect key="frame" x="45.5" y="261" width="77" height="219"/>
-                                        <state key="normal" title="Take Photo"/>
+                                    <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WfO-vs-Gqh">
+                                        <rect key="frame" x="31.5" y="261.5" width="105" height="180.5"/>
+                                        <state key="normal" title="Start Detection"/>
                                         <connections>
-                                            <action selector="capturePhotoButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="ycr-pd-Zyj"/>
+                                            <action selector="startDetectionButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="ccr-am-V9h"/>
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fEo-C7-pyA">
-                                        <rect key="frame" x="40" y="488" width="88" height="30"/>
+                                        <rect key="frame" x="40" y="450" width="88" height="30"/>
                                         <state key="normal" title="Select Photo"/>
                                         <connections>
                                             <action selector="selectPhotoButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="kXf-9V-6R6"/>
+                                        </connections>
+                                    </button>
+                                    <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="YFi-JG-R39">
+                                        <rect key="frame" x="45.5" y="488" width="77" height="30"/>
+                                        <state key="normal" title="Take Photo"/>
+                                        <connections>
+                                            <action selector="capturePhotoButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="ycr-pd-Zyj"/>
                                         </connections>
                                     </button>
                                 </subviews>
@@ -64,6 +71,7 @@
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="detectionButton" destination="WfO-vs-Gqh" id="pfx-ic-F1n"/>
                         <outlet property="imageViewPhoto" destination="5uT-4f-HMh" id="uXC-Fd-HJX"/>
                         <outlet property="labelDescription" destination="dje-xX-ydn" id="DkY-aJ-Kvu"/>
                     </connections>

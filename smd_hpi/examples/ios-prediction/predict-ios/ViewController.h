@@ -9,13 +9,14 @@
 #import <UIKit/UIKit.h>
 #import "c_predict_api.h"
 #import <vector>
+#import <AVFoundation/AVCaptureOutput.h> // Allows us to use AVCaptureVideoDataOutputSampleBufferDelegate
 
 #define kDefaultWidth 224
 #define kDefaultHeight 224
 #define kDefaultChannels 3
 #define kDefaultImageSize (kDefaultWidth*kDefaultHeight*kDefaultChannels)
 
-@interface ViewController : UIViewController {
+@interface ViewController : UIViewController <AVCaptureVideoDataOutputSampleBufferDelegate>{
     
     PredictorHandle predictor;
     
@@ -23,12 +24,16 @@
     NSData *model_params;
     NSMutableArray *model_synset;
     float model_mean[kDefaultImageSize];
-    UIImage *meanImage;
+    AVCaptureSession *captureSession;
 }
 
 @property (weak, nonatomic) IBOutlet UILabel *labelDescription;
 @property (weak, nonatomic) IBOutlet UIImageView *imageViewPhoto;
+@property (weak, nonatomic) IBOutlet UIButton *detectionButton;
 
+- (IBAction)startDetectionButtonTapped:(id)sender;
+- (IBAction)stopDetectionButtonTapped:(id)sender;
+- (AVCaptureSession *)createCaptureSession;
 
 @end
 
