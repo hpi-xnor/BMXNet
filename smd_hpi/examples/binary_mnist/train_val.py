@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pdb
 from dorefa_ops import get_dorefa
 from math_ops import *
+from random import randint
 
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -70,8 +71,8 @@ def get_binary_lenet():
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 
 	# second conv layer
-	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
-	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
+	#conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
+	conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
 
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
@@ -148,11 +149,11 @@ def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, ba
 	model.bind(data_shapes=val_iter.provide_data,
          	   label_shapes=val_iter.provide_label, for_training=False)  # create memory by given input shapes
 	model.init_params()  # initial parameters with the default random initializer
-
-	plt.imshow(val_img[0], cmap='Greys_r')
+	n = randint(0,100)
+	plt.imshow(val_img[n], cmap='Greys_r')
 	plt.axis('off')
 	plt.show()
-	prob = model.predict(eval_data=val_iter, num_batch=1)[0].asnumpy() 
+	prob = model.predict(eval_data=val_iter, num_batch=1)[n].asnumpy() 
 	print 'Classified as %d with probability %f' % (prob.argmax(), max(prob))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
