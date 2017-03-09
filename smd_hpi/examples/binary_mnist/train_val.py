@@ -70,7 +70,8 @@ def get_binary_lenet():
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 
 	# second conv layer
-	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=100, act_bit=BITW, scaling_factor=False)
+	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
+	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
 
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
@@ -119,20 +120,39 @@ def train(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
 	) 
 	return model
 
-def val(model_prefix, epoch_num, train_img, val_img, train_lbl, val_lbl, batch_size):
+def val(model_prefix, epoch_num, train_img, val_img, train_lbl, val_lbl, batch_size, gpu_id=0):
+	device = mx.cpu()
+	if gpu_id >= 0:
+		device = mx.gpu(gpu_id)
 	print('Preparing data for validation...')
 	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
-	print('Loading model...')
-	model = mx.model.FeedForward.load(model_prefix, epoch_num)
+	print('Loading model...')	
+	model = mx.mod.Module.load(model_prefix, epoch_num, context = device)
+	
+	model.bind(data_shapes=val_iter.provide_data,
+	         label_shapes=val_iter.provide_label, for_training=False)  # create memory by given input shapes
+	model.init_params()  # initial parameters with the default random initializer
 	print('Evaluating...')
-	print 'Validation accuracy: %f%%' % (model.score(val_iter)*100,)
+	metric = mx.metric.Accuracy()
+	score = model.score(val_iter, metric)
+	print score
+	#print 'Validation accuracy: %f%%' % (score*100)
 
-def classify(val_img, model_prefix, epoch_num):
-	model = mx.model.FeedForward.load(model_prefix, epoch_num)
+def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, batch_size, gpu_id=0):
+	device = mx.cpu()
+	if gpu_id >= 0:
+		device = mx.gpu(gpu_id)
+	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
+	model = mx.mod.Module.load(model_prefix, epoch_num, context = device)
+		
+	model.bind(data_shapes=val_iter.provide_data,
+         	   label_shapes=val_iter.provide_label, for_training=False)  # create memory by given input shapes
+	model.init_params()  # initial parameters with the default random initializer
+
 	plt.imshow(val_img[0], cmap='Greys_r')
 	plt.axis('off')
 	plt.show()
-	prob = model.predict(to4d(val_img[0:1]))[0]
+	prob = model.predict(eval_data=val_iter, num_batch=1)[0].asnumpy() 
 	print 'Classified as %d with probability %f' % (prob.argmax(), max(prob))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
@@ -141,17 +161,6 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu
 	device = mx.cpu()
 	if gpu_id >= 0:
 		device = mx.gpu(gpu_id)
-	#model = mx.model.FeedForward(
-	# 	ctx = device,     # use GPU 0 for training, others are same as before
-	# 	symbol = lenet,   		  # network structure
-	# 	num_epoch = epochs,     	  # number of data passes for training
-	# 	optimizer='Adam')
-    
-	#model.fit(
-	# 	X=train_iter,  			# training data
-	# 	eval_data=val_iter, 	# validation data
-	# 	batch_end_callback = mx.callback.Speedometer(batch_size, 200) # output progress for each 200 data batches
-	#)
 
 	model = mx.mod.Module(lenet, context = device)
 

@@ -37,7 +37,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
     // TODO(bing) add support for boolean
     DMLC_DECLARE_FIELD(num_hidden).set_lower_bound(1)
     .describe("Number of hidden nodes of the output.");
-    DMLC_DECLARE_FIELD(no_bias).set_default(false)
+    DMLC_DECLARE_FIELD(no_bias).set_default(true)
     .describe("Whether to disable bias parameter.");
     DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
