@@ -24,25 +24,25 @@ if __name__ == '__main__':
     fit.add_fit_args(parser)
     data.add_data_args(parser)
     data.add_data_aug_args(parser)
-    data.set_data_aug_level(parser, 2)
+    data.set_data_aug_level(parser, 3)
     parser.set_defaults(
         # network
         network        = 'cifar10',
-        num_layers     = 5,
+        num_layers     = 18,
         # data
         data_train     = '/data/haojin/cifar/cifar10/cifar10_train.rec',
         data_val       = '/data/haojin/cifar/cifar10/cifar10_val.rec',
         num_classes    = 10,
         num_examples   = 50000,
-        image_shape    = '3,32,32',        
+        image_shape    = '3,32,32',
         # train
-        batch_size     = 256,
-        num_epochs     = 100,
-        lr_step_epochs = '10,20,30,40,50,60,70,80,90',
-        optimizer        = 'adam',
-        disp_batches     = 10,
-        lr               = 0.5,
-	    lr_factor        = 0.5
+        batch_size     = 128,
+        num_epochs     = 300,
+        lr_step_epochs = '200,250',
+        optimizer        = 'sgd',
+        disp_batches     = 100,
+        lr               = 0.05,
+        lr_factor        = 0.1
     )
     args = parser.parse_args()
 
