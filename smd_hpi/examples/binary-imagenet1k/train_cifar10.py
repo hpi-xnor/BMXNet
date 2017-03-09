@@ -46,10 +46,10 @@ if __name__ == '__main__':
         lr               = 0.05,
         lr_factor        = 0.1
     )
-    args = parser.parse_args()
 
     parser.add_argument('--log', dest='log_file', type=str, default="train.log",
                     help='save training log to file')
+    args = parser.parse_args()
 
     # set up logger    
     log_file = args.log_file
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     if log_file:
         fh = logging.FileHandler(log_file)
         logger.addHandler(fh)
-        
+
     # load network
     from importlib import import_module
     net = import_module('symbols.'+args.network)
