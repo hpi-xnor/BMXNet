@@ -31,6 +31,7 @@ namespace mshadow {
         get_binary_row(data.dptr_, binary_row, m*n);
         get_binary_col(wmat.dptr_, binary_col, n, k);
 
+        #pragma omp parallel for
         for (int i = 0; i < out.shape_.Size(); ++i) {
           out.dptr_[i] = 0;
         }
