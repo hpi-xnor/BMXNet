@@ -259,7 +259,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         dispatch_async(dispatch_get_main_queue(), ^(){
-            [self.imageViewPhoto setImage:[UIImage imageWithCGImage: cgImage scale:0.0 orientation:UIImageOrientationLeft]]; // <!!! set image to ui view here !!!!
+            [self.imageViewPhoto setImage:[UIImage imageWithCGImage: cgImage scale:0.0 orientation:UIImageOrientationRight]];
             CGImageRelease( cgImage );
         });
     });
