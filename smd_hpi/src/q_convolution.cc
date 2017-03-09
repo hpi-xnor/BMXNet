@@ -58,7 +58,7 @@ namespace mshadow {
 		get_binary_row(wmat.dptr_, binary_row, m*n);
 		get_binary_col(in_col.dptr_, binary_col, n, k);
 
-		auto start = std::chrono::high_resolution_clock::now();
+		//auto start = std::chrono::high_resolution_clock::now();
 
 		///*
 		xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
@@ -74,9 +74,9 @@ namespace mshadow {
 					in_col.dptr_, k,
 					temp_dst.dptr_, k);
 		*/
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+		//auto finish = std::chrono::high_resolution_clock::now();
+		//std::chrono::duration<double> elapsed = finish - start;
+		//std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
 
 		if (param.scaling_factor) {
 			// apply alpha and beta scaling factor (filter-wise)

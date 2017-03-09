@@ -15,7 +15,7 @@ if __name__ == '__main__':
     data.add_data_args(parser)
     data.add_data_aug_args(parser)
     # use a large aug level
-    data.set_data_aug_level(parser, 1)
+    data.set_data_aug_level(parser, 3)
     parser.add_argument('--pretrained', type=str,
                     help='the pre-trained model')
   
@@ -34,7 +34,7 @@ if __name__ == '__main__':
         # train
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
-        lr               = 0.01,
+        lr               = 0.1,
         batch_size     = 32,
         optimizer        = 'sgd',
         disp_batches     = 10,
@@ -63,11 +63,11 @@ if __name__ == '__main__':
     #load pretrained
     args_params=None
     auxs_params=None
-#    if args.pretrained:
-#        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 39)#inception-bn-0039.param
-#        logger.info("Start training with {} from pretrained model {}"
-#                .format(str(devs), args.pretrained))
-
+    if args.pretrained:
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 1)#inception-bn-0039.param
+        logger.info("Start training with {} from pretrained model {}"
+                .format(str(devs), args.pretrained))
+	
     # train
     if args_params and auxs_params:
         fit.fit(

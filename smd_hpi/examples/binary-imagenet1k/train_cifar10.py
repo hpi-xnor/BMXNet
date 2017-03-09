@@ -16,7 +16,7 @@ def download_cifar10():
 
 if __name__ == '__main__':
     # download data
-    (train_fname, val_fname) = download_cifar10()
+#    (train_fname, val_fname) = download_cifar10()
 
     # parse args
     parser = argparse.ArgumentParser(description="train cifar10",
@@ -24,30 +24,67 @@ if __name__ == '__main__':
     fit.add_fit_args(parser)
     data.add_data_args(parser)
     data.add_data_aug_args(parser)
-    data.set_data_aug_level(parser, 2)
+    data.set_data_aug_level(parser, 3)
+    parser.add_argument('--pretrained', type=str,
+                help='the pre-trained model')
     parser.set_defaults(
         # network
-        network        = 'resnet',
-        num_layers     = 110,
+        network        = 'cifar10',
+        num_layers     = 18,
         # data
-        data_train     = train_fname,
-        data_val       = val_fname,
+        data_train     = '/data/haojin/cifar/cifar10/cifar10_train.rec',
+        data_val       = '/data/haojin/cifar/cifar10/cifar10_val.rec',
         num_classes    = 10,
-        num_examples  = 50000,
-        image_shape    = '3,28,28',
-        pad_size       = 4,
+        num_examples   = 50000,
+        image_shape    = '3,32,32',
         # train
         batch_size     = 128,
         num_epochs     = 300,
-        lr             = .05,
         lr_step_epochs = '200,250',
+        optimizer        = 'sgd',
+        disp_batches     = 100,
+        lr               = 0.05,
+        lr_factor        = 0.1
     )
+
+    parser.add_argument('--log', dest='log_file', type=str, default="train.log",
+                    help='save training log to file')
     args = parser.parse_args()
+
+    # set up logger    
+    log_file = args.log_file
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    if log_file:
+        fh = logging.FileHandler(log_file)
+        logger.addHandler(fh)
 
     # load network
     from importlib import import_module
     net = import_module('symbols.'+args.network)
     sym = net.get_symbol(**vars(args))
 
+    devs = mx.cpu() if args.gpus is None or args.gpus is '' else [
+    mx.gpu(int(i)) for i in args.gpus.split(',')]
+    
+    #load pretrained
+    args_params=None
+    auxs_params=None
+    if args.pretrained:
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 300)#inception-bn-0039.param
+        logger.info("Start training with {} from pretrained model {}"
+                .format(str(devs), args.pretrained))
+    
     # train
-    fit.fit(args, sym, data.get_rec_iter)
+    if args_params and auxs_params:
+        fit.fit(
+            args, 
+            sym, 
+            data.get_rec_iter, 
+            arg_params=args_params, 
+            aux_params=auxs_params)
+    else:
+        fit.fit(
+            args, 
+            sym, 
+            data.get_rec_iter)
