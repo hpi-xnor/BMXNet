@@ -21,7 +21,7 @@
 @implementation ViewController
 
 - (NSString *)predictImage:(UIImage *)image {
-
+    NSDate *methodStart = [NSDate date];
 
     const int numForRendering = kDefaultWidth*kDefaultHeight*(kDefaultChannels+1);
     const int numForComputing = kDefaultWidth*kDefaultHeight*kDefaultChannels;
@@ -72,6 +72,11 @@
     std::vector<float> outputs(tt_size);
     MXPredGetOutput(predictor, 0, outputs.data(), tt_size);
     size_t max_idx = std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
+    
+    NSDate *methodFinish = [NSDate date];
+    NSTimeInterval executionTime = [methodFinish timeIntervalSinceDate:methodStart];
+    NSLog(@"executionTime = %f", executionTime);
+    
     return [[model_synset objectAtIndex:max_idx] componentsJoinedByString:@" "];
 }
 
@@ -254,7 +259,6 @@
 didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
        fromConnection:(AVCaptureConnection *)connection {
     
-    
     CGImageRef cgImage = [self imageFromSampleBuffer:sampleBuffer];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
@@ -263,13 +267,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             CGImageRelease( cgImage );
         });
     });
-    
-    
-//    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-//    NSString *documentsPath = [paths objectAtIndex:0];
-//    NSString *filePath = [documentsPath stringByAppendingPathComponent:@"image.png"];
-//    NSData* data = UIImagePNGRepresentation(self.theImage);
-//    [data writeToFile:filePath atomically:YES];
 }
 
 - (CGImageRef) imageFromSampleBuffer:(CMSampleBufferRef) sampleBuffer
