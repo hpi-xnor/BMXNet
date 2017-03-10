@@ -68,20 +68,23 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
                                       no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT, is_train=True)
 #        conv1 = mx.sym.Custom(data=conv1, op_type='debug')
 #	    act1 = mx.sym.Activation(data=conv1, act_type='relu', name=name + '_tanh1')
-        bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2')
+        act2 = mx.sym.QActivation(data=conv1, act_bit=BIT)
+        bn2 = mx.sym.BatchNorm(data=act2, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2')
 #        act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name + '_relu2')
-        act2 = mx.sym.QActivation(data=bn2, act_bit=BIT)
-        conv2 = mx.sym.QConvolution(data=act2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
+        
+        conv2 = mx.sym.QConvolution(data=bn2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT, is_train=True)
+        act3 = mx.sym.QActivation(data=conv2, act_bit=BIT)
 #	act2 = mx.sym.Activation(data=conv2, act_type='relu', name=name + '_tanh2')
         if dim_match:
             shortcut = data
         else:
             shortcut = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc', act_bit=BIT, is_train=True)
+            act4 = mx.sym.QActivation(data=shortcut, act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
-        return conv2 + shortcut
+        return act3 + act4
 
 def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
     """Return ResNet symbol of
