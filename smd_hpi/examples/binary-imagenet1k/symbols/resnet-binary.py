@@ -63,9 +63,10 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn1')
 #        act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
         act1 = mx.sym.QActivation(data=bn1, act_bit=BIT)
+#	act1 = mx.sym.Custom(data=act1, op_type='debug')
         conv1 = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv1')
-        conv1 = mx.sym.Custom(data=conv1, op_type='debug')
+#        conv1 = mx.sym.Custom(data=conv1, op_type='debug')
 #	    act1 = mx.sym.Activation(data=conv1, act_type='relu', name=name + '_tanh1')
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2')
 #        act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name + '_relu2')
