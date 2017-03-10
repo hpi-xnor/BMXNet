@@ -8,6 +8,7 @@ Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun. "Identity Mappings in Deep Re
 '''
 import mxnet as mx
 BIT = 1
+from common.math_ops import *
 
 def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
     """Return ResNet Unit symbol for building ResNet
@@ -54,13 +55,13 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
             shortcut._set_attr(mirror_stage='True')
         return act3 + shortcut
     else:
-	act0 = mx.sym.QActivation(data=data, act_bit=BIT)
-        bn1 = mx.sym.BatchNorm(data=act0, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn1')
+        bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn1')
 #        act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
         act1 = mx.sym.QActivation(data=bn1, act_bit=BIT)
         conv1 = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv1')
-#	act1 = mx.sym.Activation(data=conv1, act_type='relu', name=name + '_tanh1')
+        conv1 = mx.sym.Custom(data=conv1, op_type='debug')
+#	    act1 = mx.sym.Activation(data=conv1, act_type='relu', name=name + '_tanh1')
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2')
 #        act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name + '_relu2')
         act2 = mx.sym.QActivation(data=bn2, act_bit=BIT)
@@ -70,7 +71,7 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
         if dim_match:
             shortcut = data
         else:
-            shortcut = mx.sym.Convolution(data=act0, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
+            shortcut = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc')
         if memonger:
             shortcut._set_attr(mirror_stage='True')
