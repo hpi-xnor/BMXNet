@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 #include "./operator_common.h"
-#include "../../smd_hpi/src/q_helper.h"
 
 #include <chrono>
 using  ns = std::chrono::nanoseconds;
@@ -135,13 +134,6 @@ class ConvolutionOp : public Operator {
     Tensor<xpu, 1, DType> workspace =
         ctx.requested[conv::kTempSpace].get_space_typed<xpu, 1, DType>(
             Shape1(this->InitTemp(data.shape_, out.shape_)), s);
-
-    // mf quantize weights
-    Tensor<xpu, 1, DType> w1d = in_data[conv::kWeight].FlatTo1D<xpu, DType>(s);
-    Tensor<xpu, 1, DType> abs = ctx.requested[conv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
-    helper::quantize(w1d, abs, 1);
-    // /mf quantize weights
-
     for (index_t i = 0; i < nbatch; i += nstep_) {
       const index_t step = std::min(nstep_, nbatch - i);
       Tensor<xpu, 2, DType> temp_col = Tensor<xpu, 2, DType>(workspace.dptr_,
