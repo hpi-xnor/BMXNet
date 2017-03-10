@@ -77,14 +77,14 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
         act3 = mx.sym.QActivation(data=conv2, act_bit=BIT)
 #	act2 = mx.sym.Activation(data=conv2, act_type='relu', name=name + '_tanh2')
         if dim_match:
-            shortcut = data
+            shortcut = act1
         else:
             shortcut = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc', act_bit=BIT, is_train=True)
-            act4 = mx.sym.QActivation(data=shortcut, act_bit=BIT)
+            shortcut = mx.sym.QActivation(data=shortcut, act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
-        return act3 + act4
+        return act3 + shortcut
 
 def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
     """Return ResNet symbol of
