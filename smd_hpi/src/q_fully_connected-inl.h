@@ -37,7 +37,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
     // TODO(bing) add support for boolean
     DMLC_DECLARE_FIELD(num_hidden).set_lower_bound(1)
     .describe("Number of hidden nodes of the output.");
-    DMLC_DECLARE_FIELD(no_bias).set_default(false)
+    DMLC_DECLARE_FIELD(no_bias).set_default(true)
     .describe("Whether to disable bias parameter.");
     DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
@@ -89,8 +89,8 @@ class QFullyConnectedOp : public Operator {
       Tensor<xpu, 2, DType> wmat_T =
               NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);
       wmat_T = wmat.T();
-    	QFullyConnectedForward(data, wmat_T, out, param_);
-    	mshadow::FreeSpace(&wmat_T);
+      QFullyConnectedForward(data, wmat_T, out, param_);
+      mshadow::FreeSpace(&wmat_T);
     }else{
   		// mf quantize weights
   		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);

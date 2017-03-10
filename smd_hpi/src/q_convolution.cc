@@ -58,6 +58,10 @@ namespace mshadow {
 		get_binary_row(wmat.dptr_, binary_row, m*n);
 		get_binary_col(in_col.dptr_, binary_col, n, k);
 
+	    //#pragma omp parallel for
+	    for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
+	      temp_dst.dptr_[i] = 0;
+	    }
 		//auto start = std::chrono::high_resolution_clock::now();
 
 		///*

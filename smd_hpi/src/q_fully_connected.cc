@@ -31,10 +31,16 @@ namespace mshadow {
         get_binary_row(data.dptr_, binary_row, m*n);
         get_binary_col(wmat.dptr_, binary_col, n, k);
 
+        #pragma omp parallel for
+        for (int i = 0; i < out.shape_.Size(); ++i) {
+          out.dptr_[i] = 0;
+        }
+
         xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-				binary_row, n/BITS_PER_BINARY_WORD,
-				binary_col, k,
-				out.dptr_, k);
+                  binary_row, n/BITS_PER_BINARY_WORD,
+                  binary_col, k,
+                  out.dptr_, k);
+
     		free(binary_row);
     		free(binary_col);
     }
