@@ -144,7 +144,6 @@ namespace xnor_cpu {
     BINARY_WORD rvalue=0;
     BINARY_WORD sign;
 
-    #pragma omp parallel for
     for (int i = 0; i < BITS_PER_BINARY_WORD; i++)
     {
       sign = (array[i]>=0);

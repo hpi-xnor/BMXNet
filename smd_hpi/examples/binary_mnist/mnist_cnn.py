@@ -64,14 +64,14 @@ def main(args):
 	train_img, val_img, train_lbl, val_lbl = prepare_data()
 	#can be used for checking mnist data with respect to its label
 	#check_data_visually(train_img, train_lbl)
-	batch_size = 1
+	batch_size = 100
 	if not args.predict:
 		print 'starting training...'
 		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.epochs, args.gpu_id)
 		model.save_checkpoint(args.out_file, 1)
 	else:
-		mnist_val(args.model_prefix, args.epochs, train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
-		#mnist_classify(val_img, args.model_prefix, args.epochs, train_img, train_lbl, val_lbl, batch_size, args.gpu_id)
+		#mnist_val(args.model_prefix, args.epochs, train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
+		mnist_classify(val_img, args.model_prefix, args.epochs, train_img, train_lbl, val_lbl, batch_size, args.gpu_id)
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='generate generate annotations file from data source')

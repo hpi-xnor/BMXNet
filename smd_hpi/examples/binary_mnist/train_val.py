@@ -71,8 +71,8 @@ def get_binary_lenet():
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 
 	# second conv layer
-	#conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
-	conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
+	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
+	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
 
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 
