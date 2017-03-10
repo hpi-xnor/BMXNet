@@ -20,7 +20,7 @@
 #include <utility>
 #include "../../src/operator/operator_common.h"
 #include "../../src/operator/mshadow_op.h"
-
+#include "./q_helper.h"
 
 namespace mxnet {
 namespace op {
@@ -47,6 +47,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   // mf quantization and binarization variables
   uint32_t act_bit;
   bool scaling_factor;
+  bool is_train;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
     DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -92,6 +93,10 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
             .describe("Number of bits to quantize weights to.");
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
+    DMLC_DECLARE_FIELD(is_train).set_default(true)
+            .describe("To indicate whether is training or prediction, \n    "
+              "for training we should apply quantization (binarization) function \n    "
+              "on weights; For prediction, we use xnor_popc operation instead of dot().");            
   }
 };
 
@@ -137,6 +142,15 @@ class QConvolutionOp : public Operator {
     // xnor related check
     CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
 
+    // for training we apply quantization function on weights.
+    if(this->param_.is_train){
+      // mf quantize weights
+      Tensor<xpu, 1, DType> w1d = in_data[q_conv::kWeight].FlatTo1D<xpu, DType>(s);
+      Tensor<xpu, 1, DType> abs = ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
+      helper::quantize(w1d, abs, this->param_.act_bit);
+      // /mf quantize weights
+    }
+
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
         ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
@@ -175,10 +189,21 @@ class QConvolutionOp : public Operator {
       for (uint32_t gid = 0; gid < param_.num_group; ++gid) {
         mshadow::Tensor<xpu, 2, DType> tmpc = temp_col.Slice(gstride * gid,
                                        gstride * (gid + 1));
-        //xnor based convolution
-        QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+        //=================================================================//
+        // For the training in order to make the training easier and faster, 
+        // we binarize the input and weights of Qconv layer to +1 and -1, 
+        // still apply the standard dot() operator to generate the 
+        // gemm result. But for 1-bit prediction we then apply xnor+_popc
+        // to generate the same result as the dot() function.
+        // this means for prediction phase and 1-bit, the QConvolutionForward(...)
+        // should give the exactly same result as the sign( dot() ) method.
+        if(!this->param_.is_train && this->param_.act_bit == 1){
+          //xnor based convolution
+          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+        }else{
+          temp_dst[gid] = dot(wmat[gid], tmpc);
+        }                  
       }
-
 
       out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,
                                               mshadow::Shape4(param_.num_filter,
