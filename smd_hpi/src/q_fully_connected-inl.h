@@ -33,6 +33,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
   int num_hidden;
   bool no_bias;
   unsigned int act_bit;
+  bool is_train;
   DMLC_DECLARE_PARAMETER(QFullyConnectedParam) {
     // TODO(bing) add support for boolean
     DMLC_DECLARE_FIELD(num_hidden).set_lower_bound(1)
@@ -41,6 +42,10 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
     .describe("Whether to disable bias parameter.");
     DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
+    DMLC_DECLARE_FIELD(is_train).set_default(true)
+    .describe("To indicate whether is training or prediction, \n    "
+      "for training we should apply quantization (binarization) function \n    "
+      "on weights; For prediction, we use xnor_popc operation instead of dot().");  
   }
 };
 
@@ -84,7 +89,7 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> out = out_data[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
-    if(this->param_.act_bit == 1){
+    if(!this->param_.is_train && this->param_.act_bit == 1){
     	//XNOR based
       Tensor<xpu, 2, DType> wmat_T =
               NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);

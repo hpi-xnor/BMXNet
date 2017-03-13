@@ -64,7 +64,7 @@ def main(args):
 	train_img, val_img, train_lbl, val_lbl = prepare_data()
 	#can be used for checking mnist data with respect to its label
 	#check_data_visually(train_img, train_lbl)
-	batch_size = 1
+	batch_size = 100
 	if not args.predict:
 		print 'starting training...'
 		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.epochs, args.gpu_id)
