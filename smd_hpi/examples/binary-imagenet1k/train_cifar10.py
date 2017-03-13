@@ -40,10 +40,10 @@ if __name__ == '__main__':
         # train
         batch_size     = 128,
         num_epochs     = 300,
-        lr_step_epochs = '50,100,200,250',
+        lr_step_epochs = '100,200,250',
         optimizer        = 'sgd',
         disp_batches     = 100,
-        lr               = 0.1,
+        lr               = 0.05,
         lr_factor        = 0.1
     )
 
