@@ -11,6 +11,8 @@
 #import <AVFoundation/AVCaptureDevice.h> // For access to the camera
 #import <AVFoundation/AVCaptureInput.h> // For adding a data input to the camera
 #import <AVFoundation/AVCaptureSession.h>
+#import "GPUImage.h"
+#import "GPUImageAdaptiveThresholdFilter.h"
 
 @interface ViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 
@@ -19,6 +21,70 @@
 @end
 
 @implementation ViewController
+
+
+- (NSString *)classifyNumber:(UIImage *)image {
+    NSDate *methodStart = [NSDate date];
+    
+    const int width = 28;
+    const int height = 28;
+    
+    const int numForRendering = width*height*(1+1);
+    const int numForComputing = width*height*1;
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
+    
+    uint8_t imageData[numForRendering];
+    CGContextRef contextRef = CGBitmapContextCreate(imageData,
+                                                    width,
+                                                    height,
+                                                    8,
+                                                    width,
+                                                    colorSpace,
+                                                    kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault);
+    CGContextDrawImage(contextRef, CGRectMake(0, 0, kDefaultWidth, kDefaultHeight), image.CGImage);
+    CGContextRelease(contextRef);
+    CGColorSpaceRelease(colorSpace);
+    
+    //< Subtract the mean and copy to the input buffer
+    std::vector<float> input_buffer(numForComputing);
+    float *p_input_buffer[3] = {
+        input_buffer.data(),
+        input_buffer.data() + kDefaultWidth*kDefaultHeight,
+        input_buffer.data() + kDefaultWidth*kDefaultHeight*2};
+    const float *p_mean[3] = {
+        model_mean,
+        model_mean + kDefaultWidth*kDefaultHeight,
+        model_mean + kDefaultWidth*kDefaultHeight*2};
+    for (int i = 0, map_idx = 0, glb_idx = 0; i < kDefaultHeight; i++) {
+        for (int j = 0; j < kDefaultWidth; j++) {
+            p_input_buffer[0][map_idx] = imageData[glb_idx++] - p_mean[0][map_idx];
+            p_input_buffer[1][map_idx] = imageData[glb_idx++] - p_mean[1][map_idx];
+            p_input_buffer[2][map_idx] = imageData[glb_idx++] - p_mean[2][map_idx];
+            glb_idx++;
+            map_idx++;
+        }
+    }
+    
+    mx_uint *shape = nil;
+    mx_uint shape_len = 0;
+    MXPredSetInput(predictor, "data", input_buffer.data(), numForComputing);
+    MXPredForward(predictor);
+    MXPredGetOutputShape(predictor, 0, &shape, &shape_len);
+    mx_uint tt_size = 1;
+    for (mx_uint i = 0; i < shape_len; i++) {
+        tt_size *= shape[i];
+    }
+    std::vector<float> outputs(tt_size);
+    MXPredGetOutput(predictor, 0, outputs.data(), tt_size);
+    size_t max_idx = std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
+    
+    NSDate *methodFinish = [NSDate date];
+    NSTimeInterval executionTime = [methodFinish timeIntervalSinceDate:methodStart];
+    NSLog(@"executionTime = %f", executionTime);
+    
+    return [[model_synset objectAtIndex:max_idx] componentsJoinedByString:@" "];
+}
+
 
 - (NSString *)predictImage:(UIImage *)image {
     NSDate *methodStart = [NSDate date];
@@ -255,15 +321,75 @@
     return nil;
 }
 
+- (UIImage *) cropCenterRect:(UIImage *)image toSize:(int)size
+{
+    double x = image.size.width/2.0 - size/2.0;
+    double y = image.size.height/2.0 - size/2.0;
+
+    CGRect cropRect = CGRectMake(x, y, size, size);
+    CGImageRef imageRef = CGImageCreateWithImageInRect([image CGImage], cropRect);
+    
+    UIImage *cropped = [UIImage imageWithCGImage:imageRef];
+    CGImageRelease(imageRef);
+    
+    return cropped;
+}
+
+- (UIImage *) doBinarize:(UIImage *)sourceImage
+{
+    //first off, try to grayscale the image using iOS core Image routine
+    UIImage * grayScaledImg = [self grayImage:sourceImage];
+    
+    GPUImageAdaptiveThresholdFilter *stillImageFilter = [[GPUImageAdaptiveThresholdFilter alloc] init];
+    stillImageFilter.blurRadiusInPixels = 8.0;
+    UIImage *retImage = [stillImageFilter imageByFilteringImage:grayScaledImg];
+    
+    return retImage;
+}
+
+- (UIImage *) grayImage :(UIImage *)inputImage
+{
+    // Create a graphic context.
+    UIGraphicsBeginImageContextWithOptions(inputImage.size, NO, 1.0);
+    CGRect imageRect = CGRectMake(0, 0, inputImage.size.width, inputImage.size.height);
+    
+    // Draw the image with the luminosity blend mode.
+    // On top of a white background, this will give a black and white image.
+    [inputImage drawInRect:imageRect blendMode:kCGBlendModeLuminosity alpha:1.0];
+    
+    // Get the resulting image.
+    UIImage *outputImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return outputImage;
+}
+
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
 didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
        fromConnection:(AVCaptureConnection *)connection {
     
     CGImageRef cgImage = [self imageFromSampleBuffer:sampleBuffer];
+    float cropRectSize = 140;
+    
+    // red box around detection area
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGImageGetWidth(cgImage), CGImageGetHeight(cgImage)), NO, 1.0);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextDrawImage(context, CGRectMake(0, 0, CGImageGetWidth(cgImage), CGImageGetHeight(cgImage)), cgImage);
+    double x = CGImageGetWidth(cgImage)/2.0 - cropRectSize/2.0;
+    double y = CGImageGetHeight(cgImage)/2.0 - cropRectSize/2.0;
+    CGRect cropRect = CGRectMake(x, y, cropRectSize, cropRectSize);
+    CGContextSetLineWidth(context, 5);
+    CGContextSetStrokeColorWithColor(context, [[ UIColor redColor ] CGColor]);
+    CGContextStrokeRect(context, cropRect);
+    UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    UIImage *thresholded = [self cropCenterRect:newImage toSize: cropRectSize];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         dispatch_async(dispatch_get_main_queue(), ^(){
-            [self.imageViewPhoto setImage:[UIImage imageWithCGImage: cgImage scale:0.0 orientation:UIImageOrientationRight]];
+            //[self.imageViewPhoto setImage: thresholded];
+            [self.imageViewPhoto setImage: [UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
             CGImageRelease( cgImage );
         });
     });
@@ -288,5 +414,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     
     return newImage;
 }
+
+
 
 @end

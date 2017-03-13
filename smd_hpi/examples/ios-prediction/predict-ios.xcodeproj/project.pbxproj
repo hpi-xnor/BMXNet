@@ -19,12 +19,53 @@
 		472E1CE41C546859005E3FE0 /* Inception_BN-symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */; };
 		472E1CE61C546859005E3FE0 /* synset.txt in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE21C546859005E3FE0 /* synset.txt */; };
 		472E1CEB1C5478A5005E3FE0 /* mean_224.bin in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CEA1C5478A5005E3FE0 /* mean_224.bin */; };
+		C86014591E76D493002DFC3B /* binary-mnist-qall-0001.params in Resources */ = {isa = PBXBuildFile; fileRef = C86014571E76D493002DFC3B /* binary-mnist-qall-0001.params */; };
+		C860145A1E76D493002DFC3B /* binary-mnist-qall-symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = C86014581E76D493002DFC3B /* binary-mnist-qall-symbol.json */; };
+		C86E50A41E76F091009137C8 /* GPUImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50A11E76F084009137C8 /* GPUImage.framework */; };
+		C86E50A61E76F4E0009137C8 /* GPUImage.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = C86E50A11E76F084009137C8 /* GPUImage.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C8D9F5621E718E27005DD292 /* LICENSE_MXNet in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5611E718E27005DD292 /* LICENSE_MXNet */; };
 		C8D9F5641E718E35005DD292 /* LICENSE_Inception_BN in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */; };
 		C8D9F5671E719578005DD292 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8D9F5661E719578005DD292 /* AVFoundation.framework */; };
 		C8D9F5691E7197BF005DD292 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8D9F5681E7197BF005DD292 /* CoreMedia.framework */; };
 		C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */ = {isa = PBXBuildFile; fileRef = C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C86E509E1E76F084009137C8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C86E50981E76F084009137C8 /* GPUImage.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = BCF1A33414DDB1EC00852800;
+			remoteInfo = GPUImage;
+		};
+		C86E50A01E76F084009137C8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C86E50981E76F084009137C8 /* GPUImage.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = BCE209E51943F20C002FEED8;
+			remoteInfo = GPUImageFramework;
+		};
+		C86E50A21E76F08C009137C8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C86E50981E76F084009137C8 /* GPUImage.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = BCE209E41943F20C002FEED8;
+			remoteInfo = GPUImageFramework;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C86E50A51E76F4B7009137C8 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C86E50A61E76F4E0009137C8 /* GPUImage.framework in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		472E1CBE1C545B31005E3FE0 /* predict-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "predict-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -44,6 +85,9 @@
 		472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "Inception_BN-symbol.json"; sourceTree = "<group>"; };
 		472E1CE21C546859005E3FE0 /* synset.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = synset.txt; sourceTree = "<group>"; };
 		472E1CEA1C5478A5005E3FE0 /* mean_224.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = mean_224.bin; sourceTree = "<group>"; };
+		C86014571E76D493002DFC3B /* binary-mnist-qall-0001.params */ = {isa = PBXFileReference; lastKnownFileType = file; name = "binary-mnist-qall-0001.params"; path = "BinaryMNIST/binary-mnist-qall-0001.params"; sourceTree = "<group>"; };
+		C86014581E76D493002DFC3B /* binary-mnist-qall-symbol.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = "binary-mnist-qall-symbol.json"; path = "BinaryMNIST/binary-mnist-qall-symbol.json"; sourceTree = "<group>"; };
+		C86E50981E76F084009137C8 /* GPUImage.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = GPUImage.xcodeproj; path = GPUImage/framework/GPUImage.xcodeproj; sourceTree = "<group>"; };
 		C8D9F5611E718E27005DD292 /* LICENSE_MXNet */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_MXNet; sourceTree = "<group>"; };
 		C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_Inception_BN; sourceTree = "<group>"; };
 		C8D9F5661E719578005DD292 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
@@ -56,6 +100,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C86E50A41E76F091009137C8 /* GPUImage.framework in Frameworks */,
 				C8D9F5691E7197BF005DD292 /* CoreMedia.framework in Frameworks */,
 				C8D9F5671E719578005DD292 /* AVFoundation.framework in Frameworks */,
 				472E1CDD1C545B9A005E3FE0 /* Accelerate.framework in Frameworks */,
@@ -86,6 +131,7 @@
 		472E1CC01C545B31005E3FE0 /* predict-ios */ = {
 			isa = PBXGroup;
 			children = (
+				C86014561E76D454002DFC3B /* BinaryMNIST */,
 				472E1CDE1C546859005E3FE0 /* Inception */,
 				472E1CD81C545B4E005E3FE0 /* MXNet */,
 				472E1CC41C545B31005E3FE0 /* AppDelegate.h */,
@@ -132,9 +178,28 @@
 			path = Inception;
 			sourceTree = "<group>";
 		};
+		C86014561E76D454002DFC3B /* BinaryMNIST */ = {
+			isa = PBXGroup;
+			children = (
+				C86014571E76D493002DFC3B /* binary-mnist-qall-0001.params */,
+				C86014581E76D493002DFC3B /* binary-mnist-qall-symbol.json */,
+			);
+			name = BinaryMNIST;
+			sourceTree = "<group>";
+		};
+		C86E50991E76F084009137C8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C86E509F1E76F084009137C8 /* libGPUImage.a */,
+				C86E50A11E76F084009137C8 /* GPUImage.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		C8D9F5651E719578005DD292 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				C86E50981E76F084009137C8 /* GPUImage.xcodeproj */,
 				C8D9F5681E7197BF005DD292 /* CoreMedia.framework */,
 				C8D9F5661E719578005DD292 /* AVFoundation.framework */,
 			);
@@ -152,10 +217,12 @@
 				472E1CBA1C545B31005E3FE0 /* Sources */,
 				472E1CBB1C545B31005E3FE0 /* Frameworks */,
 				472E1CBC1C545B31005E3FE0 /* Resources */,
+				C86E50A51E76F4B7009137C8 /* CopyFiles */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C86E50A31E76F08C009137C8 /* PBXTargetDependency */,
 			);
 			name = "predict-ios";
 			productName = "predict-ios";
@@ -188,12 +255,35 @@
 			mainGroup = 472E1CB51C545B31005E3FE0;
 			productRefGroup = 472E1CBF1C545B31005E3FE0 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = C86E50991E76F084009137C8 /* Products */;
+					ProjectRef = C86E50981E76F084009137C8 /* GPUImage.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				472E1CBD1C545B31005E3FE0 /* predict-ios */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		C86E509F1E76F084009137C8 /* libGPUImage.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libGPUImage.a;
+			remoteRef = C86E509E1E76F084009137C8 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		C86E50A11E76F084009137C8 /* GPUImage.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = GPUImage.framework;
+			remoteRef = C86E50A01E76F084009137C8 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		472E1CBC1C545B31005E3FE0 /* Resources */ = {
@@ -208,7 +298,9 @@
 				472E1CCE1C545B31005E3FE0 /* Assets.xcassets in Resources */,
 				472E1CE61C546859005E3FE0 /* synset.txt in Resources */,
 				472E1CCC1C545B31005E3FE0 /* Main.storyboard in Resources */,
+				C860145A1E76D493002DFC3B /* binary-mnist-qall-symbol.json in Resources */,
 				472E1CE31C546859005E3FE0 /* Inception_BN-0039.params in Resources */,
+				C86014591E76D493002DFC3B /* binary-mnist-qall-0001.params in Resources */,
 				C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -244,6 +336,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C86E50A31E76F08C009137C8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = GPUImageFramework;
+			targetProxy = C86E50A21E76F08C009137C8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		472E1CCA1C545B31005E3FE0 /* Main.storyboard */ = {
@@ -310,6 +410,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "GPUImage/framework/**";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -355,6 +456,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "GPUImage/framework/**";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
