@@ -28,12 +28,9 @@
     
     const int width = 28;
     const int height = 28;
+    uint8_t imageData[width*height];
     
-    const int numForRendering = width*height*(1+1);
-    const int numForComputing = width*height*1;
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
-    
-    uint8_t imageData[numForRendering];
     CGContextRef contextRef = CGBitmapContextCreate(imageData,
                                                     width,
                                                     height,
@@ -41,33 +38,21 @@
                                                     width,
                                                     colorSpace,
                                                     kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault);
-    CGContextDrawImage(contextRef, CGRectMake(0, 0, kDefaultWidth, kDefaultHeight), image.CGImage);
+    CGContextDrawImage(contextRef, CGRectMake(0, 0, width, height), image.CGImage);
     CGContextRelease(contextRef);
     CGColorSpaceRelease(colorSpace);
     
-    //< Subtract the mean and copy to the input buffer
-    std::vector<float> input_buffer(numForComputing);
-    float *p_input_buffer[3] = {
-        input_buffer.data(),
-        input_buffer.data() + kDefaultWidth*kDefaultHeight,
-        input_buffer.data() + kDefaultWidth*kDefaultHeight*2};
-    const float *p_mean[3] = {
-        model_mean,
-        model_mean + kDefaultWidth*kDefaultHeight,
-        model_mean + kDefaultWidth*kDefaultHeight*2};
-    for (int i = 0, map_idx = 0, glb_idx = 0; i < kDefaultHeight; i++) {
-        for (int j = 0; j < kDefaultWidth; j++) {
-            p_input_buffer[0][map_idx] = imageData[glb_idx++] - p_mean[0][map_idx];
-            p_input_buffer[1][map_idx] = imageData[glb_idx++] - p_mean[1][map_idx];
-            p_input_buffer[2][map_idx] = imageData[glb_idx++] - p_mean[2][map_idx];
-            glb_idx++;
-            map_idx++;
+    //< copy to float buffer
+    std::vector<float> input_buffer(width*height);
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            input_buffer.data()[i] = imageData[i];
         }
     }
     
     mx_uint *shape = nil;
     mx_uint shape_len = 0;
-    MXPredSetInput(predictor, "data", input_buffer.data(), numForComputing);
+    MXPredSetInput(predictor, "data", input_buffer.data(), width*height);
     MXPredForward(predictor);
     MXPredGetOutputShape(predictor, 0, &shape, &shape_len);
     mx_uint tt_size = 1;
@@ -372,11 +357,16 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     float cropRectSize = 140;
     
     // red box around detection area
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGImageGetWidth(cgImage), CGImageGetHeight(cgImage)), NO, 1.0);
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGImageGetHeight(cgImage), CGImageGetWidth(cgImage)), NO, 1.0);
     CGContextRef context = UIGraphicsGetCurrentContext();
-    CGContextDrawImage(context, CGRectMake(0, 0, CGImageGetWidth(cgImage), CGImageGetHeight(cgImage)), cgImage);
-    double x = CGImageGetWidth(cgImage)/2.0 - cropRectSize/2.0;
-    double y = CGImageGetHeight(cgImage)/2.0 - cropRectSize/2.0;
+    
+    UIGraphicsPushContext(context);
+    [[UIImage imageWithCGImage: cgImage scale:0.0 orientation:UIImageOrientationRight] drawAtPoint:CGPointZero];
+    UIGraphicsPopContext();
+    
+    //CGContextDrawImage(context, CGRectMake(0, 0, CGImageGetWidth(cgImage), CGImageGetHeight(cgImage)), cgImage);
+    double x = CGImageGetHeight(cgImage)/2.0 - cropRectSize/2.0;
+    double y = CGImageGetWidth(cgImage)/2.0 - cropRectSize/2.0;
     CGRect cropRect = CGRectMake(x, y, cropRectSize, cropRectSize);
     CGContextSetLineWidth(context, 5);
     CGContextSetStrokeColorWithColor(context, [[ UIColor redColor ] CGColor]);
@@ -384,12 +374,30 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
+    
+    const int width = 28;
+    const int height = 28;
+    uint8_t imageData[width*height];
+    
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
+    CGContextRef contextRef = CGBitmapContextCreate(imageData,
+                                                    width,
+                                                    height,
+                                                    8,
+                                                    width,
+                                                    colorSpace,
+                                                    kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault);
+    CGContextDrawImage(contextRef, CGRectMake(0, 0, width, height), newImage.CGImage);
+    CGContextRelease(contextRef);
+    CGColorSpaceRelease(colorSpace);
+    
+    
     UIImage *thresholded = [self cropCenterRect:newImage toSize: cropRectSize];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         dispatch_async(dispatch_get_main_queue(), ^(){
             //[self.imageViewPhoto setImage: thresholded];
-            [self.imageViewPhoto setImage: [UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
+            [self.imageViewPhoto setImage: newImage]; //[UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
             CGImageRelease( cgImage );
         });
     });
