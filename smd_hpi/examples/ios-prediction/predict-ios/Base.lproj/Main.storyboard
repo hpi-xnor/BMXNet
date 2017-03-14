@@ -7,7 +7,6 @@
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="11757"/>
         <capability name="Aspect ratio constraints" minToolsVersion="5.1"/>
-        <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -23,37 +22,48 @@
                         <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <stackView opaque="NO" contentMode="scaleToFill" misplaced="YES" axis="vertical" alignment="center" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="hgb-Q7-4wV">
-                                <rect key="frame" x="80" y="30" width="168" height="518"/>
+                            <stackView opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" ambiguous="YES" misplaced="YES" axis="vertical" alignment="center" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="hgb-Q7-4wV">
+                                <rect key="frame" x="0.0" y="28" width="320" height="518"/>
                                 <subviews>
-                                    <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" verticalHuggingPriority="249" verticalCompressionResistancePriority="749" translatesAutoresizingMaskIntoConstraints="NO" id="5uT-4f-HMh">
-                                        <rect key="frame" x="0.0" y="0.0" width="168" height="225"/>
-                                        <constraints>
-                                            <constraint firstAttribute="width" secondItem="5uT-4f-HMh" secondAttribute="height" multiplier="3:4" id="nXE-N0-lXr"/>
-                                        </constraints>
-                                    </imageView>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="This is ..." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dje-xX-ydn">
-                                        <rect key="frame" x="50.5" y="233" width="67.5" height="20.5"/>
+                                    <stackView opaque="NO" contentMode="scaleToFill" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="8eZ-00-IPG">
+                                        <rect key="frame" x="0.0" y="0.0" width="320" height="213.5"/>
+                                        <subviews>
+                                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" verticalHuggingPriority="249" verticalCompressionResistancePriority="749" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="5uT-4f-HMh">
+                                                <rect key="frame" x="0.0" y="0.0" width="160" height="213.5"/>
+                                                <constraints>
+                                                    <constraint firstAttribute="width" secondItem="5uT-4f-HMh" secondAttribute="height" multiplier="3:4" id="nXE-N0-lXr"/>
+                                                </constraints>
+                                            </imageView>
+                                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3Uc-5L-pVr">
+                                                <rect key="frame" x="160" y="0.0" width="160" height="213.5"/>
+                                                <constraints>
+                                                    <constraint firstAttribute="width" secondItem="3Uc-5L-pVr" secondAttribute="height" multiplier="3:4" id="FX7-iU-TbO"/>
+                                                </constraints>
+                                            </imageView>
+                                        </subviews>
+                                    </stackView>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" ambiguous="YES" text="This is ..." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dje-xX-ydn">
+                                        <rect key="frame" x="126.5" y="221.5" width="67.5" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <color key="textColor" cocoaTouchSystemColor="darkTextColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WfO-vs-Gqh">
-                                        <rect key="frame" x="31.5" y="261.5" width="105" height="180.5"/>
+                                        <rect key="frame" x="107.5" y="250" width="105" height="192"/>
                                         <state key="normal" title="Start Detection"/>
                                         <connections>
                                             <action selector="startDetectionButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="ccr-am-V9h"/>
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fEo-C7-pyA">
-                                        <rect key="frame" x="40" y="450" width="88" height="30"/>
+                                        <rect key="frame" x="116" y="450" width="88" height="30"/>
                                         <state key="normal" title="Select Photo"/>
                                         <connections>
                                             <action selector="selectPhotoButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="kXf-9V-6R6"/>
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="YFi-JG-R39">
-                                        <rect key="frame" x="45.5" y="488" width="77" height="30"/>
+                                        <rect key="frame" x="121.5" y="488" width="77" height="30"/>
                                         <state key="normal" title="Take Photo"/>
                                         <connections>
                                             <action selector="capturePhotoButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="ycr-pd-Zyj"/>
@@ -64,21 +74,21 @@
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
-                            <constraint firstItem="hgb-Q7-4wV" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leadingMargin" constant="60" id="A9w-DZ-vBR"/>
+                            <constraint firstItem="hgb-Q7-4wV" firstAttribute="width" secondItem="8bC-Xf-vdC" secondAttribute="width" id="aUF-P6-eX6"/>
                             <constraint firstItem="wfy-db-euE" firstAttribute="top" secondItem="hgb-Q7-4wV" secondAttribute="bottom" constant="20" id="sp0-eD-pvC"/>
                             <constraint firstItem="hgb-Q7-4wV" firstAttribute="top" secondItem="y3c-jy-aDJ" secondAttribute="bottom" constant="10" id="v68-Sq-ZI8"/>
-                            <constraint firstAttribute="trailingMargin" secondItem="hgb-Q7-4wV" secondAttribute="trailing" constant="60" id="y6P-d6-5oH"/>
                         </constraints>
                     </view>
                     <connections>
                         <outlet property="detectionButton" destination="WfO-vs-Gqh" id="pfx-ic-F1n"/>
+                        <outlet property="imageViewCrop" destination="3Uc-5L-pVr" id="H1i-al-llL"/>
                         <outlet property="imageViewPhoto" destination="5uT-4f-HMh" id="uXC-Fd-HJX"/>
                         <outlet property="labelDescription" destination="dje-xX-ydn" id="DkY-aJ-Kvu"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="305" y="398"/>
+            <point key="canvasLocation" x="303.75" y="397.18309859154931"/>
         </scene>
     </scenes>
 </document>

@@ -260,11 +260,11 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     CGContextSetLineWidth(context, 5);
     CGContextSetStrokeColorWithColor(context, [[ UIColor redColor ] CGColor]);
     CGContextStrokeRect(context, cropRect);
-    UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIImage* augmentedImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
     // crop and threshold image
-    UIImage *thresholded = [self doBinarize: [self cropCenterRect:newImage toSize: cropRectSize]];
+    UIImage *thresholded = [self doBinarize: [self cropCenterRect:augmentedImage toSize: cropRectSize]];
     
     // visualize 28x28 pic that will go into neural net
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(kWidth, kHeight), NO, 1.0);
@@ -281,7 +281,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     // update ui
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         dispatch_async(dispatch_get_main_queue(), ^(){
-            [self.imageViewPhoto setImage: newImage2];
+            [self.imageViewPhoto setImage: augmentedImage];
+            [self.imageViewCrop setImage: newImage2];
             self.labelDescription.text = classification;
             //[self.imageViewPhoto setImage: newImage]; //[UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
             CGImageRelease( cgImage );
