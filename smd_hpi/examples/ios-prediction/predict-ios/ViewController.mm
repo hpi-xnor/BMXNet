@@ -6,6 +6,10 @@
 //  Copyright © 2016 Haoxiang Li. All rights reserved.
 //
 
+#ifdef __cplusplus
+#import <opencv2/opencv.hpp>
+#endif
+
 #import "ViewController.h"
 #import <AVFoundation/AVFoundation.h>
 #import <AVFoundation/AVCaptureDevice.h> // For access to the camera
@@ -13,7 +17,6 @@
 #import <AVFoundation/AVCaptureSession.h>
 #import "GPUImage.h"
 #import "GPUImageAdaptiveThresholdFilter.h"
-
 @interface ViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 
 @property (nonatomic, retain) UIActivityIndicatorView *indicatorView;
@@ -24,7 +27,6 @@
 
 
 - (NSString *)classifyNumber:(UIImage *)image {
-    NSDate *methodStart = [NSDate date];
     
     uint8_t imageData[kWidth*kHeight];
     
@@ -35,33 +37,38 @@
                                                     8,
                                                     kWidth,
                                                     colorSpace,
-                                                    kCGImageAlphaNone | kCGBitmapByteOrder32Big);
+                                                    kCGImageAlphaNone);
     CGContextDrawImage(contextRef, CGRectMake(0, 0, kWidth, kHeight), image.CGImage);
     CGContextRelease(contextRef);
     CGColorSpaceRelease(colorSpace);
     
-    NSString *str = @"";
-    for (int y = 0; y < kHeight; y++) {
-        for (int x = 0; x < kWidth; x++) {
-            str = [NSString stringWithFormat: @"%@%@", str, imageData[y * kWidth + x] >= 255 ? @" " : @"#"];
-        }
-        str =  [str stringByAppendingString:@"\n"];
-    }
+//    NSString *str = @"";
+//    for (int y = 0; y < kHeight; y++) {
+//        for (int x = 0; x < kWidth; x++) {
+//            str = [NSString stringWithFormat: @"%@%@", str, imageData[y * kWidth + x] >= 255 ? @" " : @"#"];
+//        }
+//        str =  [str stringByAppendingString:@"\n"];
+//    }
+//    
+//    NSLog(@"%@\n\n", str);
     
-    NSLog(@"%@\n\n", str);
+    int hardcoded7[] = {0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 84.000000, 185.000000, 159.000000, 151.000000, 60.000000, 36.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 222.000000, 254.000000, 254.000000, 254.000000, 254.000000, 241.000000, 198.000000, 198.000000, 198.000000, 198.000000, 198.000000, 198.000000, 198.000000, 198.000000, 170.000000, 52.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 67.000000, 114.000000, 72.000000, 114.000000, 163.000000, 227.000000, 254.000000, 225.000000, 254.000000, 254.000000, 254.000000, 250.000000, 229.000000, 254.000000, 254.000000, 140.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 17.000000, 66.000000, 14.000000, 67.000000, 67.000000, 67.000000, 59.000000, 21.000000, 236.000000, 254.000000, 106.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 83.000000, 253.000000, 209.000000, 18.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 22.000000, 233.000000, 255.000000, 83.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 129.000000, 254.000000, 238.000000, 44.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 59.000000, 249.000000, 254.000000, 62.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 133.000000, 254.000000, 187.000000, 5.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 9.000000, 205.000000, 248.000000, 58.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 126.000000, 254.000000, 182.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 75.000000, 251.000000, 240.000000, 57.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 19.000000, 221.000000, 254.000000, 166.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 3.000000, 203.000000, 254.000000, 219.000000, 35.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 38.000000, 254.000000, 254.000000, 77.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 31.000000, 224.000000, 254.000000, 115.000000, 1.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 133.000000, 254.000000, 254.000000, 52.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 61.000000, 242.000000, 254.000000, 254.000000, 52.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 121.000000, 254.000000, 254.000000, 219.000000, 40.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 121.000000, 254.000000, 207.000000, 18.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000};
     
-    //< copy to float buffer
+    // copy to float buffer
     std::vector<float> input_buffer(kWidth*kHeight);
-    for (int i = 0; i < kHeight; i++) {
-        for (int j = 0; j < kWidth; j++) {
+    for (int i = 0; i < kHeight * kWidth; i++) {
             input_buffer.data()[i] = imageData[i];
-        }
     }
+    
     
     mx_uint *shape = nil;
     mx_uint shape_len = 0;
     MXPredSetInput(predictor, "data", input_buffer.data(), kWidth*kHeight);
+    
+    NSDate *methodStart = [NSDate date];
     MXPredForward(predictor);
+    NSDate *methodFinish = [NSDate date];
+    
     MXPredGetOutputShape(predictor, 0, &shape, &shape_len);
     mx_uint tt_size = 1;
     for (mx_uint i = 0; i < shape_len; i++) {
@@ -70,14 +77,11 @@
     std::vector<float> outputs(tt_size);
     MXPredGetOutput(predictor, 0, outputs.data(), tt_size);
     
-    size_t max_idx = std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
-    
-    NSDate *methodFinish = [NSDate date];
     NSTimeInterval executionTime = [methodFinish timeIntervalSinceDate:methodStart];
-    NSLog(@"executionTime = %f", executionTime);
+    NSLog(@"forward pass took %f", executionTime);
     
-    return [NSString stringWithFormat: @"%zu (%f)", max_idx, outputs.at(max_idx)]; //[[model_synset objectAtIndex:max_idx] componentsJoinedByString:@" "];
-}
+    size_t max_idx = std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
+    return [NSString stringWithFormat: @"%zu (%f)", max_idx, outputs.at(max_idx)];}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -212,6 +216,78 @@
     return cropped;
 }
 
+- (cv::Mat)cvMatGrayFromUIImage:(UIImage *)image
+{
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();//CGImageGetColorSpace(image.CGImage);
+    CGFloat cols = image.size.width;
+    CGFloat rows = image.size.height;
+    
+    cv::Mat cvMat(rows, cols, CV_8UC1); // 8 bits per component, 1 channels
+    
+    int bytesPerRow = cvMat.step[0];
+    
+    CGContextRef contextRef = CGBitmapContextCreate(cvMat.data,                 // Pointer to data
+                                                    cols,                       // Width of bitmap
+                                                    rows,                       // Height of bitmap
+                                                    8,                          // Bits per component
+                                                    cols,                       // Bytes per row
+                                                    colorSpace,                 // Colorspace
+                                                    kCGImageAlphaNone |
+                                                    kCGBitmapByteOrderDefault); // Bitmap info flags
+    
+    CGContextDrawImage(contextRef, CGRectMake(0, 0, cols, rows), image.CGImage);
+    CGContextRelease(contextRef);
+    
+    return cvMat;
+}
+
+-(UIImage *)UIImageFromCVMat:(cv::Mat)cvMat
+{
+    NSData *data = [NSData dataWithBytes:cvMat.data length:cvMat.elemSize()*cvMat.total()];
+    CGColorSpaceRef colorSpace;
+    
+    if (cvMat.elemSize() == 1) {
+        colorSpace = CGColorSpaceCreateDeviceGray();
+    } else {
+        colorSpace = CGColorSpaceCreateDeviceRGB();
+    }
+    
+    CGDataProviderRef provider = CGDataProviderCreateWithCFData((__bridge CFDataRef)data);
+    
+    // Creating CGImage from cv::Mat
+    CGImageRef imageRef = CGImageCreate(cvMat.cols,                                 //width
+                                        cvMat.rows,                                 //height
+                                        8,                                          //bits per component
+                                        8 * cvMat.elemSize(),                       //bits per pixel
+                                        cvMat.step[0],                            //bytesPerRow
+                                        colorSpace,                                 //colorspace
+                                        kCGImageAlphaNone|kCGBitmapByteOrderDefault,// bitmap info
+                                        provider,                                   //CGDataProviderRef
+                                        NULL,                                       //decode
+                                        false,                                      //should interpolate
+                                        kCGRenderingIntentDefault                   //intent
+                                        );
+    
+    
+    // Getting UIImage from CGImage
+    UIImage *finalImage = [UIImage imageWithCGImage:imageRef];
+    CGImageRelease(imageRef);
+    CGDataProviderRelease(provider);
+    CGColorSpaceRelease(colorSpace);
+    
+    return finalImage;
+}
+
+- (UIImage *) doThresholding:(UIImage *) source
+{
+    cv::Mat gray = [self cvMatGrayFromUIImage: source];
+    cv::Mat gray_inverted;
+    cv::Mat thresholded;
+    cv::bitwise_not(gray, gray_inverted);
+    cv::threshold(gray_inverted, thresholded, 0, 0, cv::THRESH_TOZERO | cv::THRESH_OTSU);
+    return [self UIImageFromCVMat: thresholded];
+}
+
 - (UIImage *) doBinarize:(UIImage *)sourceImage
 {
     //first off, try to grayscale the image using iOS core Image routine
@@ -224,29 +300,12 @@
     return retImage;
 }
 
-- (UIImage *) grayImage :(UIImage *)inputImage
-{
-    // Create a graphic context.
-    UIGraphicsBeginImageContextWithOptions(inputImage.size, NO, 1.0);
-    CGRect imageRect = CGRectMake(0, 0, inputImage.size.width, inputImage.size.height);
-    
-    // Draw the image with the luminosity blend mode.
-    // On top of a white background, this will give a black and white image.
-    [inputImage drawInRect:imageRect blendMode:kCGBlendModeLuminosity alpha:1.0];
-    
-    // Get the resulting image.
-    UIImage *outputImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    return outputImage;
-}
-
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
 didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
        fromConnection:(AVCaptureConnection *)connection {
     
     CGImageRef cgImage = [self imageFromSampleBuffer:sampleBuffer];
-    float cropRectSize = 140;
+    float cropRectSize = 448;
     
     // red box around detection area
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGImageGetHeight(cgImage), CGImageGetWidth(cgImage)), NO, 1.0);
@@ -264,28 +323,34 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     UIGraphicsEndImageContext();
     
     // crop and threshold image
-    UIImage *thresholded = [self doBinarize: [self cropCenterRect:augmentedImage toSize: cropRectSize]];
+    UIImage *thresholded = [self doThresholding: [self cropCenterRect:augmentedImage toSize: cropRectSize] ];
+    //UIImage *thresholded = [self doBinarize: [self cropCenterRect:augmentedImage toSize: cropRectSize]];
     
     // visualize 28x28 pic that will go into neural net
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(kWidth, kHeight), NO, 1.0);
-    CGContextRef context2 = UIGraphicsGetCurrentContext();
-    UIGraphicsPushContext(context2);
-    [thresholded drawInRect:CGRectMake(0, 0, kWidth, kHeight)];
-    UIGraphicsPopContext();
-    UIImage* newImage2 = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    // classify 28x28 pic
-    NSString *classification = [self classifyNumber:thresholded];
+//    UIGraphicsBeginImageContextWithOptions(CGSizeMake(kWidth, kHeight), NO, 1.0);
+//    CGContextRef context2 = UIGraphicsGetCurrentContext();
+//    UIGraphicsPushContext(context2);
+//    [thresholded drawInRect:CGRectMake(0, 0, kWidth, kHeight)];
+//    UIGraphicsPopContext();
+//    UIImage* newImage2 = UIGraphicsGetImageFromCurrentImageContext();
+//    UIGraphicsEndImageContext();
     
     // update ui
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         dispatch_async(dispatch_get_main_queue(), ^(){
             [self.imageViewPhoto setImage: augmentedImage];
-            [self.imageViewCrop setImage: newImage2];
-            self.labelDescription.text = classification;
             //[self.imageViewPhoto setImage: newImage]; //[UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
             CGImageRelease( cgImage );
+        });
+    });
+    
+    // classify pic
+    NSString *classification = [self classifyNumber:thresholded];
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
+        dispatch_async(dispatch_get_main_queue(), ^(){
+            self.labelDescription.text = classification;
+            [self.imageViewCrop setImage: thresholded];
         });
     });
 }

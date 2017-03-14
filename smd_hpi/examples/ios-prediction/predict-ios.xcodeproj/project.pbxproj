@@ -23,6 +23,10 @@
 		C860145A1E76D493002DFC3B /* binary-mnist-qall-symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = C86014581E76D493002DFC3B /* binary-mnist-qall-symbol.json */; };
 		C86E50A41E76F091009137C8 /* GPUImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50A11E76F084009137C8 /* GPUImage.framework */; };
 		C86E50A61E76F4E0009137C8 /* GPUImage.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = C86E50A11E76F084009137C8 /* GPUImage.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C86E50AA1E7839D6009137C8 /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50A91E7839D6009137C8 /* opencv2.framework */; };
+		C86E50AC1E784DF1009137C8 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50AB1E784DF1009137C8 /* UIKit.framework */; };
+		C86E50AE1E784EF8009137C8 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50AD1E784EF8009137C8 /* CoreVideo.framework */; };
+		C86E50B01E784FC8009137C8 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50AF1E784FC8009137C8 /* CoreGraphics.framework */; };
 		C8D9F5621E718E27005DD292 /* LICENSE_MXNet in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5611E718E27005DD292 /* LICENSE_MXNet */; };
 		C8D9F5641E718E35005DD292 /* LICENSE_Inception_BN in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */; };
 		C8D9F5671E719578005DD292 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8D9F5661E719578005DD292 /* AVFoundation.framework */; };
@@ -88,6 +92,10 @@
 		C86014571E76D493002DFC3B /* binary-mnist-qall-0001.params */ = {isa = PBXFileReference; lastKnownFileType = file; name = "binary-mnist-qall-0001.params"; path = "BinaryMNIST/binary-mnist-qall-0001.params"; sourceTree = "<group>"; };
 		C86014581E76D493002DFC3B /* binary-mnist-qall-symbol.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = "binary-mnist-qall-symbol.json"; path = "BinaryMNIST/binary-mnist-qall-symbol.json"; sourceTree = "<group>"; };
 		C86E50981E76F084009137C8 /* GPUImage.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = GPUImage.xcodeproj; path = GPUImage/framework/GPUImage.xcodeproj; sourceTree = "<group>"; };
+		C86E50A91E7839D6009137C8 /* opencv2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = opencv2.framework; sourceTree = "<group>"; };
+		C86E50AB1E784DF1009137C8 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		C86E50AD1E784EF8009137C8 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
+		C86E50AF1E784FC8009137C8 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		C8D9F5611E718E27005DD292 /* LICENSE_MXNet */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_MXNet; sourceTree = "<group>"; };
 		C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_Inception_BN; sourceTree = "<group>"; };
 		C8D9F5661E719578005DD292 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
@@ -100,9 +108,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C86E50B01E784FC8009137C8 /* CoreGraphics.framework in Frameworks */,
+				C86E50AE1E784EF8009137C8 /* CoreVideo.framework in Frameworks */,
+				C86E50AC1E784DF1009137C8 /* UIKit.framework in Frameworks */,
 				C86E50A41E76F091009137C8 /* GPUImage.framework in Frameworks */,
 				C8D9F5691E7197BF005DD292 /* CoreMedia.framework in Frameworks */,
 				C8D9F5671E719578005DD292 /* AVFoundation.framework in Frameworks */,
+				C86E50AA1E7839D6009137C8 /* opencv2.framework in Frameworks */,
 				472E1CDD1C545B9A005E3FE0 /* Accelerate.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -199,6 +211,10 @@
 		C8D9F5651E719578005DD292 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				C86E50AF1E784FC8009137C8 /* CoreGraphics.framework */,
+				C86E50AD1E784EF8009137C8 /* CoreVideo.framework */,
+				C86E50AB1E784DF1009137C8 /* UIKit.framework */,
+				C86E50A91E7839D6009137C8 /* opencv2.framework */,
 				C86E50981E76F084009137C8 /* GPUImage.xcodeproj */,
 				C8D9F5681E7197BF005DD292 /* CoreMedia.framework */,
 				C8D9F5661E719578005DD292 /* AVFoundation.framework */,
@@ -368,7 +384,6 @@
 		472E1CD31C545B31005E3FE0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -391,6 +406,7 @@
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_INPUT_FILETYPE = sourcecode.cpp.objcpp;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -421,7 +437,6 @@
 		472E1CD41C545B31005E3FE0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -443,6 +458,7 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_INPUT_FILETYPE = sourcecode.cpp.objcpp;
 				GCC_NO_COMMON_BLOCKS = YES;
 				"GCC_PREPROCESSOR_DEFINITIONS[arch=*]" = (
 					"MXNET_PREDICT_ONLY=1",
@@ -471,6 +487,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				DEVELOPMENT_TEAM = 2W5FFJ2T2K;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				INFOPLIST_FILE = "predict-ios/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.hpi.smd.object-detection";
@@ -487,6 +507,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				DEVELOPMENT_TEAM = 2W5FFJ2T2K;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				INFOPLIST_FILE = "predict-ios/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.hpi.smd.object-detection";
