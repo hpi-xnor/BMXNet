@@ -11,10 +11,8 @@
 #import <vector>
 #import <AVFoundation/AVCaptureOutput.h> // Allows us to use AVCaptureVideoDataOutputSampleBufferDelegate
 
-#define kDefaultWidth 224
-#define kDefaultHeight 224
-#define kDefaultChannels 3
-#define kDefaultImageSize (kDefaultWidth*kDefaultHeight*kDefaultChannels)
+#define kWidth 28
+#define kHeight 28
 
 @interface ViewController : UIViewController <AVCaptureVideoDataOutputSampleBufferDelegate>{
     
@@ -22,8 +20,6 @@
     
     NSString *model_symbol;
     NSData *model_params;
-    NSMutableArray *model_synset;
-    float model_mean[kDefaultImageSize];
     AVCaptureSession *captureSession;
 }
 

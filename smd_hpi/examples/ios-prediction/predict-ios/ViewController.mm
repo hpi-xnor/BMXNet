@@ -26,33 +26,41 @@
 - (NSString *)classifyNumber:(UIImage *)image {
     NSDate *methodStart = [NSDate date];
     
-    const int width = 28;
-    const int height = 28;
-    uint8_t imageData[width*height];
+    uint8_t imageData[kWidth*kHeight];
     
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
     CGContextRef contextRef = CGBitmapContextCreate(imageData,
-                                                    width,
-                                                    height,
+                                                    kWidth,
+                                                    kHeight,
                                                     8,
-                                                    width,
+                                                    kWidth,
                                                     colorSpace,
-                                                    kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault);
-    CGContextDrawImage(contextRef, CGRectMake(0, 0, width, height), image.CGImage);
+                                                    kCGImageAlphaNone | kCGBitmapByteOrder32Big);
+    CGContextDrawImage(contextRef, CGRectMake(0, 0, kWidth, kHeight), image.CGImage);
     CGContextRelease(contextRef);
     CGColorSpaceRelease(colorSpace);
     
+    NSString *str = @"";
+    for (int y = 0; y < kHeight; y++) {
+        for (int x = 0; x < kWidth; x++) {
+            str = [NSString stringWithFormat: @"%@%@", str, imageData[y * kWidth + x] >= 255 ? @" " : @"#"];
+        }
+        str =  [str stringByAppendingString:@"\n"];
+    }
+    
+    NSLog(@"%@\n\n", str);
+    
     //< copy to float buffer
-    std::vector<float> input_buffer(width*height);
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
+    std::vector<float> input_buffer(kWidth*kHeight);
+    for (int i = 0; i < kHeight; i++) {
+        for (int j = 0; j < kWidth; j++) {
             input_buffer.data()[i] = imageData[i];
         }
     }
     
     mx_uint *shape = nil;
     mx_uint shape_len = 0;
-    MXPredSetInput(predictor, "data", input_buffer.data(), width*height);
+    MXPredSetInput(predictor, "data", input_buffer.data(), kWidth*kHeight);
     MXPredForward(predictor);
     MXPredGetOutputShape(predictor, 0, &shape, &shape_len);
     mx_uint tt_size = 1;
@@ -61,74 +69,14 @@
     }
     std::vector<float> outputs(tt_size);
     MXPredGetOutput(predictor, 0, outputs.data(), tt_size);
+    
     size_t max_idx = std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
     
     NSDate *methodFinish = [NSDate date];
     NSTimeInterval executionTime = [methodFinish timeIntervalSinceDate:methodStart];
     NSLog(@"executionTime = %f", executionTime);
     
-    return [[model_synset objectAtIndex:max_idx] componentsJoinedByString:@" "];
-}
-
-
-- (NSString *)predictImage:(UIImage *)image {
-    NSDate *methodStart = [NSDate date];
-
-    const int numForRendering = kDefaultWidth*kDefaultHeight*(kDefaultChannels+1);
-    const int numForComputing = kDefaultWidth*kDefaultHeight*kDefaultChannels;
-
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    
-    uint8_t imageData[numForRendering];
-    CGContextRef contextRef = CGBitmapContextCreate(imageData,
-                                                    kDefaultWidth,
-                                                    kDefaultHeight,
-                                                    8,
-                                                    kDefaultWidth*(kDefaultChannels+1),
-                                                    colorSpace,
-                                                    kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault);
-    CGContextDrawImage(contextRef, CGRectMake(0, 0, kDefaultWidth, kDefaultHeight), image.CGImage);
-    CGContextRelease(contextRef);
-    CGColorSpaceRelease(colorSpace);
-
-    //< Subtract the mean and copy to the input buffer
-    std::vector<float> input_buffer(numForComputing);
-    float *p_input_buffer[3] = {
-        input_buffer.data(),
-        input_buffer.data() + kDefaultWidth*kDefaultHeight,
-        input_buffer.data() + kDefaultWidth*kDefaultHeight*2};
-    const float *p_mean[3] = {
-        model_mean,
-        model_mean + kDefaultWidth*kDefaultHeight,
-        model_mean + kDefaultWidth*kDefaultHeight*2};
-    for (int i = 0, map_idx = 0, glb_idx = 0; i < kDefaultHeight; i++) {
-        for (int j = 0; j < kDefaultWidth; j++) {
-            p_input_buffer[0][map_idx] = imageData[glb_idx++] - p_mean[0][map_idx];
-            p_input_buffer[1][map_idx] = imageData[glb_idx++] - p_mean[1][map_idx];
-            p_input_buffer[2][map_idx] = imageData[glb_idx++] - p_mean[2][map_idx];
-            glb_idx++;
-            map_idx++;
-        }
-    }
-    
-    mx_uint *shape = nil;
-    mx_uint shape_len = 0;
-    MXPredSetInput(predictor, "data", input_buffer.data(), numForComputing);
-    MXPredForward(predictor);
-    MXPredGetOutputShape(predictor, 0, &shape, &shape_len);
-    mx_uint tt_size = 1;
-    for (mx_uint i = 0; i < shape_len; i++) {
-        tt_size *= shape[i];
-    }
-    std::vector<float> outputs(tt_size);
-    MXPredGetOutput(predictor, 0, outputs.data(), tt_size);
-    size_t max_idx = std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
-    
-    NSDate *methodFinish = [NSDate date];
-    NSTimeInterval executionTime = [methodFinish timeIntervalSinceDate:methodStart];
-    NSLog(@"executionTime = %f", executionTime);
-    
-    return [[model_synset objectAtIndex:max_idx] componentsJoinedByString:@" "];
+    return [NSString stringWithFormat: @"%zu (%f)", max_idx, outputs.at(max_idx)]; //[[model_synset objectAtIndex:max_idx] componentsJoinedByString:@" "];
 }
 
 - (void)viewDidLoad {
@@ -138,11 +86,8 @@
     [self.indicatorView setActivityIndicatorViewStyle:UIActivityIndicatorViewStyleGray];
     
     if (!predictor) {
-        NSString *jsonPath = [[NSBundle mainBundle] pathForResource:@"Inception_BN-symbol.json" ofType:nil];
-        NSString *paramsPath = [[NSBundle mainBundle] pathForResource:@"Inception_BN-0039.params" ofType:nil];
-        NSString *meanPath = [[NSBundle mainBundle] pathForResource:@"mean_224.bin" ofType:nil];
-        NSString *synsetPath = [[NSBundle mainBundle] pathForResource:@"synset.txt" ofType:nil];
-        NSLog(@"%@", meanPath);
+        NSString *jsonPath = [[NSBundle mainBundle] pathForResource:@"binary-mnist-qall-symbol.json" ofType:nil];
+        NSString *paramsPath = [[NSBundle mainBundle] pathForResource:@"binary-mnist-qall-0001.params" ofType:nil];
         model_symbol = [[NSString alloc] initWithData:[[NSFileManager defaultManager] contentsAtPath:jsonPath] encoding:NSUTF8StringEncoding];
         model_params = [[NSFileManager defaultManager] contentsAtPath:paramsPath];
         
@@ -150,61 +95,9 @@
         const char *input_keys[1];
         input_keys[0] = [input_name UTF8String];
         const mx_uint input_shape_indptr[] = {0, 4};
-        const mx_uint input_shape_data[] = {1, kDefaultChannels, kDefaultWidth, kDefaultHeight};
+        const mx_uint input_shape_data[] = {1, 1, kWidth, kHeight};
         MXPredCreate([model_symbol UTF8String], [model_params bytes], (int)[model_params length], 1, 0, 1,
                      input_keys, input_shape_indptr, input_shape_data, &predictor);
-        
-        NSData *meanData = [[NSFileManager defaultManager] contentsAtPath:meanPath];
-        [meanData getBytes:model_mean length:[meanData length]];
-        
-        model_synset = [NSMutableArray new];
-        NSString* synsetText = [NSString stringWithContentsOfFile:synsetPath
-                                  encoding:NSUTF8StringEncoding error:nil];
-        NSArray* lines = [synsetText componentsSeparatedByCharactersInSet:
-                                    [NSCharacterSet newlineCharacterSet]];
-        for (NSString *l in lines) {
-            NSArray *parts = [l componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-            if ([parts count] > 1) {
-                [model_synset addObject:[parts subarrayWithRange:NSMakeRange(1, [parts count]-1)]];
-            }
-        }
-        
-        /*//< Visualize the Mean Data
-        std::vector<uint8_t> mean_with_alpha(kDefaultWidth*kDefaultHeight*(kDefaultChannels+1), 0);
-        float *p_mean[3] = {
-            model_mean,
-            model_mean + kDefaultWidth*kDefaultHeight,
-            model_mean + kDefaultWidth*kDefaultHeight*2};
-        for (int i = 0, map_idx = 0, glb_idx = 0; i < kDefaultHeight; i++) {
-            for (int j = 0; j < kDefaultWidth; j++) {
-                mean_with_alpha[glb_idx++] = p_mean[0][map_idx];
-                mean_with_alpha[glb_idx++] = p_mean[1][map_idx];
-                mean_with_alpha[glb_idx++] = p_mean[2][map_idx];
-                mean_with_alpha[glb_idx++] = 0;
-                map_idx++;
-            }
-        }
-        
-        NSData *mean_data = [NSData dataWithBytes:mean_with_alpha.data() length:mean_with_alpha.size()*sizeof(float)];
-        CGDataProviderRef provider = CGDataProviderCreateWithCFData((__bridge CFDataRef)mean_data);
-        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-        // Creating CGImage from cv::Mat
-        CGImageRef imageRef = CGImageCreate(kDefaultWidth,
-                                            kDefaultHeight,
-                                            8,
-                                            8*(kDefaultChannels+1),
-                                            kDefaultWidth*(kDefaultChannels+1),
-                                            colorSpace,
-                                            kCGImageAlphaNone|kCGBitmapByteOrderDefault,
-                                            provider,
-                                            NULL,
-                                            false,
-                                            kCGRenderingIntentDefault
-                                            );
-        meanImage = [UIImage imageWithCGImage:imageRef];
-        CGImageRelease(imageRef);
-        CGDataProviderRelease(provider);
-        self.imageViewPhoto.image = meanImage;*/
     }
 }
 
@@ -239,7 +132,7 @@
         [self.indicatorView startAnimating];
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
             dispatch_async(dispatch_get_main_queue(), ^(){
-                self.labelDescription.text = [self predictImage:self.imageViewPhoto.image];
+                //self.labelDescription.text = [self predictImage:self.imageViewPhoto.image];
                 [self.indicatorView stopAnimating];
             });
         });
@@ -276,7 +169,6 @@
     
     AVCaptureDevice *device = [self selectCameraAt:AVCaptureDevicePositionBack];
     
-    
     NSError *error = nil;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
     if (!input) {
@@ -310,7 +202,7 @@
 {
     double x = image.size.width/2.0 - size/2.0;
     double y = image.size.height/2.0 - size/2.0;
-
+    
     CGRect cropRect = CGRectMake(x, y, size, size);
     CGImageRef imageRef = CGImageCreateWithImageInRect([image CGImage], cropRect);
     
@@ -323,11 +215,11 @@
 - (UIImage *) doBinarize:(UIImage *)sourceImage
 {
     //first off, try to grayscale the image using iOS core Image routine
-    UIImage * grayScaledImg = [self grayImage:sourceImage];
+    //UIImage * grayScaledImg = [self grayImage:sourceImage];
     
     GPUImageAdaptiveThresholdFilter *stillImageFilter = [[GPUImageAdaptiveThresholdFilter alloc] init];
     stillImageFilter.blurRadiusInPixels = 8.0;
-    UIImage *retImage = [stillImageFilter imageByFilteringImage:grayScaledImg];
+    UIImage *retImage = [stillImageFilter imageByFilteringImage:sourceImage];
     
     return retImage;
 }
@@ -359,12 +251,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     // red box around detection area
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGImageGetHeight(cgImage), CGImageGetWidth(cgImage)), NO, 1.0);
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
     UIGraphicsPushContext(context);
     [[UIImage imageWithCGImage: cgImage scale:0.0 orientation:UIImageOrientationRight] drawAtPoint:CGPointZero];
     UIGraphicsPopContext();
-    
-    //CGContextDrawImage(context, CGRectMake(0, 0, CGImageGetWidth(cgImage), CGImageGetHeight(cgImage)), cgImage);
     double x = CGImageGetHeight(cgImage)/2.0 - cropRectSize/2.0;
     double y = CGImageGetWidth(cgImage)/2.0 - cropRectSize/2.0;
     CGRect cropRect = CGRectMake(x, y, cropRectSize, cropRectSize);
@@ -374,30 +263,27 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
+    // crop and threshold image
+    UIImage *thresholded = [self doBinarize: [self cropCenterRect:newImage toSize: cropRectSize]];
     
-    const int width = 28;
-    const int height = 28;
-    uint8_t imageData[width*height];
+    // visualize 28x28 pic that will go into neural net
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(kWidth, kHeight), NO, 1.0);
+    CGContextRef context2 = UIGraphicsGetCurrentContext();
+    UIGraphicsPushContext(context2);
+    [thresholded drawInRect:CGRectMake(0, 0, kWidth, kHeight)];
+    UIGraphicsPopContext();
+    UIImage* newImage2 = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
     
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
-    CGContextRef contextRef = CGBitmapContextCreate(imageData,
-                                                    width,
-                                                    height,
-                                                    8,
-                                                    width,
-                                                    colorSpace,
-                                                    kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault);
-    CGContextDrawImage(contextRef, CGRectMake(0, 0, width, height), newImage.CGImage);
-    CGContextRelease(contextRef);
-    CGColorSpaceRelease(colorSpace);
+    // classify 28x28 pic
+    NSString *classification = [self classifyNumber:thresholded];
     
-    
-    UIImage *thresholded = [self cropCenterRect:newImage toSize: cropRectSize];
-
+    // update ui
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         dispatch_async(dispatch_get_main_queue(), ^(){
-            //[self.imageViewPhoto setImage: thresholded];
-            [self.imageViewPhoto setImage: newImage]; //[UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
+            [self.imageViewPhoto setImage: newImage2];
+            self.labelDescription.text = classification;
+            //[self.imageViewPhoto setImage: newImage]; //[UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
             CGImageRelease( cgImage );
         });
     });
