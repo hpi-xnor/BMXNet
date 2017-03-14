@@ -40,7 +40,7 @@ if __name__ == '__main__':
         # train
         batch_size     = 128,
         num_epochs     = 300,
-        lr_step_epochs = '200,250',
+        lr_step_epochs = '100,200,250',
         optimizer        = 'sgd',
         disp_batches     = 100,
         lr               = 0.05,
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 300)#inception-bn-0039.param
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 195)#inception-bn-0039.param
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(devs), args.pretrained))
     
