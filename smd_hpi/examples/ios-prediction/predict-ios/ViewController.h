@@ -31,8 +31,6 @@
 - (IBAction)startDetectionButtonTapped:(id)sender;
 - (IBAction)stopDetectionButtonTapped:(id)sender;
 - (AVCaptureSession *)createCaptureSession;
-- (UIImage *) doBinarize:(UIImage *)sourceImage;
-- (UIImage *) grayImage :(UIImage *)inputImage;
 - (UIImage *) cropCenterRect:(UIImage *)image toSize:(int)size;
 
 @end

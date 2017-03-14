@@ -15,8 +15,6 @@
 #import <AVFoundation/AVCaptureDevice.h> // For access to the camera
 #import <AVFoundation/AVCaptureInput.h> // For adding a data input to the camera
 #import <AVFoundation/AVCaptureSession.h>
-#import "GPUImage.h"
-#import "GPUImageAdaptiveThresholdFilter.h"
 @interface ViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 
 @property (nonatomic, retain) UIActivityIndicatorView *indicatorView;
@@ -288,18 +286,6 @@
     return [self UIImageFromCVMat: thresholded];
 }
 
-- (UIImage *) doBinarize:(UIImage *)sourceImage
-{
-    //first off, try to grayscale the image using iOS core Image routine
-    //UIImage * grayScaledImg = [self grayImage:sourceImage];
-    
-    GPUImageAdaptiveThresholdFilter *stillImageFilter = [[GPUImageAdaptiveThresholdFilter alloc] init];
-    stillImageFilter.blurRadiusInPixels = 8.0;
-    UIImage *retImage = [stillImageFilter imageByFilteringImage:sourceImage];
-    
-    return retImage;
-}
-
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
 didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
        fromConnection:(AVCaptureConnection *)connection {
@@ -316,8 +302,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     double x = CGImageGetHeight(cgImage)/2.0 - cropRectSize/2.0;
     double y = CGImageGetWidth(cgImage)/2.0 - cropRectSize/2.0;
     CGRect cropRect = CGRectMake(x, y, cropRectSize, cropRectSize);
-    CGContextSetLineWidth(context, 5);
-    CGContextSetStrokeColorWithColor(context, [[ UIColor redColor ] CGColor]);
+    CGContextSetLineWidth(context, 8);
+    CGContextSetStrokeColorWithColor(context, [[ UIColor whiteColor ] CGColor]);
     CGContextStrokeRect(context, cropRect);
     UIImage* augmentedImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();

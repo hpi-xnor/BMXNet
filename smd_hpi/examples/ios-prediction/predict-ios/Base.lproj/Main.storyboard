@@ -26,30 +26,30 @@
                                 <rect key="frame" x="0.0" y="30" width="320" height="518"/>
                                 <subviews>
                                     <stackView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="8eZ-00-IPG">
-                                        <rect key="frame" x="0.0" y="0.0" width="320" height="214"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="320" height="183"/>
                                         <subviews>
                                             <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" verticalHuggingPriority="249" verticalCompressionResistancePriority="749" translatesAutoresizingMaskIntoConstraints="NO" id="5uT-4f-HMh">
-                                                <rect key="frame" x="0.0" y="0.0" width="160" height="214"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="137" height="183"/>
                                                 <constraints>
                                                     <constraint firstAttribute="width" secondItem="5uT-4f-HMh" secondAttribute="height" multiplier="3:4" id="nXE-N0-lXr"/>
                                                 </constraints>
                                             </imageView>
                                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="3Uc-5L-pVr">
-                                                <rect key="frame" x="160" y="0.0" width="160" height="214"/>
+                                                <rect key="frame" x="137" y="0.0" width="183" height="183"/>
                                                 <constraints>
-                                                    <constraint firstAttribute="width" secondItem="3Uc-5L-pVr" secondAttribute="height" multiplier="3:4" id="FX7-iU-TbO"/>
+                                                    <constraint firstAttribute="width" secondItem="3Uc-5L-pVr" secondAttribute="height" multiplier="1:1" id="FX7-iU-TbO"/>
                                                 </constraints>
                                             </imageView>
                                         </subviews>
                                     </stackView>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="This is ..." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dje-xX-ydn">
-                                        <rect key="frame" x="126.5" y="222" width="67.5" height="20.5"/>
+                                        <rect key="frame" x="126.5" y="191" width="67.5" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <color key="textColor" cocoaTouchSystemColor="darkTextColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WfO-vs-Gqh">
-                                        <rect key="frame" x="107.5" y="250.5" width="105" height="191.5"/>
+                                        <rect key="frame" x="107.5" y="219.5" width="105" height="222.5"/>
                                         <state key="normal" title="Start Detection"/>
                                         <connections>
                                             <action selector="startDetectionButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="ccr-am-V9h"/>
@@ -81,6 +81,7 @@
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="hgb-Q7-4wV" firstAttribute="width" secondItem="8bC-Xf-vdC" secondAttribute="width" id="aUF-P6-eX6"/>
+                            <constraint firstItem="8eZ-00-IPG" firstAttribute="width" secondItem="8bC-Xf-vdC" secondAttribute="width" id="p9f-gr-Bvi"/>
                             <constraint firstItem="wfy-db-euE" firstAttribute="top" secondItem="hgb-Q7-4wV" secondAttribute="bottom" constant="20" id="sp0-eD-pvC"/>
                             <constraint firstItem="hgb-Q7-4wV" firstAttribute="top" secondItem="y3c-jy-aDJ" secondAttribute="bottom" constant="10" id="v68-Sq-ZI8"/>
                             <constraint firstItem="hgb-Q7-4wV" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="yBO-oS-gNr"/>
