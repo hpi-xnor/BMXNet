@@ -21,16 +21,18 @@
     NSString *model_symbol;
     NSData *model_params;
     AVCaptureSession *captureSession;
+    AVCaptureDevice *videoDevice;
 }
 
 @property (weak, nonatomic) IBOutlet UILabel *labelDescription;
 @property (weak, nonatomic) IBOutlet UIImageView *imageViewPhoto;
 @property (weak, nonatomic) IBOutlet UIButton *detectionButton;
 @property (weak, nonatomic) IBOutlet UIImageView *imageViewCrop;
+@property (weak, nonatomic) IBOutlet UISlider *exposureSlider;
 
 - (IBAction)startDetectionButtonTapped:(id)sender;
 - (IBAction)stopDetectionButtonTapped:(id)sender;
-- (AVCaptureSession *)createCaptureSession;
+- (AVCaptureSession *)createCaptureSessionFor:(AVCaptureDevice *)device;
 - (UIImage *) cropCenterRect:(UIImage *)image toSize:(int)size;
 
 @end

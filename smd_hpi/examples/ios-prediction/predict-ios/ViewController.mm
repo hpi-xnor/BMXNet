@@ -15,6 +15,9 @@
 #import <AVFoundation/AVCaptureDevice.h> // For access to the camera
 #import <AVFoundation/AVCaptureInput.h> // For adding a data input to the camera
 #import <AVFoundation/AVCaptureSession.h>
+
+static void * ExposureTargetBiasContext = &ExposureTargetBiasContext;
+
 @interface ViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 
 @property (nonatomic, retain) UIActivityIndicatorView *indicatorView;
@@ -129,14 +132,8 @@
     UIImage *chosenImage = info[UIImagePickerControllerOriginalImage];
     self.imageViewPhoto.image = chosenImage;
     [picker dismissViewControllerAnimated:YES completion:^(void){
-        [self.view addSubview:self.indicatorView];
-        self.indicatorView.frame = self.view.bounds;
-        [self.indicatorView startAnimating];
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
-            dispatch_async(dispatch_get_main_queue(), ^(){
-                //self.labelDescription.text = [self predictImage:self.imageViewPhoto.image];
-                [self.indicatorView stopAnimating];
-            });
+            [self prepareAndClassify:chosenImage.CGImage];
         });
     }];
 }
@@ -150,9 +147,19 @@
     [self.detectionButton addTarget:self
                              action:@selector(stopDetectionButtonTapped:)
                    forControlEvents:UIControlEventTouchUpInside];
-    if (!captureSession) {
-        captureSession = [self createCaptureSession];
+    
+    if (!videoDevice) {
+        videoDevice = [self selectCameraAt:AVCaptureDevicePositionBack];
     }
+    
+    if (!captureSession) {
+        captureSession = [self createCaptureSessionFor:videoDevice];
+    }
+    
+    self.exposureSlider.minimumValue = videoDevice.minExposureTargetBias;
+    self.exposureSlider.maximumValue = videoDevice.maxExposureTargetBias;
+    self.exposureSlider.value = videoDevice.exposureTargetBias;
+    
     [captureSession startRunning];
 }
 
@@ -161,15 +168,14 @@
     [self.detectionButton addTarget:self
                              action:@selector(startDetectionButtonTapped:)
                    forControlEvents:UIControlEventTouchUpInside];
+    
     [captureSession stopRunning];
 }
 
-- (AVCaptureSession *)createCaptureSession
+- (AVCaptureSession *)createCaptureSessionFor:(AVCaptureDevice *)device
 {
     AVCaptureSession *session = [[AVCaptureSession alloc] init];
     session.sessionPreset = AVCaptureSessionPresetHigh;
-    
-    AVCaptureDevice *device = [self selectCameraAt:AVCaptureDevicePositionBack];
     
     NSError *error = nil;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
@@ -221,8 +227,6 @@
     CGFloat rows = image.size.height;
     
     cv::Mat cvMat(rows, cols, CV_8UC1); // 8 bits per component, 1 channels
-    
-    int bytesPerRow = cvMat.step[0];
     
     CGContextRef contextRef = CGBitmapContextCreate(cvMat.data,                 // Pointer to data
                                                     cols,                       // Width of bitmap
@@ -286,14 +290,11 @@
     return [self UIImageFromCVMat: thresholded];
 }
 
-- (void)captureOutput:(AVCaptureOutput *)captureOutput
-didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
-       fromConnection:(AVCaptureConnection *)connection {
-    
-    CGImageRef cgImage = [self imageFromSampleBuffer:sampleBuffer];
+- (void) prepareAndClassify:(CGImageRef) cgImage
+{
     float cropRectSize = 448;
     
-    // red box around detection area
+    // box around detection area
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGImageGetHeight(cgImage), CGImageGetWidth(cgImage)), NO, 1.0);
     CGContextRef context = UIGraphicsGetCurrentContext();
     UIGraphicsPushContext(context);
@@ -310,23 +311,11 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     
     // crop and threshold image
     UIImage *thresholded = [self doThresholding: [self cropCenterRect:augmentedImage toSize: cropRectSize] ];
-    //UIImage *thresholded = [self doBinarize: [self cropCenterRect:augmentedImage toSize: cropRectSize]];
-    
-    // visualize 28x28 pic that will go into neural net
-//    UIGraphicsBeginImageContextWithOptions(CGSizeMake(kWidth, kHeight), NO, 1.0);
-//    CGContextRef context2 = UIGraphicsGetCurrentContext();
-//    UIGraphicsPushContext(context2);
-//    [thresholded drawInRect:CGRectMake(0, 0, kWidth, kHeight)];
-//    UIGraphicsPopContext();
-//    UIImage* newImage2 = UIGraphicsGetImageFromCurrentImageContext();
-//    UIGraphicsEndImageContext();
     
     // update ui
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         dispatch_async(dispatch_get_main_queue(), ^(){
             [self.imageViewPhoto setImage: augmentedImage];
-            //[self.imageViewPhoto setImage: newImage]; //[UIImage imageWithCGImage: newImage.CGImage scale:0.0 orientation:UIImageOrientationRightMirrored]];
-            CGImageRelease( cgImage );
         });
     });
     
@@ -339,6 +328,16 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             [self.imageViewCrop setImage: thresholded];
         });
     });
+
+}
+
+- (void)captureOutput:(AVCaptureOutput *)captureOutput
+didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
+       fromConnection:(AVCaptureConnection *)connection {
+    
+    CGImageRef image = [self imageFromSampleBuffer:sampleBuffer];
+    [self prepareAndClassify: image];
+    CGImageRelease(image);
 }
 
 - (CGImageRef) imageFromSampleBuffer:(CMSampleBufferRef) sampleBuffer
@@ -361,6 +360,18 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     return newImage;
 }
 
+- (IBAction)exposureSliderValueChanged:(id)sender {
+    if (!videoDevice) {
+        return;
+    }
+    
+    [videoDevice lockForConfiguration:nil];
+    
+    if([videoDevice isExposureModeSupported:AVCaptureExposureModeCustom]){
+        [videoDevice setExposureTargetBias:self.exposureSlider.value completionHandler: nil];    }
+    
+    [videoDevice unlockForConfiguration];
+}
 
 
 @end

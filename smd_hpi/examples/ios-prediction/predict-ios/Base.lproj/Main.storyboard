@@ -48,13 +48,25 @@
                                         <color key="textColor" cocoaTouchSystemColor="darkTextColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WfO-vs-Gqh">
-                                        <rect key="frame" x="107.5" y="219.5" width="105" height="222.5"/>
+                                    <button opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WfO-vs-Gqh">
+                                        <rect key="frame" x="107.5" y="219.5" width="105" height="156"/>
                                         <state key="normal" title="Start Detection"/>
                                         <connections>
                                             <action selector="startDetectionButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="ccr-am-V9h"/>
                                         </connections>
                                     </button>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" ambiguous="YES" text="Exposure" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="imd-lV-wgv">
+                                        <rect key="frame" x="124.5" y="383.5" width="71.5" height="20.5"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                        <nil key="textColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    <slider opaque="NO" contentMode="scaleToFill" ambiguous="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="0.5" minValue="0.0" maxValue="1" translatesAutoresizingMaskIntoConstraints="NO" id="Kdb-4F-SJ4">
+                                        <rect key="frame" x="-2" y="412" width="324" height="31"/>
+                                        <connections>
+                                            <action selector="exposureSliderValueChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="I8T-r5-3AW"/>
+                                        </connections>
+                                    </slider>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fEo-C7-pyA">
                                         <rect key="frame" x="116" y="450" width="88" height="30"/>
                                         <constraints>
@@ -76,6 +88,9 @@
                                         </connections>
                                     </button>
                                 </subviews>
+                                <constraints>
+                                    <constraint firstItem="Kdb-4F-SJ4" firstAttribute="width" secondItem="hgb-Q7-4wV" secondAttribute="width" id="yDD-Y0-Clk"/>
+                                </constraints>
                             </stackView>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
@@ -89,6 +104,7 @@
                     </view>
                     <connections>
                         <outlet property="detectionButton" destination="WfO-vs-Gqh" id="pfx-ic-F1n"/>
+                        <outlet property="exposureSlider" destination="Kdb-4F-SJ4" id="3Wb-T0-ueK"/>
                         <outlet property="imageViewCrop" destination="3Uc-5L-pVr" id="H1i-al-llL"/>
                         <outlet property="imageViewPhoto" destination="5uT-4f-HMh" id="uXC-Fd-HJX"/>
                         <outlet property="labelDescription" destination="dje-xX-ydn" id="DkY-aJ-Kvu"/>
