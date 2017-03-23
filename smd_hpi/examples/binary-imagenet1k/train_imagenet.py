@@ -24,7 +24,9 @@ if __name__ == '__main__':
  
     parser.set_defaults(
         # network
-        network          = 'alexnet',
+        network        = 'resnet-binary',
+        num_layers     = 18,
+
         # data
         num_classes      = 1000,
         num_examples     = 1281167,
@@ -32,15 +34,15 @@ if __name__ == '__main__':
         min_random_scale = 1, # if input image has min size k, suggest to use
                               # 256.0/x, e.g. 0.533 for 480
         # train
-        num_epochs       = 60,
-        lr_step_epochs   = '20,30,40,50',
-        lr               = 0.1,
+        num_epochs       = 30,
+        lr_step_epochs   = '10,20',
+        lr               = 0.001,
         batch_size     = 32,
         optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
-        data_train       = '/data/haojin/imagenet1k/imagenet1k-train',
-        data_val         = '/data/haojin/imagenet1k/imagenet1k-val'
+        data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',
+        data_val         = '/data/haojin/imagenet1k/imagenet1k-val.rec'
     )
     args = parser.parse_args()
 
@@ -64,7 +66,7 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 1)#inception-bn-0039.param
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 53)
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(devs), args.pretrained))
 	

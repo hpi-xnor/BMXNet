@@ -114,8 +114,8 @@ def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck
         for j in range(units[i]-1):
             body = residual_unit(body, filter_list[i+1], (1,1), True, name='stage%d_unit%d' % (i + 1, j + 2),
                                  bottle_neck=bottle_neck, workspace=workspace, memonger=memonger)
-    act1 = mx.sym.QActivation(data=body, act_bit=BIT)
-    bn1 = mx.sym.BatchNorm(data=act1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn1')
+#    act1 = mx.sym.QActivation(data=body, act_bit=BIT)
+    bn1 = mx.sym.BatchNorm(data=body, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn1')
     relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
     # Although kernel is not used here when global_pool=True, we should put one
     pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
