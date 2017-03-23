@@ -908,7 +908,7 @@ struct det_sign {
     MSHADOW_XINLINE static DType Map(DType a) {
       if (a < 0.0f) return DType(-DType(1.0f));
       if (a > 0.0f) return DType(DType(1.0f));
-      return DType(DType(1.0f));
+      return DType(DType(0.0f));
     }
 };
 
