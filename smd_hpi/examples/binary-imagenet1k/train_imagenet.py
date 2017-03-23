@@ -34,11 +34,11 @@ if __name__ == '__main__':
         min_random_scale = 1, # if input image has min size k, suggest to use
                               # 256.0/x, e.g. 0.533 for 480
         # train
-        num_epochs       = 30,
-        lr_step_epochs   = '10,20',
-        lr               = 0.001,
+        num_epochs       = 60,
+        lr_step_epochs   = '20,30,40,50',
+        lr               = 0.1,
         batch_size     = 32,
-        optimizer        = 'sgd',
+        optimizer        = 'Adam',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',

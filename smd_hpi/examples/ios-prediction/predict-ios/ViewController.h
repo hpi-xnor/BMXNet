@@ -11,10 +11,8 @@
 #import <vector>
 #import <AVFoundation/AVCaptureOutput.h> // Allows us to use AVCaptureVideoDataOutputSampleBufferDelegate
 
-#define kDefaultWidth 224
-#define kDefaultHeight 224
-#define kDefaultChannels 3
-#define kDefaultImageSize (kDefaultWidth*kDefaultHeight*kDefaultChannels)
+#define kWidth 28
+#define kHeight 28
 
 @interface ViewController : UIViewController <AVCaptureVideoDataOutputSampleBufferDelegate>{
     
@@ -22,18 +20,20 @@
     
     NSString *model_symbol;
     NSData *model_params;
-    NSMutableArray *model_synset;
-    float model_mean[kDefaultImageSize];
     AVCaptureSession *captureSession;
+    AVCaptureDevice *videoDevice;
 }
 
 @property (weak, nonatomic) IBOutlet UILabel *labelDescription;
 @property (weak, nonatomic) IBOutlet UIImageView *imageViewPhoto;
 @property (weak, nonatomic) IBOutlet UIButton *detectionButton;
+@property (weak, nonatomic) IBOutlet UIImageView *imageViewCrop;
+@property (weak, nonatomic) IBOutlet UISlider *exposureSlider;
 
 - (IBAction)startDetectionButtonTapped:(id)sender;
 - (IBAction)stopDetectionButtonTapped:(id)sender;
-- (AVCaptureSession *)createCaptureSession;
+- (AVCaptureSession *)createCaptureSessionFor:(AVCaptureDevice *)device;
+- (UIImage *) cropCenterRect:(UIImage *)image toSize:(int)size;
 
 @end
 
