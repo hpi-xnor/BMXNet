@@ -36,9 +36,10 @@ if __name__ == '__main__':
         # train
         num_epochs       = 60,
         lr_step_epochs   = '20,30,40,50',
-        lr               = 0.1,
+        lr               = 0.01,
+	lr_factor        = 0.05,
         batch_size     = 32,
-        optimizer        = 'Adam',
+        optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 53)
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 13)
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(devs), args.pretrained))
 	
