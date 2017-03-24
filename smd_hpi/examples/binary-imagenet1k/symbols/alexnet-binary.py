@@ -5,7 +5,7 @@ Krizhevsky, Alex, Ilya Sutskever, and Geoffrey E. Hinton. "Imagenet classificati
 """
 import mxnet as mx
 
-eps = 1e-10 + 1e-5
+eps = 2e-5
 bn_mom = 0.9
 fix_gamma = False
 BIT = 1
