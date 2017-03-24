@@ -39,7 +39,7 @@ if __name__ == '__main__':
         lr               = 0.01,
 	lr_factor        = 0.05,
         batch_size     = 32,
-        optimizer        = 'sgd',
+        optimizer        = 'adam',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',
