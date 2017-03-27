@@ -11,7 +11,7 @@ arXiv:1502.03167, 2015.
 """
 import mxnet as mx
 
-eps = 1e-4#1e-10 + 1e-5
+eps = 2e-5#1e-10 + 1e-5
 bn_mom = 0.9
 fix_gamma = False
 BIT = 1
@@ -156,7 +156,9 @@ def get_symbol(num_classes, image_shape, **kwargs):
         in5a = QInceptionFactoryA(in4e, 352, 192, 320, 160, 224, "avg", 128, '5a')
         in5b = QInceptionFactoryA(in5a, 352, 192, 320, 192, 224, "max", 128, '5b')
         # global avg pooling
-        pool = mx.symbol.Pooling(data=in5b, kernel=(7, 7), stride=(1, 1), name="global_pool", pool_type='avg')
+        bng = mx.sym.BatchNorm(data=in5b, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn_g')
+        relug = mx.sym.Activation(data=bng, act_type='relu', name='relu_g')
+        pool = mx.symbol.Pooling(data=relug, kernel=(7, 7), stride=(1, 1), name="global_pool", pool_type='avg')
 
     # linear classifier
     flatten = mx.symbol.Flatten(data=pool, name="flatten")
