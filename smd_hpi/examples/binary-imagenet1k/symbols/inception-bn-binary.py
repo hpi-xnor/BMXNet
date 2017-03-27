@@ -71,7 +71,7 @@ def QInceptionFactoryA(data, num_1x1, num_3x3red, num_3x3, num_d3x3red, num_d3x3
     cd3x3 = QConvFactory(data=cd3x3, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), name=('%s_double_3x3_1' % name))
     # pool + proj
     pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(1, 1), pad=(1, 1), pool_type=pool, name=('%s_pool_%s_pool' % (pool, name)))
-    cproj = QConvFactory(data=pooling, num_filter=proj, kernel=(1, 1), name=('%s_proj' %  name))
+    cproj = ConvFactory(data=pooling, num_filter=proj, kernel=(1, 1), name=('%s_proj' %  name))
     # concat
     concat = mx.symbol.Concat(*[c1x1, c3x3, cd3x3, cproj], name='ch_concat_%s_chconcat' % name)
     return concat
@@ -146,16 +146,18 @@ def get_symbol(num_classes, image_shape, **kwargs):
         in3a = InceptionFactoryA(pool2, 64, 64, 64, 64, 96, "avg", 32, '3a')
         in3b = InceptionFactoryA(in3a, 64, 64, 96, 64, 96, "avg", 64, '3b')
         in3c = InceptionFactoryB(in3b, 128, 160, 64, 96, '3c')
+	
         # stage 3
         in4a = InceptionFactoryA(in3c, 224, 64, 96, 96, 128, "avg", 128, '4a')
         in4b = InceptionFactoryA(in4a, 192, 96, 128, 96, 128, "avg", 128, '4b')
         in4c = InceptionFactoryA(in4b, 160, 128, 160, 128, 160, "avg", 128, '4c')
         in4d = InceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
         in4e = InceptionFactoryB(in4d, 128, 192, 192, 256, '4e')
+
+	gblocker = mx.symbol.BlockGrad(in4e)
         # stage 4
-        in5a = InceptionFactoryA(in4e, 352, 192, 320, 160, 224, "avg", 128, '5a')
-        grad_blocker = mx.symbol.BlockGrad(in5a)
-        in5b = QInceptionFactoryA(grad_blocker, 352, 192, 320, 192, 224, "max", 128, '5b')
+        in5a = QInceptionFactoryA(gblocker, 352, 192, 320, 160, 224, "avg", 128, '5a')      
+        in5b = QInceptionFactoryA(in5a, 352, 192, 320, 192, 224, "max", 128, '5b')
         # global avg pooling        
         pool = mx.symbol.Pooling(data=in5b, kernel=(7, 7), stride=(1, 1), name="global_pool", pool_type='avg')
 
