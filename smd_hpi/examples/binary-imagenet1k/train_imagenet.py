@@ -24,7 +24,7 @@ if __name__ == '__main__':
  
     parser.set_defaults(
         # network
-        network        = 'resnet-binary',
+        network        = 'resnet',
         num_layers     = 18,
 
         # data
@@ -35,11 +35,11 @@ if __name__ == '__main__':
                               # 256.0/x, e.g. 0.533 for 480
         # train
         num_epochs       = 60,
-        lr_step_epochs   = '20,30,40,50',
-        lr               = 0.01,
+        lr_step_epochs   = '10,20,30,40,50',
+        lr               = 0.1,
 	lr_factor        = 0.05,
         batch_size     = 32,
-        optimizer        = 'adam',
+        optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 13)
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 0)
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(devs), args.pretrained))
 	

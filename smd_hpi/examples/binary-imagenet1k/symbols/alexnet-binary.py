@@ -53,9 +53,8 @@ def get_symbol(num_classes, **kwargs):
     act_q7 = mx.symbol.QActivation(data=bn6, act_bit=BIT)
     fc2 = mx.symbol.QFullyConnected(data=act_q7, num_hidden=4096, act_bit=BIT, is_train=True, name="fullyconnected1")
     bn7 = mx.sym.BatchNorm(data=fc2, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
-    relu8 = mx.symbol.Activation(data=bn7, act_type="relu", name="q_relu8")
     
     # stage 6
-    fc3 = mx.symbol.FullyConnected(data=relu8, num_hidden=num_classes, name="fullyconnected2")
+    fc3 = mx.symbol.FullyConnected(data=bn7, num_hidden=num_classes, name="fullyconnected2")
     softmax = mx.symbol.SoftmaxOutput(data=fc3, name='softmax')
     return softmax
