@@ -139,26 +139,24 @@ def get_symbol(num_classes, image_shape, **kwargs):
         conv1 = ConvFactory(data=data, num_filter=64, kernel=(7, 7), stride=(2, 2), pad=(3, 3), name='1')
         pool1 = mx.symbol.Pooling(data=conv1, kernel=(3, 3), stride=(2, 2), name='max_pool_1', pool_type='max')
         # stage 2
-        conv2red = QConvFactory(data=pool1, num_filter=64, kernel=(1, 1), stride=(1, 1), name='2_reduce')
-        conv2 = QConvFactory(data=conv2red, num_filter=192, kernel=(3, 3), stride=(1, 1), pad=(1, 1), name='2')
+        conv2red = ConvFactory(data=pool1, num_filter=64, kernel=(1, 1), stride=(1, 1), name='2_reduce')
+        conv2 = ConvFactory(data=conv2red, num_filter=192, kernel=(3, 3), stride=(1, 1), pad=(1, 1), name='2')
         pool2 = mx.symbol.Pooling(data=conv2, kernel=(3, 3), stride=(2, 2), name='max_pool_2', pool_type='max')
         # stage 2
-        in3a = QInceptionFactoryA(pool2, 64, 64, 64, 64, 96, "avg", 32, '3a')
-        in3b = QInceptionFactoryA(in3a, 64, 64, 96, 64, 96, "avg", 64, '3b')
-        in3c = QInceptionFactoryB(in3b, 128, 160, 64, 96, '3c')
+        in3a = InceptionFactoryA(pool2, 64, 64, 64, 64, 96, "avg", 32, '3a')
+        in3b = InceptionFactoryA(in3a, 64, 64, 96, 64, 96, "avg", 64, '3b')
+        in3c = InceptionFactoryB(in3b, 128, 160, 64, 96, '3c')
         # stage 3
-        in4a = QInceptionFactoryA(in3c, 224, 64, 96, 96, 128, "avg", 128, '4a')
-        in4b = QInceptionFactoryA(in4a, 192, 96, 128, 96, 128, "avg", 128, '4b')
-        in4c = QInceptionFactoryA(in4b, 160, 128, 160, 128, 160, "avg", 128, '4c')
-        in4d = QInceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
-        in4e = QInceptionFactoryB(in4d, 128, 192, 192, 256, '4e')
+        in4a = InceptionFactoryA(in3c, 224, 64, 96, 96, 128, "avg", 128, '4a')
+        in4b = InceptionFactoryA(in4a, 192, 96, 128, 96, 128, "avg", 128, '4b')
+        in4c = InceptionFactoryA(in4b, 160, 128, 160, 128, 160, "avg", 128, '4c')
+        in4d = InceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
+        in4e = InceptionFactoryB(in4d, 128, 192, 192, 256, '4e')
         # stage 4
         in5a = QInceptionFactoryA(in4e, 352, 192, 320, 160, 224, "avg", 128, '5a')
         in5b = QInceptionFactoryA(in5a, 352, 192, 320, 192, 224, "max", 128, '5b')
-        # global avg pooling
-        bng = mx.sym.BatchNorm(data=in5b, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn_g')
-        relug = mx.sym.Activation(data=bng, act_type='relu', name='relu_g')
-        pool = mx.symbol.Pooling(data=relug, kernel=(7, 7), stride=(1, 1), name="global_pool", pool_type='avg')
+        # global avg pooling        
+        pool = mx.symbol.Pooling(data=in5b, kernel=(7, 7), stride=(1, 1), name="global_pool", pool_type='avg')
 
     # linear classifier
     flatten = mx.symbol.Flatten(data=pool, name="flatten")
