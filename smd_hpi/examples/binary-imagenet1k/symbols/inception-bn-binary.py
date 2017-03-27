@@ -153,8 +153,9 @@ def get_symbol(num_classes, image_shape, **kwargs):
         in4d = InceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
         in4e = InceptionFactoryB(in4d, 128, 192, 192, 256, '4e')
         # stage 4
-        in5a = QInceptionFactoryA(in4e, 352, 192, 320, 160, 224, "avg", 128, '5a')
-        in5b = QInceptionFactoryA(in5a, 352, 192, 320, 192, 224, "max", 128, '5b')
+        in5a = InceptionFactoryA(in4e, 352, 192, 320, 160, 224, "avg", 128, '5a')
+        grad_blocker = mx.symbol.BlockGrad(in5a)
+        in5b = QInceptionFactoryA(grad_blocker, 352, 192, 320, 192, 224, "max", 128, '5b')
         # global avg pooling        
         pool = mx.symbol.Pooling(data=in5b, kernel=(7, 7), stride=(1, 1), name="global_pool", pool_type='avg')
 
