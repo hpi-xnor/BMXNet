@@ -68,8 +68,9 @@ def get_symbol(num_classes, **kwargs):
     relu5 = mx.symbol.Activation(data=bn5, act_type="relu")
     pool3 = mx.symbol.Pooling(data=relu5, kernel=(3, 3), stride=(2, 2), pool_type="max")
 
+    gblocker = mx.symbol.BlockGrad(pool3)
     # stage 4
-    flatten = mx.symbol.Flatten(data=pool3)    
+    flatten = mx.symbol.Flatten(data=gblocker)    
     act_q6 = mx.symbol.QActivation(data=flatten, act_bit=BIT)
     fc1 = mx.symbol.QFullyConnected(data=act_q6, num_hidden=4096, act_bit=BIT, is_train=True, name="fullyconnected0")
     bn6 = mx.sym.BatchNorm(data=fc1, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
