@@ -48,22 +48,22 @@ def get_symbol(num_classes, **kwargs):
     
     # stage 2
     conv2 = mx.symbol.Convolution(
-        data=pool1, kernel=(5, 5), pad=(2, 2), num_filter=256)
+        data=pool1, kernel=(5, 5), pad=(2, 2), num_filter=256, name="convolution1")
     bn2 = mx.sym.BatchNorm(data=conv2, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
     relu2 = mx.symbol.Activation(data=bn2, act_type="relu")
     pool2 = mx.symbol.Pooling(data=relu2, kernel=(3, 3), stride=(2, 2), pool_type="max")
 
     # stage 3
     conv3 = mx.symbol.Convolution(
-        data=pool2, kernel=(3, 3), pad=(1, 1), num_filter=384)
+        data=pool2, kernel=(3, 3), pad=(1, 1), num_filter=384, name="convolution2")
     bn3 = mx.sym.BatchNorm(data=conv3, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
     relu3 = mx.symbol.Activation(data=bn3, act_type="relu")
     conv4 = mx.symbol.Convolution(
-        data=relu3, kernel=(3, 3), pad=(1, 1), num_filter=384)
+        data=relu3, kernel=(3, 3), pad=(1, 1), num_filter=384, name="convolution3")
     bn4 = mx.sym.BatchNorm(data=conv4, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
     relu4 = mx.symbol.Activation(data=bn4, act_type="relu")
     conv5 = mx.symbol.Convolution(
-        data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256)
+        data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256, name="convolution4")
     bn5 = mx.sym.BatchNorm(data=conv5, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
     relu5 = mx.symbol.Activation(data=bn5, act_type="relu")
     pool3 = mx.symbol.Pooling(data=relu5, kernel=(3, 3), stride=(2, 2), pool_type="max")
