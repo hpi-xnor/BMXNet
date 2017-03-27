@@ -71,7 +71,7 @@ def QInceptionFactoryA(data, num_1x1, num_3x3red, num_3x3, num_d3x3red, num_d3x3
     cd3x3 = QConvFactory(data=cd3x3, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), name=('%s_double_3x3_1' % name))
     # pool + proj
     pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(1, 1), pad=(1, 1), pool_type=pool, name=('%s_pool_%s_pool' % (pool, name)))
-    cproj = QConvFactory(data=pooling, num_filter=proj, kernel=(1, 1), name=('%s_proj' %  name))
+    cproj = ConvFactory(data=pooling, num_filter=proj, kernel=(1, 1), name=('%s_proj' %  name))
     # concat
     concat = mx.symbol.Concat(*[c1x1, c3x3, cd3x3, cproj], name='ch_concat_%s_chconcat' % name)
     return concat
