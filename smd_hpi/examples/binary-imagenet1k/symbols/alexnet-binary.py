@@ -65,7 +65,7 @@ def get_symbol(num_classes, **kwargs):
     relu4 = mx.symbol.Activation(data=bn4, act_type="relu")
     
     conv5 = mx.symbol.QConvolution(
-        data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256, name="convolution4", act_bit=BIT, is_train=True)
+        data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256, name="convolution4", act_bit=BIT)
     bn5 = mx.sym.BatchNorm(data=conv5, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
     relu5 = mx.symbol.Activation(data=bn5, act_type="relu")
     pool3 = mx.symbol.Pooling(data=relu5, kernel=(3, 3), stride=(2, 2), pool_type="max")
