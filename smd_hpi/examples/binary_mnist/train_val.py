@@ -6,6 +6,7 @@ import pdb
 from dorefa_ops import get_dorefa
 from math_ops import *
 from random import randint
+from initializer import BinaryInitializer
 
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -170,7 +171,7 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu
 		eval_data=val_iter, 	# validation data
 		optimizer='Adam',
 		num_epoch=epochs,
-		initializer = mx.initializer.Xavier(),
+		initializer = mx.init.Mixed( patterns=[ '.*_binarized', '.*' ] , initializers = [ BinaryInitializer(), mx.initializer.Xavier() ] ),
 		batch_end_callback = mx.callback.Speedometer(batch_size, 5) # output progress for each 200 data batches
 	)
 

@@ -21,12 +21,15 @@
 #include "../../src/operator/operator_common.h"
 #include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
+#include "./xnor_cpu.h"
+
+#include <csignal>
 
 namespace mxnet {
 namespace op {
 
 namespace q_conv {
-enum QConvolutionOpInputs {kData, kWeight, kBias};
+enum QConvolutionOpInputs {kData, kWeight, kBias, kWeightBinarized, kBiasBinarized};
 enum QConvolutionOpOutputs {kOut};
 enum QConvolutionOpResource {kTempSpace};
 enum QConvolutionOpCudnnTune {kOff, kLimited, kFastest};
@@ -47,6 +50,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   // mf quantization and binarization variables
   uint32_t act_bit;
   bool scaling_factor;
+  bool binarized_weights_only;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
     DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -92,6 +96,8 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
             .describe("Number of bits to quantize weights to.");
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
+    DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
+            .describe("Path to binarized weights. set automatically by model converter.");
   }
 };
 
@@ -114,8 +120,14 @@ class QConvolutionOp : public Operator {
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
+    //std::raise(SIGINT);
     CHECK_EQ(req[q_conv::kOut], kWriteTo);
-    size_t expected = param_.no_bias ? 2 : 3;
+    size_t expected;
+    if (!param_.binarized_weights_only) {
+      expected = param_.no_bias ? 3 : 5;
+    } else {
+      expected = param_.no_bias ? 2 : 3;
+    }
     CHECK_EQ(in_data.size(), expected);
     CHECK_EQ(out_data.size(), 1);
     Stream<xpu> *s = ctx.get_stream<xpu>();
@@ -228,7 +240,12 @@ class QConvolutionOp : public Operator {
       LOG(FATAL) << "Volume convolution is not implmented in mshadow";
     }
     CHECK_EQ(out_grad.size(), 1);
-    size_t expected = param_.no_bias == 0 ? 3 : 2;
+    size_t expected;
+    if (!param_.binarized_weights_only) {
+      expected = param_.no_bias ? 3 : 5;
+    } else {
+      expected = param_.no_bias ? 2 : 3;
+    }
     CHECK(in_data.size() == expected && in_grad.size() == expected);
     CHECK_EQ(req.size(), expected);
     CHECK_EQ(in_data[q_conv::kWeight].CheckContiguous(), true);
@@ -376,9 +393,17 @@ class QConvolutionProp : public OperatorProperty {
  public:
   std::vector<std::string> ListArguments() const override {
     if (!param_.no_bias) {
-      return {"data", "weight", "bias"};
+      if (!param_.binarized_weights_only) {
+        return {"data", "weight", "bias", "weight_binarized", "bias_binarized"};
+      } else {
+        return {"data", "weight_binarized", "bias_binarized"};
+      }
     } else {
-      return {"data", "weight"};
+      if (!param_.binarized_weights_only) {
+        return {"data", "weight", "weight_binarized"};
+      } else {
+        return {"data", "weight_binarized"};
+      }
     }
   }
 
@@ -408,9 +433,18 @@ class QConvolutionProp : public OperatorProperty {
                   std::vector<TShape> *aux_shape) const override {
     using namespace mshadow;
     if (!param_.no_bias) {
-      CHECK_EQ((int)in_shape->size(), 3) << "Input:[data, weight, bias]";
+      LOG(WARNING) << "convolution with bias untested //mf";
+      if (param_.binarized_weights_only) {
+        CHECK_EQ((int) in_shape->size(), 3) << "Input:[data, weight_binarized, bias_binarized]";
+      } else {
+        CHECK_EQ((int) in_shape->size(), 5) << "Input:[data, weight, bias, weight_binarized, bias_binarized]";
+      }
     } else {
-      CHECK_EQ((int)in_shape->size(), 2) << "Input:[data, weight]";
+      if (param_.binarized_weights_only) {
+        CHECK_EQ((int) in_shape->size(), 2) << "Input:[data, weight_binarized]";
+      } else {
+        CHECK_EQ((int) in_shape->size(), 3) << "Input:[data, weight, weight_binarized]";
+      }
     }
     // CHECK_EQ(out_shape->size(), 1) << "Output: [output]";
     out_shape->resize(1, TShape());
@@ -425,9 +459,21 @@ class QConvolutionProp : public OperatorProperty {
                                param_.kernel[0], param_.kernel[1]);
       wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
       wshape[0] *= param_.num_group;
-      SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+      //std::raise(SIGINT);
+      int binary_inputs_index_adjust = 1;
+      if (!param_.binarized_weights_only) {
+        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+        if (!param_.no_bias) {
+          binary_inputs_index_adjust = 0;
+          SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBias, Shape1(param_.num_filter));
+        }
+      } else {
+        binary_inputs_index_adjust = 2;
+      }
+
+      SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeightBinarized - binary_inputs_index_adjust, Shape1(wshape.Size() / BITS_PER_BINARY_WORD));
       if (!param_.no_bias) {
-        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBias, Shape1(param_.num_filter));
+        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBiasBinarized - binary_inputs_index_adjust, Shape1(param_.num_filter / BITS_PER_BINARY_WORD));
       }
 
       const index_t ksize_y = static_cast<index_t>(param_.kernel[0]);
@@ -466,6 +512,9 @@ class QConvolutionProp : public OperatorProperty {
     CHECK_GE((int)in_type->size(), 1);
     int dtype = (*in_type)[0];
     CHECK_NE(dtype, -1) << "First input must have specified type";
+    CHECK_EQ(sizeof(mxnet::op::xnor_cpu::BINARY_WORD), mshadow::mshadow_sizeof(dtype))
+      << "We store our binarized weights in mxnets data structures,"
+      << "so we rely on sizeof(BINARY_WORD) == sizeof(DType)";
     for (index_t i = 0; i < in_type->size(); ++i) {
       if ((*in_type)[i] == -1) {
         (*in_type)[i] = dtype;
