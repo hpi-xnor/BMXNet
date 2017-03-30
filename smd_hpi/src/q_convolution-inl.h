@@ -29,7 +29,7 @@ namespace mxnet {
 namespace op {
 
 namespace q_conv {
-enum QConvolutionOpInputs {kData, kWeight, kBias, kWeightBinarized, kBiasBinarized};
+enum QConvolutionOpInputs {kData, kWeight, kBias, kWeightBinarized};
 enum QConvolutionOpOutputs {kOut};
 enum QConvolutionOpResource {kTempSpace};
 enum QConvolutionOpCudnnTune {kOff, kLimited, kFastest};
@@ -125,7 +125,7 @@ class QConvolutionOp : public Operator {
     CHECK(param_.binarized_weights_only ? !ctx.is_train : true);
     size_t expected;
     if (!param_.binarized_weights_only) {
-      expected = param_.no_bias ? 3 : 5;
+      expected = param_.no_bias ? 3 : 4;
     } else {
       expected = param_.no_bias ? 2 : 3;
     }
@@ -206,8 +206,9 @@ class QConvolutionOp : public Operator {
         // this means for prediction phase and 1-bit, the QConvolutionForward(...)
         // should give the exactly same result as the sign( dot() ) method.
         if(!ctx.is_train && this->param_.act_bit == 1){
+          CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
           //xnor based convolution
-          Tensor<xpu, 1, DType> wmat_binarized = in_data[param_.binarized_weights_only ? q_conv::kWeight : param_.no_bias ? q_conv::kBias : q_conv::kWeightBinarized].get<xpu, 1, DType>(s);
+          Tensor<xpu, 1, DType> wmat_binarized = in_data[param_.binarized_weights_only ? q_conv::kBias : param_.no_bias ? q_conv::kBias : q_conv::kWeightBinarized].get<xpu, 1, DType>(s);
 
           QConvolutionForward(data,
                               wmat[gid],
@@ -402,9 +403,9 @@ class QConvolutionProp : public OperatorProperty {
   std::vector<std::string> ListArguments() const override {
     if (!param_.no_bias) {
       if (!param_.binarized_weights_only) {
-        return {"data", "weight", "bias", "weight_binarized", "bias_binarized"};
+        return {"data", "weight", "bias", "weight_binarized"};
       } else {
-        return {"data", "weight_binarized", "bias_binarized"};
+        return {"data", "bias", "weight_binarized"};
       }
     } else {
       if (!param_.binarized_weights_only) {
@@ -443,9 +444,9 @@ class QConvolutionProp : public OperatorProperty {
     if (!param_.no_bias) {
       LOG(WARNING) << "convolution with bias untested //mf";
       if (param_.binarized_weights_only) {
-        CHECK_EQ((int) in_shape->size(), 3) << "Input:[data, weight_binarized, bias_binarized]";
+        CHECK_EQ((int) in_shape->size(), 3) << "Input:[data, bias, weight_binarized]";
       } else {
-        CHECK_EQ((int) in_shape->size(), 5) << "Input:[data, weight, bias, weight_binarized, bias_binarized]";
+        CHECK_EQ((int) in_shape->size(), 4) << "Input:[data, weight, bias, weight_binarized]";
       }
     } else {
       if (param_.binarized_weights_only) {
@@ -480,9 +481,6 @@ class QConvolutionProp : public OperatorProperty {
       }
 
       SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeightBinarized - binary_inputs_index_adjust, Shape1(wshape.Size() / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
-      if (!param_.no_bias) {
-        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBiasBinarized - binary_inputs_index_adjust, Shape1(param_.num_filter / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
-      }
 
       const index_t ksize_y = static_cast<index_t>(param_.kernel[0]);
       const index_t ksize_x = static_cast<index_t>(param_.kernel[1]);

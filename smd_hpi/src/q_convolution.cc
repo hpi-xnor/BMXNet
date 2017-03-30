@@ -175,6 +175,7 @@ MXNET_REGISTER_OP_PROPERTY(QConvolution, QConvolutionProp)
 .add_argument("data", "Symbol", "Input data to the ConvolutionOp.")
 .add_argument("weight", "Symbol", "Weight matrix.")
 .add_argument("bias", "Symbol", "Bias parameter.")
+.add_argument("weight_binarized", "Symbol", "Binarized Weight matrix.")
 .add_arguments(QConvolutionParam::__FIELDS__())
 .describe("Apply convolution to input then add a bias.");
 
