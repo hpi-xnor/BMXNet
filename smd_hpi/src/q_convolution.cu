@@ -32,7 +32,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
 	CHECK_EQ((int)temp_dst.size(0), (int)wmat.size(0));
 	CHECK_EQ((int)temp_dst.size(1), (int)in_col.size(1));
 	
-	cudaStream_t stream = Stream<gpu>::GetStream(out.stream_);
+	cudaStream_t stream = Stream<gpu>::GetStream(temp_dst.stream_);
 	
 	//set memory
 	float *fA = wmat.dptr_; 
