@@ -134,6 +134,7 @@ namespace mshadow {
     template<typename DType>
     inline void QConvolutionForward(const Tensor<cpu, 4, DType> &data,
                                     const Tensor<cpu, 2, DType> &wmat,
+                                    const Tensor<cpu, 1, DType> &wmat_binarized,
                                     const Tensor<cpu, 2, DType> &in_col,
                                     const Tensor<cpu, 2, DType> &temp_dst,
                                     const mxnet::op::QConvolutionParam &param) {

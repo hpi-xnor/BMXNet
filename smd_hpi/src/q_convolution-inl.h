@@ -207,7 +207,14 @@ class QConvolutionOp : public Operator {
         // should give the exactly same result as the sign( dot() ) method.
         if(!ctx.is_train && this->param_.act_bit == 1){
           //xnor based convolution
-          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], param_);
+          Tensor<xpu, 1, DType> wmat_binarized = in_data[param_.binarized_weights_only ? q_conv::kWeight : param_.no_bias ? q_conv::kBias : q_conv::kWeightBinarized].get<xpu, 1, DType>(s);
+
+          QConvolutionForward(data,
+                              wmat[gid],
+                              wmat_binarized,
+                              tmpc,
+                              temp_dst[gid],
+                              param_);
         }else{
           temp_dst[gid] = dot(wmat[gid], tmpc);
         }                  
