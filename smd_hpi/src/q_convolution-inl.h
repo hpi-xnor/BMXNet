@@ -479,9 +479,9 @@ class QConvolutionProp : public OperatorProperty {
         binary_inputs_index_adjust = 2;
       }
 
-      SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeightBinarized - binary_inputs_index_adjust, Shape1(wshape.Size() / BITS_PER_BINARY_WORD));
+      SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeightBinarized - binary_inputs_index_adjust, Shape1(wshape.Size() / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
       if (!param_.no_bias) {
-        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBiasBinarized - binary_inputs_index_adjust, Shape1(param_.num_filter / BITS_PER_BINARY_WORD));
+        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBiasBinarized - binary_inputs_index_adjust, Shape1(param_.num_filter / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
       }
 
       const index_t ksize_y = static_cast<index_t>(param_.kernel[0]);

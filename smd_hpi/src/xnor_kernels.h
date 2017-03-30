@@ -9,7 +9,7 @@
 #define SMD_HPI_SRC_XNOR_KERNELS_H_
 
 typedef unsigned int BINARY_WORD;
-#define BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT)
+const int BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT);
 #define BLOCK_SIZE_XNOR 16
 
 __global__ void gemm(float* A, float* B, float* C, int m, int n, int k);
