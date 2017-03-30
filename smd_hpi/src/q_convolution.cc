@@ -17,11 +17,44 @@ using get_time = std::chrono::steady_clock ;
 namespace mshadow {
     using namespace mxnet::op::xnor_cpu;
 
-    inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
-                                    const Tensor<cpu, 2, float> &wmat,
+		inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
+																		const Tensor<cpu, 2, float> &wmat,
+																		const Tensor<cpu, 1, float> &wmat_binarized,
+																		const Tensor<cpu, 2, float> &in_col,
+																		const Tensor<cpu, 2, float> &temp_dst,
+																		const mxnet::op::QConvolutionParam &param) {
+			int m = wmat.size(0);
+			int n = wmat.size(1);
+			int k = in_col.size(1);
+
+			BINARY_WORD* binary_row = (BINARY_WORD*) wmat_binarized.dptr_;
+			BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+
+			if (!param.binarized_weights_only) {
+				get_binary_row(wmat.dptr_, binary_row, m*n);
+			}
+
+			get_binary_col(in_col.dptr_, binary_col, n, k);
+
+			//auto start = std::chrono::high_resolution_clock::now();
+
+			xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+								binary_row, n/BITS_PER_BINARY_WORD,
+								binary_col, k,
+								temp_dst.dptr_, k);
+
+			//auto finish = std::chrono::high_resolution_clock::now();
+			//std::chrono::duration<double> elapsed = finish - start;
+			//std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+
+			free(binary_col);
+		}
+
+    inline void QConvolutionForward_deprecated(const Tensor<cpu, 4, float> &data,
+																		const Tensor<cpu, 2, float> &wmat,
+																		const Tensor<cpu, 1, float> &wmat_binarized,
                                     const Tensor<cpu, 2, float> &in_col,
                                     const Tensor<cpu, 2, float> &temp_dst,
-                                    const Tensor<cpu, 4, float> &out,
                                     const mxnet::op::QConvolutionParam &param) {
 
 			///*
@@ -58,11 +91,11 @@ namespace mshadow {
 		get_binary_row(wmat.dptr_, binary_row, m*n);
 		get_binary_col(in_col.dptr_, binary_col, n, k);
 
-	    //#pragma omp parallel for
-	    for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
-	      temp_dst.dptr_[i] = 0;
-	    }
-		//auto start = std::chrono::high_resolution_clock::now();
+		//#pragma omp parallel for
+		for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
+			temp_dst.dptr_[i] = 0;
+		}
+
 
 		///*
 		xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
@@ -103,7 +136,6 @@ namespace mshadow {
                                     const Tensor<cpu, 2, DType> &wmat,
                                     const Tensor<cpu, 2, DType> &in_col,
                                     const Tensor<cpu, 2, DType> &temp_dst,
-                                    const Tensor<cpu, 4, DType> &out,
                                     const mxnet::op::QConvolutionParam &param) {
       CHECK(false) << "only float supported";
     }

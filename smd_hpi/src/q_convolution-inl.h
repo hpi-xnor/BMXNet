@@ -122,6 +122,7 @@ class QConvolutionOp : public Operator {
     using namespace mshadow::expr;
     //std::raise(SIGINT);
     CHECK_EQ(req[q_conv::kOut], kWriteTo);
+    CHECK(param_.binarized_weights_only ? !ctx.is_train : true);
     size_t expected;
     if (!param_.binarized_weights_only) {
       expected = param_.no_bias ? 3 : 5;
@@ -206,7 +207,7 @@ class QConvolutionOp : public Operator {
         // should give the exactly same result as the sign( dot() ) method.
         if(!ctx.is_train && this->param_.act_bit == 1){
           //xnor based convolution
-          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], param_);
         }else{
           temp_dst[gid] = dot(wmat[gid], tmpc);
         }                  

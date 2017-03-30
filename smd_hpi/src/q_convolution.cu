@@ -14,8 +14,7 @@ namespace cuda {
 
 inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
                                 const Tensor<gpu, 2, float> &in_col,
-                                const Tensor<gpu, 2, float> &temp_dst,
-                                const Tensor<gpu, 4, float> &out) {	    
+                                const Tensor<gpu, 2, float> &temp_dst) {
 	//======== TODO: able to support arbitrary input channel size ==========//
 	CHECK_EQ(in_col.size(0) % BITS_PER_BINARY_WORD, 0) << "input channel number for binary convolution layer is not divisible by 32.";
                             
@@ -75,9 +74,8 @@ inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
                                 const Tensor<gpu, 2, float> &wmat,
                                 const Tensor<gpu, 2, float> &in_col,
                                 const Tensor<gpu, 2, float> &temp_dst,
-                                const Tensor<gpu, 4, float> &out,
                                 const mxnet::op::QConvolutionParam &param) {
-	cuda::QConvolutionForward(wmat, in_col, temp_dst, out);
+	cuda::QConvolutionForward(wmat, in_col, temp_dst);
 }
 
 template<typename DType>
@@ -85,7 +83,6 @@ inline void QConvolutionForward(const Tensor<gpu, 4, DType> &data,
                                 const Tensor<gpu, 2, DType> &wmat,
                                 const Tensor<gpu, 2, DType> &in_col,
                                 const Tensor<gpu, 2, DType> &temp_dst,
-                                const Tensor<gpu, 4, DType> &out,
                                 const mxnet::op::QConvolutionParam &param) {
 	CHECK(false) << "only float supported";
 }
