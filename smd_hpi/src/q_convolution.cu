@@ -70,9 +70,9 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
 }  // namespace cuda
 
 
-inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
+inline void QConvolutionForward(int m, int n, int k,
+                                const Tensor<gpu, 4, float> &data,
                                 const Tensor<gpu, 2, float> &wmat,
-                                const Tensor<gpu, 1, float> &wmat_binarized,
                                 const Tensor<gpu, 2, float> &in_col,
                                 const Tensor<gpu, 2, float> &temp_dst,
                                 const mxnet::op::QConvolutionParam &param) {
@@ -80,9 +80,9 @@ inline void QConvolutionForward(const Tensor<gpu, 4, float> &data,
 }
 
 template<typename DType>
-inline void QConvolutionForward(const Tensor<gpu, 4, DType> &data,
+inline void QConvolutionForward(int m, int n, int k,
+                                const Tensor<gpu, 4, DType> &data,
                                 const Tensor<gpu, 2, DType> &wmat,
-                                const Tensor<gpu, 1, DType> &wmat_binarized,
                                 const Tensor<gpu, 2, DType> &in_col,
                                 const Tensor<gpu, 2, DType> &temp_dst,
                                 const mxnet::op::QConvolutionParam &param) {

@@ -17,20 +17,17 @@ using get_time = std::chrono::steady_clock ;
 namespace mshadow {
     using namespace mxnet::op::xnor_cpu;
 
-		inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
+		inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 4, float> &data,
 																		const Tensor<cpu, 2, float> &wmat,
-																		const Tensor<cpu, 1, float> &wmat_binarized,
 																		const Tensor<cpu, 2, float> &in_col,
 																		const Tensor<cpu, 2, float> &temp_dst,
 																		const mxnet::op::QConvolutionParam &param) {
-			int m = wmat.size(0);
-			int n = wmat.size(1);
-			int k = in_col.size(1);
-
-			BINARY_WORD* binary_row = (BINARY_WORD*) wmat_binarized.dptr_;
+			BINARY_WORD* binary_row = (BINARY_WORD*) wmat.dptr_;
 			BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 
 			if (!param.binarized_weights_only) {
+        binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 				get_binary_row(wmat.dptr_, binary_row, m*n);
 			}
 
@@ -55,17 +52,17 @@ namespace mshadow {
 			free(binary_col);
 		}
 
-    inline void QConvolutionForward_deprecated(const Tensor<cpu, 4, float> &data,
-																		const Tensor<cpu, 2, float> &wmat,
-																		const Tensor<cpu, 1, float> &wmat_binarized,
-                                    const Tensor<cpu, 2, float> &in_col,
-                                    const Tensor<cpu, 2, float> &temp_dst,
-                                    const mxnet::op::QConvolutionParam &param) {
+    inline void QConvolutionForward_deprecated(int m, int n, int k,
+                                               const Tensor<cpu, 4, float> &data,
+                                               const Tensor<cpu, 2, float> &wmat,
+                                               const Tensor<cpu, 2, float> &in_col,
+                                               const Tensor<cpu, 2, float> &temp_dst,
+                                               const mxnet::op::QConvolutionParam &param) {
 
 			///*
-		int m = wmat.size(0);
-		int n = wmat.size(1);
-		int k = in_col.size(1);
+//		int m = wmat.size(0);
+//		int n = wmat.size(1);
+//		int k = in_col.size(1);
 		int batch_size = data.size(0);
 		int input_width = data.size(2);
 		int input_height = data.size(3);
@@ -137,9 +134,9 @@ namespace mshadow {
     }
 
     template<typename DType>
-    inline void QConvolutionForward(const Tensor<cpu, 4, DType> &data,
+    inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 4, DType> &data,
                                     const Tensor<cpu, 2, DType> &wmat,
-                                    const Tensor<cpu, 1, DType> &wmat_binarized,
                                     const Tensor<cpu, 2, DType> &in_col,
                                     const Tensor<cpu, 2, DType> &temp_dst,
                                     const mxnet::op::QConvolutionParam &param) {
@@ -180,7 +177,6 @@ MXNET_REGISTER_OP_PROPERTY(QConvolution, QConvolutionProp)
 .add_argument("data", "Symbol", "Input data to the ConvolutionOp.")
 .add_argument("weight", "Symbol", "Weight matrix.")
 .add_argument("bias", "Symbol", "Bias parameter.")
-.add_argument("weight_binarized", "Symbol", "Binarized Weight matrix.")
 .add_arguments(QConvolutionParam::__FIELDS__())
 .describe("Apply convolution to input then add a bias.");
 
