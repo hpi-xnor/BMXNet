@@ -17,39 +17,51 @@ using get_time = std::chrono::steady_clock ;
 namespace mshadow {
     using namespace mxnet::op::xnor_cpu;
 
-		inline void QConvolutionForward(int m, int n, int k,
-                                    const Tensor<cpu, 4, float> &data,
-																		const Tensor<cpu, 2, float> &wmat,
-																		const Tensor<cpu, 2, float> &in_col,
-																		const Tensor<cpu, 2, float> &temp_dst,
-																		const mxnet::op::QConvolutionParam &param) {
-			BINARY_WORD* binary_row = (BINARY_WORD*) wmat.dptr_;
-			BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+    inline void Forward(int m, int n, int k,
+                        BINARY_WORD* binary_weights_row,
+                        const Tensor<cpu, 2, float> &in_col,
+                        const Tensor<cpu, 2, float> &temp_dst) {
+      BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 
-			if (!param.binarized_weights_only) {
-        binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
-				get_binary_row(wmat.dptr_, binary_row, m*n);
-			}
+      get_binary_col(in_col.dptr_, binary_col, n, k);
 
-			get_binary_col(in_col.dptr_, binary_col, n, k);
 
       //#pragma omp parallel for
       for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
         temp_dst.dptr_[i] = 0;
       }
 
-			//auto start = std::chrono::high_resolution_clock::now();
+      //auto start = std::chrono::high_resolution_clock::now();
 
-			xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-								binary_row, n/BITS_PER_BINARY_WORD,
-								binary_col, k,
-								temp_dst.dptr_, k);
+      xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+                binary_weights_row, n/BITS_PER_BINARY_WORD,
+                binary_col, k,
+                temp_dst.dptr_, k);
 
-			//auto finish = std::chrono::high_resolution_clock::now();
-			//std::chrono::duration<double> elapsed = finish - start;
-			//std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+      //auto finish = std::chrono::high_resolution_clock::now();
+      //std::chrono::duration<double> elapsed = finish - start;
+      //std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
 
-			free(binary_col);
+      free(binary_col);
+    }
+
+
+    inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 1, float> &wmat_binarized,
+                                    const Tensor<cpu, 2, float> &in_col,
+                                    const Tensor<cpu, 2, float> &temp_dst) {
+
+      Forward(m, n, k, (BINARY_WORD*) wmat_binarized.dptr_, in_col, temp_dst);
+    }
+
+		inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 2, float> &wmat,
+																		const Tensor<cpu, 2, float> &in_col,
+																		const Tensor<cpu, 2, float> &temp_dst) {
+      BINARY_WORD* binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+      get_binary_row(wmat.dptr_, binary_row, m*n);
+
+      Forward(m, n, k, binary_row, in_col, temp_dst);
 		}
 
     inline void QConvolutionForward_deprecated(int m, int n, int k,
@@ -135,11 +147,17 @@ namespace mshadow {
 
     template<typename DType>
     inline void QConvolutionForward(int m, int n, int k,
-                                    const Tensor<cpu, 4, DType> &data,
                                     const Tensor<cpu, 2, DType> &wmat,
                                     const Tensor<cpu, 2, DType> &in_col,
-                                    const Tensor<cpu, 2, DType> &temp_dst,
-                                    const mxnet::op::QConvolutionParam &param) {
+                                    const Tensor<cpu, 2, DType> &temp_dst) {
+      CHECK(false) << "only float supported";
+    }
+
+    template<typename DType>
+    inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 1, DType> &wmat_binarized,
+                                    const Tensor<cpu, 2, DType> &in_col,
+                                    const Tensor<cpu, 2, DType> &temp_dst) {
       CHECK(false) << "only float supported";
     }
 }

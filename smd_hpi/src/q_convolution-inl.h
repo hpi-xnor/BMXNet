@@ -135,8 +135,13 @@ class QConvolutionOp : public Operator {
         Shape3(param_.num_group,
                param_.num_filter / param_.num_group,
                data.shape_[1] / param_.num_group * param_.kernel[0] * param_.kernel[1]);
-    Tensor<xpu, 3, DType> wmat =
-        in_data[q_conv::kWeight].get_with_shape<xpu, 3, DType>(wmat_shape, s);
+    Tensor<xpu, 3, DType> wmat;
+    Tensor<xpu, 1, DType> wmat_binarized;
+    if (param_.binarized_weights_only) {
+      wmat_binarized = in_data[q_conv::kWeight].get<xpu, 1, DType>(s);
+    } else {
+      wmat = in_data[q_conv::kWeight].get_with_shape<xpu, 3, DType>(wmat_shape, s);
+    }
     Tensor<xpu, 4, DType> out = out_data[q_conv::kOut].get<xpu, 4, DType>(s);
 #if defined(__CUDACC__)
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
@@ -203,14 +208,20 @@ class QConvolutionOp : public Operator {
         if(!ctx.is_train && this->param_.act_bit == 1){
           CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
           //xnor based convolution
-          QConvolutionForward(wmat_shape[1], // m
-                              wmat_shape[2], // n
-                              tmpc.size(1), // k
-                              data,
-                              wmat[gid],
-                              tmpc,
-                              temp_dst[gid],
-                              param_);
+          int m = wmat_shape[1];
+          int n = wmat_shape[2];
+          int k = tmpc.size(1);
+          if (param_.binarized_weights_only) {
+            QConvolutionForward(m, n, k,
+                                wmat_binarized,
+                                tmpc,
+                                temp_dst[gid]);
+          } else {
+            QConvolutionForward(m, n, k,
+                                wmat[gid],
+                                tmpc,
+                                temp_dst[gid]);
+          }
         }else{
           temp_dst[gid] = dot(wmat[gid], tmpc);
         }                  
@@ -438,12 +449,20 @@ class QConvolutionProp : public OperatorProperty {
       CHECK_EQ((int)dshp.ndim(), 4) \
           << "Input data should be 4D in batch-num_filter-y-x";
       Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);
-      Shape<4> wshape = Shape4(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
-                               param_.kernel[0], param_.kernel[1]);
-      wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
-      wshape[0] *= param_.num_group;
+
       //std::raise(SIGINT);
-      SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+      if (param_.binarized_weights_only) {
+        CHECK_EQ(param_.num_group, 1) << "groups not (yet?) supported for pre-binarized weights";
+        Shape<1> wshape = Shape1(dshape[1] * param_.num_filter * param_.kernel[0] * param_.kernel[1] / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD);
+        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+      } else {
+        Shape<4> wshape = Shape4(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
+                                 param_.kernel[0], param_.kernel[1]);
+        wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
+        wshape[0] *= param_.num_group;
+        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+      }
+
       if (!param_.no_bias) {
         SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBias, Shape1(param_.num_filter));
       }
