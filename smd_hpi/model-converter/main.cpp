@@ -54,7 +54,7 @@ int convert_params_file(const std::string& input_file, const std::string& output
   //Do a find_if starting at the item after iter, std::next(iter)
   while (iter != keys.end())
   {
-    std::cout << "converting weights " << *iter << "..." << std::endl;
+    std::cout << "|- converting weights " << *iter << "..." << std::endl;
     convert_to_binary(data[iter - keys.begin()]);
     iter = std::find_if(std::next(iter),
                         keys.end(),
@@ -86,6 +86,23 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
 
   rapidjson::Document d;
   d.Parse(json.c_str());
+
+  assert(d.HasMember("nodes"));
+  rapidjson::Value& nodes = d["nodes"];
+  assert(nodes.IsArray());
+
+  for (rapidjson::Value::ValueIterator itr = nodes.Begin(); itr != nodes.End(); ++itr) { // @todo: add FC
+    if (!itr->HasMember("op") || !(*itr)["op"].IsString() || std::strcmp((*itr)["op"].GetString(), "QConvolution") != 0) {
+      continue;
+    }
+
+    assert((*itr).HasMember("attr"));
+    rapidjson::Value& op_attributes = (*itr)["attr"];
+    op_attributes.AddMember("binarized_weights_only", true, d.GetAllocator());
+
+    assert((*itr).HasMember("name"));
+    std::cout << "|- adjusting attributes for " << (*itr)["name"].GetString() << std::endl;
+  }
 
   rapidjson::StringBuffer buffer;
   rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
