@@ -98,7 +98,7 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
 
     assert((*itr).HasMember("attr"));
     rapidjson::Value& op_attributes = (*itr)["attr"];
-    op_attributes.AddMember("binarized_weights_only", true, d.GetAllocator());
+    op_attributes.AddMember("binarized_weights_only", "True", d.GetAllocator());
 
     assert((*itr).HasMember("name"));
     std::cout << "|- adjusting attributes for " << (*itr)["name"].GetString() << std::endl;
