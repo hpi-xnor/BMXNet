@@ -15,7 +15,8 @@ namespace mshadow {
                                     const Tensor<cpu, 2, float> &wmat,
                                     const Tensor<cpu, 2, float> &out,
                                     const mxnet::op::QFullyConnectedParam &param) {
-      	CHECK_EQ(data.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for binary fully_connected layer is not divisible by 32.";
+      	CHECK_EQ(data.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_fully_connected layer is not divisible by "
+                                                          << BITS_PER_BINARY_WORD;
       	int m = data.size(0);
       	int n = data.size(1);
       	int k = wmat.size(1);

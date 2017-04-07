@@ -195,9 +195,40 @@ class QConvolutionOp : public Operator {
         if(!ctx.is_train && this->param_.act_bit == 1){
           //xnor based convolution
           QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+
         }else{
-          temp_dst[gid] = dot(wmat[gid], tmpc);
-        }                  
+          temp_dst[gid] = dot(wmat[gid], tmpc);          
+          //============================//
+          // here my testing codes
+          //============================//
+          /*
+          //get matrix dims
+          std::cout << "m: " ;
+          std::cout << wmat[gid].size(0) << std::endl;
+          std::cout << "n: ";
+          std::cout << wmat[gid].size(1) << std::endl;
+          std::cout << "k: ";
+          std::cout << tmpc.size(1) << std::endl;
+          std::cout << "dot output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << temp_dst.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+
+          //============================//
+          // here my testing codes
+          //============================//
+          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+          std::cout << "xnor output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << temp_dst.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+                          
+        */
+        }
       }
 
       out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,

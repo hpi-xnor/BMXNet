@@ -23,8 +23,10 @@ namespace mshadow {
                                     const Tensor<cpu, 2, float> &temp_dst,
                                     const Tensor<cpu, 4, float> &out,
                                     const mxnet::op::QConvolutionParam &param) {
+      	CHECK_EQ(wmat.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_convolution layer is not divisible by "
+                                                          << BITS_PER_BINARY_WORD;
 
-			///*
+		///*
 		int m = wmat.size(0);
 		int n = wmat.size(1);
 		int k = in_col.size(1);
@@ -58,10 +60,11 @@ namespace mshadow {
 		get_binary_row(wmat.dptr_, binary_row, m*n);
 		get_binary_col(in_col.dptr_, binary_col, n, k);
 
-	    //#pragma omp parallel for
+	    #pragma omp parallel for
 	    for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
 	      temp_dst.dptr_[i] = 0;
 	    }
+
 		//auto start = std::chrono::high_resolution_clock::now();
 
 		///*
@@ -70,7 +73,15 @@ namespace mshadow {
 				binary_col, k,
 				temp_dst.dptr_, k);
 		//*/
-
+		
+	    //===== this block of code still in testing =====//
+	    //convert the _popc(xnor()) output into the dot(-1...1) output.
+	    //TODO: how should we solve the additional computation of MUL and ADD in this process??
+	    #pragma omp parallel for
+	    for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
+	      temp_dst.dptr_[i] = xnor_to_binary_dot(temp_dst.dptr_[i], n);
+	    }
+	    //===============================================//
 		/*
 		//test using baseline gemm kernel
 		baseline_gemm(m, k, n,
@@ -78,9 +89,11 @@ namespace mshadow {
 					in_col.dptr_, k,
 					temp_dst.dptr_, k);
 		*/
-		//auto finish = std::chrono::high_resolution_clock::now();
-		//std::chrono::duration<double> elapsed = finish - start;
-		//std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+		/*
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+		std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+		*/
 
 		if (param.scaling_factor) {
 			// apply alpha and beta scaling factor (filter-wise)

@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <string.h>
 
+
 namespace mxnet {
 namespace op {
 namespace xnor_cpu {
@@ -25,6 +26,40 @@ namespace xnor_cpu {
   //uint32_t, uint64_t, __int128
   typedef uint32_t BINARY_WORD;
   #define BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT)
+
+  /**
+  * @brief a helper method for print out bit wise result
+  * of a binary_word
+  *
+  */
+  inline void print_int2Bin ( BINARY_WORD a )
+  {
+     
+    for (int i=0; i <BITS_PER_BINARY_WORD; i++ )
+    {
+      if( a & (1 << i) ) 
+        std::cout << 1;
+      else
+        std::cout << 0;
+    }
+    std::cout<<std::endl;
+  }
+
+  /**
+  * @brief this method scales the _popc(xnor(...)) result
+  * into the dot(-1...1) result
+  * Example: if scale range is 8, then 
+  * the dot product result based -1 and 1:
+  * -8  -6  -4  -2  0 2 4 6 8
+  * XNOR&POPC result:
+  *  0   1   2   3  4 5 6 7 8
+  * so the equa should be:
+  * dot_ouput = 2 * xnor_output - scale_range
+  */
+  inline float xnor_to_binary_dot ( float num, int scale_range)
+  {
+    return 2*num - scale_range;
+  }
 
   /**
    * @brief gets the mean value over all elements of a weight volume
@@ -195,6 +230,7 @@ namespace xnor_cpu {
 
   /**
    * @brief optimized gemm without multiplication but instead XOR and POPCNT
+   * __builtin_popcountl suitable for both 32bit and 64bit 
    *
    */
   inline void xnor_gemm(int M, int K, int N,
@@ -203,13 +239,24 @@ namespace xnor_cpu {
                         float *C, int ldc){
     int i,n,k;
 
-    #pragma omp parallel for collapse(2)
+    //#pragma omp parallel for collapse(2)
     for(i = 0; i < M; ++i){
       for(n = 0; n < N; ++n){
         BINARY_WORD A_PART = A[i*lda+n];
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for(k = 0; k < K; ++k){
-          C[i*ldc+k] += (float)__builtin_popcount(~(A_PART ^ B[n*ldb+k]));
+          C[i*ldc+k] += (float)__builtin_popcountl(~(A_PART ^ B[n*ldb+k]));
+
+          /* testing code, will be removed wenn everything works fine.
+          std::cout << "A_PART: ";
+          print_int2Bin(A_PART);
+          std::cout << "B_PART: ";
+          print_int2Bin(B[n*ldb+k]);
+          std::cout << "_XNOR_: ";
+          print_int2Bin(~(A_PART ^ B[n*ldb+k]));
+          std::cout << "POPC_: ";
+          std::cout << __builtin_popcountl(~(A_PART ^ B[n*ldb+k])) << std::endl;
+          */
         }
       }
     }
@@ -233,7 +280,6 @@ namespace xnor_cpu {
       }
     }
   }
-
 
 //  /**
 // * binary gemm. instead of standard dot product
