@@ -26,18 +26,19 @@ namespace mshadow {
       	CHECK_EQ(wmat.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_convolution layer is not divisible by "
                                                           << BITS_PER_BINARY_WORD;
 
-		///*
 		int m = wmat.size(0);
 		int n = wmat.size(1);
-		int k = in_col.size(1);
+		int k = in_col.size(1);		
+		BINARY_WORD* binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+		BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+
+		//scaling factor related parameters
 		int batch_size = data.size(0);
 		int input_width = data.size(2);
 		int input_height = data.size(3);
 		int input_depth = data.size(1);
 		int output_width = (input_width - param.kernel[0] + 2 * 0/*padding*/) / 1/*stride*/ + 1;
 		int output_height = (input_height - param.kernel[1] + 2 * 0/*padding*/) / 1/*stride*/ + 1;
-		BINARY_WORD* binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
-		BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 		float *alpha_plane = nullptr;
 		float *A_planes = nullptr;
 		float *K_planes = nullptr;
@@ -74,14 +75,6 @@ namespace mshadow {
 				temp_dst.dptr_, k);
 		//*/
 		
-	    //===== this block of code still in testing =====//
-	    //convert the _popc(xnor()) output into the dot(-1...1) output.
-	    //TODO: how should we solve the additional computation of MUL and ADD in this process??
-	    #pragma omp parallel for
-	    for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
-	      temp_dst.dptr_[i] = xnor_to_binary_dot(temp_dst.dptr_[i], n);
-	    }
-	    //===============================================//
 		/*
 		//test using baseline gemm kernel
 		baseline_gemm(m, k, n,

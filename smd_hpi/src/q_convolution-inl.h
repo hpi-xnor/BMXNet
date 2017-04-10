@@ -197,7 +197,13 @@ class QConvolutionOp : public Operator {
           QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
 
         }else{
-          temp_dst[gid] = dot(wmat[gid], tmpc);          
+          temp_dst[gid] = dot(wmat[gid], tmpc);       
+
+          //this converting is just for mimicing 2-bit xnor-popc operations
+          //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
+          if(this->param_.act_bit == 1)
+            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));
+          
           //============================//
           // here my testing codes
           //============================//

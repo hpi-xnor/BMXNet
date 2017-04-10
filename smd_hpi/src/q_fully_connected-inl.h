@@ -99,6 +99,12 @@ class QFullyConnectedOp : public Operator {
   		// /mf quantize weights
 
   		out = dot(data, wmat.T());
+
+      //this converting is just for mimicing 2-bit xnor-popc operations
+      //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
+      if(this->param_.act_bit == 1)
+        out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
+
   		if (!param_.no_bias) {
   		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
   		  out += repmat(bias, data.size(0));
