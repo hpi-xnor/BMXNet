@@ -19,6 +19,11 @@
 using mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD;
 using mxnet::op::xnor_cpu::BINARY_WORD;
 
+/**
+ * @brief binarize an NDArray
+ * 
+ * @param array reference to an NDArray that should be binarized
+ */
 
 void convert_to_binary(mxnet::NDArray& array) {
   assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
@@ -33,6 +38,13 @@ void convert_to_binary(mxnet::NDArray& array) {
   array = temp;
 }
 
+/**
+ * @brief convert convolutional and fully connected layers of mxnet params file to binary format
+ *
+ * @param input_file path to mxnet params file with QConvolution and QFullyconnected layers
+ * @param output_file path to converted file
+ * @return success (0) or failure
+ */
 int convert_params_file(const std::string& input_file, const std::string& output_file) {
   std::vector<mxnet::NDArray> data;
   std::vector<std::string> keys;
@@ -81,6 +93,13 @@ int convert_params_file(const std::string& input_file, const std::string& output
   return 0;
 }
 
+/**
+ * @brief add 'binarized_params_only' attribute to conv and fc layers in mxnet symbol file
+ *
+ * @param input_file path to mxnet symbol file with QConvolution and QFullyconnected layers
+ * @param output_file path to converted symbol file
+ * @return success (0) or failure
+ */
 int convert_json_file(const std::string& input_fname, const std::string& output_fname) {
   std::cout << "loading " << input_fname << "..." << std::endl;
   std::string json;
@@ -137,6 +156,10 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
   return 0;
 }
 
+/**
+ * @brief convert mxnet param and symbol file to use only binarized weights in conv and fc layers
+ *
+ */
 int main(int argc, char ** argv){
   if (argc != 2) {
     std::cout << "usage: " + std::string(argv[0]) + " <mxnet *.params file>" << std::endl;
