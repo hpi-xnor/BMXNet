@@ -47,7 +47,6 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   // mf quantization and binarization variables
   uint32_t act_bit;
   bool scaling_factor;
-  bool is_train;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
     DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -93,10 +92,6 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
             .describe("Number of bits to quantize weights to.");
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
-    DMLC_DECLARE_FIELD(is_train).set_default(true)
-            .describe("To indicate whether is training or prediction, \n    "
-              "for training we should apply quantization (binarization) function \n    "
-              "on weights; For prediction, we use xnor_popc operation instead of dot().");            
   }
 };
 
@@ -143,7 +138,7 @@ class QConvolutionOp : public Operator {
     CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
 
     // for training we apply quantization function on weights.
-    if(this->param_.is_train){
+    if(ctx.is_train){
       // mf quantize weights
       Tensor<xpu, 1, DType> w1d = in_data[q_conv::kWeight].FlatTo1D<xpu, DType>(s);
       Tensor<xpu, 1, DType> abs = ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
@@ -197,12 +192,49 @@ class QConvolutionOp : public Operator {
         // to generate the same result as the dot() function.
         // this means for prediction phase and 1-bit, the QConvolutionForward(...)
         // should give the exactly same result as the sign( dot() ) method.
-        if(!this->param_.is_train && this->param_.act_bit == 1){
+        if(!ctx.is_train && this->param_.act_bit == 1){
           //xnor based convolution
           QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+
         }else{
-          temp_dst[gid] = dot(wmat[gid], tmpc);
-        }                  
+          temp_dst[gid] = dot(wmat[gid], tmpc);       
+
+          //this converting is just for mimicing 2-bit xnor-popc operations
+          //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
+          if(this->param_.act_bit == 1)
+            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));
+          
+          //============================//
+          // here my testing codes
+          //============================//
+          /*
+          //get matrix dims
+          std::cout << "m: " ;
+          std::cout << wmat[gid].size(0) << std::endl;
+          std::cout << "n: ";
+          std::cout << wmat[gid].size(1) << std::endl;
+          std::cout << "k: ";
+          std::cout << tmpc.size(1) << std::endl;
+          std::cout << "dot output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << temp_dst.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+
+          //============================//
+          // here my testing codes
+          //============================//
+          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+          std::cout << "xnor output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << temp_dst.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+                          
+        */
+        }
       }
 
       out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,

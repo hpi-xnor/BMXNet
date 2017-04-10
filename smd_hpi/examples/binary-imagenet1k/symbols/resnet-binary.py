@@ -39,20 +39,20 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
         act1 = mx.sym.QActivation(data=bn1, act_bit=BIT)
         conv1 = mx.sym.QConvolution(data=act1, num_filter=int(num_filter*0.25), kernel=(1,1), stride=(1,1), pad=(0,0),
-                                   no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT, is_train=True)	
+                                   no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT)
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn2')
         act2 = mx.sym.QActivation(data=bn2,  act_bit=BIT)
         conv2 = mx.sym.QConvolution(data=act2, num_filter=int(num_filter*0.25), kernel=(3,3), stride=stride, pad=(1,1),
-                                   no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT, is_train=True)
+                                   no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT)
         bn3 = mx.sym.BatchNorm(data=conv2, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn3')
         act3 = mx.sym.QActivation(data=bn3, act_bit=BIT)
         conv3 = mx.sym.QConvolution(data=act3, num_filter=num_filter, kernel=(1,1), stride=(1,1), pad=(0,0), no_bias=True,
-                                   workspace=workspace, name=name + '_conv3', act_bit=BIT, is_train=True)
+                                   workspace=workspace, name=name + '_conv3', act_bit=BIT)
         if dim_match:
             shortcut = data
         else:
             shortcut = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
-                                            workspace=workspace, name=name+'_sc', act_bit=BIT, is_train=True)
+                                            workspace=workspace, name=name+'_sc', act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
         return conv3 + shortcut
@@ -61,16 +61,16 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
         act1 = mx.sym.QActivation(data=bn1, act_bit=BIT)
 #	act1 = mx.sym.Custom(data=act1, op_type='debug')
         conv1 = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
-                                      no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT, is_train=True)
+                                      no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT)
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2')
         act2 = mx.sym.QActivation(data=bn2, act_bit=BIT)
         conv2 = mx.sym.QConvolution(data=act2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
-                                      no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT, is_train=True)
+                                      no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT)
         if dim_match:
             shortcut = data
         else:
             shortcut = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
-                                            workspace=workspace, name=name+'_sc', act_bit=BIT, is_train=True)            
+                                            workspace=workspace, name=name+'_sc', act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
         return conv2 + shortcut

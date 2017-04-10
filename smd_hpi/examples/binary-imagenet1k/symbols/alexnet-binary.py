@@ -20,6 +20,7 @@ def get_symbol(num_classes, **kwargs):
     pool1 = mx.symbol.Pooling(
         data=relu1, pool_type="max", kernel=(3, 3), stride=(2,2))
 
+    '''
     # stage 2
     act_q2 = mx.sym.QActivation(data=pool1,  act_bit=BIT)
     conv2 = mx.symbol.QConvolution(
@@ -43,18 +44,44 @@ def get_symbol(num_classes, **kwargs):
         data=act_q5, kernel=(3, 3), pad=(1, 1), num_filter=256, act_bit=BIT, is_train=True, name="convolution4")    
     bn5 = mx.sym.BatchNorm(data=conv5, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
     pool3 = mx.symbol.Pooling(data=bn5, kernel=(3, 3), stride=(2, 2), pool_type="max")
-    # stage 4
-    flatten = mx.symbol.Flatten(data=pool3)    
-    act_q6 = mx.symbol.QActivation(data=flatten, act_bit=BIT)
-    fc1 = mx.symbol.QFullyConnected(data=act_q6, num_hidden=4096, act_bit=BIT, is_train=True, name="fullyconnected0")
-    bn6 = mx.sym.BatchNorm(data=fc1, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+    '''
+    
+    #'''
+    # stage 2
+    conv2 = mx.symbol.Convolution(
+        data=pool1, kernel=(5, 5), pad=(2, 2), num_filter=256, name="convolution1")
+    bn2 = mx.sym.BatchNorm(data=conv2, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+    relu2 = mx.symbol.Activation(data=bn2, act_type="relu")
+    pool2 = mx.symbol.Pooling(data=relu2, kernel=(3, 3), stride=(2, 2), pool_type="max")
 
-    # stage 5    
-    act_q7 = mx.symbol.QActivation(data=bn6, act_bit=BIT)
-    fc2 = mx.symbol.QFullyConnected(data=act_q7, num_hidden=4096, act_bit=BIT, is_train=True, name="fullyconnected1")
+    # stage 3
+    conv3 = mx.symbol.Convolution(
+        data=pool2, kernel=(3, 3), pad=(1, 1), num_filter=384, name="convolution2")
+    bn3 = mx.sym.BatchNorm(data=conv3, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+    relu3 = mx.symbol.Activation(data=bn3, act_type="relu")
+    conv4 = mx.symbol.Convolution(
+        data=relu3, kernel=(3, 3), pad=(1, 1), num_filter=384, name="convolution3")
+    bn4 = mx.sym.BatchNorm(data=conv4, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+    relu4 = mx.symbol.Activation(data=bn4, act_type="relu")
+    
+    conv5 = mx.symbol.QConvolution(
+        data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256, name="convolution4", act_bit=BIT)
+    bn5 = mx.sym.BatchNorm(data=conv5, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+    relu5 = mx.symbol.Activation(data=bn5, act_type="relu")
+    pool3 = mx.symbol.Pooling(data=relu5, kernel=(3, 3), stride=(2, 2), pool_type="max")
+    #'''
+    # stage 4
+    flatten = mx.symbol.Flatten(data=pool3)
+    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=4096)
+    bn6 = mx.sym.BatchNorm(data=fc1, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+    relu6 = mx.symbol.Activation(data=bn6, act_type="relu")
+
+    # stage 5
+    fc2 = mx.symbol.FullyConnected(data=relu6, num_hidden=4096)
     bn7 = mx.sym.BatchNorm(data=fc2, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+    relu7 = mx.symbol.Activation(data=bn7, act_type="relu")
     
     # stage 6
-    fc3 = mx.symbol.FullyConnected(data=bn7, num_hidden=num_classes, name="fullyconnected2")
+    fc3 = mx.symbol.FullyConnected(data=relu7, num_hidden=num_classes, name="fullyconnected2")
     softmax = mx.symbol.SoftmaxOutput(data=fc3, name='softmax')
     return softmax
