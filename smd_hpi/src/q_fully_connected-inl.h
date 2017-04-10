@@ -16,6 +16,7 @@
 #include <utility>
 #include "../../src/operator/operator_common.h"
 #include "./q_helper.h"
+#include <type_traits>
 
 
 namespace mxnet {
@@ -84,7 +85,7 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> out = out_data[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
-    if(!ctx.is_train && this->param_.act_bit == 1){
+    if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
     	//XNOR based
       Tensor<xpu, 2, DType> wmat_T =
               NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);

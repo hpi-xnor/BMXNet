@@ -21,6 +21,7 @@
 #include "../../src/operator/operator_common.h"
 #include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
+#include <type_traits>
 
 namespace mxnet {
 namespace op {
@@ -192,7 +193,7 @@ class QConvolutionOp : public Operator {
         // to generate the same result as the dot() function.
         // this means for prediction phase and 1-bit, the QConvolutionForward(...)
         // should give the exactly same result as the sign( dot() ) method.
-        if(!ctx.is_train && this->param_.act_bit == 1){
+        if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
           //xnor based convolution
           QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
 
