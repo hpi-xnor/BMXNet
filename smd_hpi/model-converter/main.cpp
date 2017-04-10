@@ -22,8 +22,9 @@ using mxnet::op::xnor_cpu::BINARY_WORD;
 
 void convert_to_binary(mxnet::NDArray& array) {
   assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
-  assert(array.shape().ndim() == 4); // adjust for FC, flatten
-  assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0);
+  // dim. checks, watch out, second dim is checked to / 32, dont oversee if this really holds for fc
+  assert(array.shape().ndim() >= 2); // second dimension is input depth from prev. layer, needed for next line
+  assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64) since we
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
@@ -42,23 +43,33 @@ int convert_params_file(const std::string& input_file, const std::string& output
     mxnet::NDArray::Load(fi.get(), &data, &keys);
   }
 
-  const std::string filter_string("qconvolution");
-  auto containsSubString = [filter_string](std::string s) {
-    return s.find(filter_string) != std::string::npos;}; //@todo: add FC
+  //const std::string filter_strings();
+  const std::vector<std::string> filter_strings {"qconvolution", "qfullyconnected"};
+
+
+  auto containsFilterString = [filter_strings](std::string line_in_params) {
+    auto containsSubString = [line_in_params](std::string filter_string) {
+      return line_in_params.find(filter_string) != std::string::npos;};
+    return std::find_if(filter_strings.begin(),
+                        filter_strings.end(),
+                        containsSubString) != filter_strings.end();};
 
   auto iter = std::find_if(keys.begin(),
                            keys.end(),
-                           containsSubString);
+                           containsFilterString);
 
   //Use a while loop, checking whether iter is at the end of myVector
   //Do a find_if starting at the item after iter, std::next(iter)
   while (iter != keys.end())
   {
     std::cout << "|- converting weights " << *iter << "..." << std::endl;
+    CHECK((*iter).find("weight") != std::string::npos) << "onyl weight binarization supported currently";
+
     convert_to_binary(data[iter - keys.begin()]);
+
     iter = std::find_if(std::next(iter),
                         keys.end(),
-                        containsSubString);
+                        containsFilterString);
   }
 
 
