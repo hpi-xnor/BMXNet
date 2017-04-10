@@ -102,8 +102,10 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
   rapidjson::Value& nodes = d["nodes"];
   assert(nodes.IsArray());
 
-  for (rapidjson::Value::ValueIterator itr = nodes.Begin(); itr != nodes.End(); ++itr) { // @todo: add FC
-    if (!itr->HasMember("op") || !(*itr)["op"].IsString() || std::strcmp((*itr)["op"].GetString(), "QConvolution") != 0) {
+  for (rapidjson::Value::ValueIterator itr = nodes.Begin(); itr != nodes.End(); ++itr) {
+    if (!(itr->HasMember("op") && (*itr)["op"].IsString() &&
+            (std::strcmp((*itr)["op"].GetString(), "QConvolution") == 0 ||
+             std::strcmp((*itr)["op"].GetString(), "QFullyConnected") == 0))) {
       continue;
     }
 
