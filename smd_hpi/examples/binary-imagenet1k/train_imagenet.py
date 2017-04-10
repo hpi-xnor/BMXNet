@@ -18,14 +18,14 @@ if __name__ == '__main__':
     data.set_data_aug_level(parser, 3)
     parser.add_argument('--pretrained', type=str,
                     help='the pre-trained model')
-  
+
     parser.add_argument('--log', dest='log_file', type=str, default="train.log",
                     help='save training log to file')
- 
+
     parser.set_defaults(
         # network
         network        = 'resnet',
-        num_layers     = 18,
+        num_layers     = 50,
 
         # data
         num_classes      = 1000,
@@ -36,10 +36,10 @@ if __name__ == '__main__':
         # train
         num_epochs       = 60,
         lr_step_epochs   = '10,20,30,40,50',
-        lr               = 0.1,
-	lr_factor        = 0.5,
+        lr               = 0.01,
+	lr_factor        = 0.75,
         batch_size     = 32,
-        optimizer        = 'sgd',
+        optimizer        = 'adam',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',
@@ -47,14 +47,14 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    # set up logger    
+    # set up logger
     log_file = args.log_file
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     if log_file:
         fh = logging.FileHandler(log_file)
         logger.addHandler(fh)
-    
+
     devs = mx.cpu() if args.gpus is None or args.gpus is '' else [
     mx.gpu(int(i)) for i in args.gpus.split(',')]
 
@@ -67,20 +67,20 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 39)
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 0)
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(devs), args.pretrained))
-	
+
     # train
     if args_params and auxs_params:
         fit.fit(
-            args, 
-            sym, 
-            data.get_rec_iter, 
-            arg_params=args_params, 
+            args,
+            sym,
+            data.get_rec_iter,
+            arg_params=args_params,
             aux_params=auxs_params)
     else:
         fit.fit(
-            args, 
-            sym, 
+            args,
+            sym,
             data.get_rec_iter)
