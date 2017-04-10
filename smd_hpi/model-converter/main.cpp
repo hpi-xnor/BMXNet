@@ -25,7 +25,7 @@ void convert_to_binary(mxnet::NDArray& array) {
   assert(array.shape().ndim() == 4); // adjust for FC, flatten
   assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0);
   nnvm::TShape binarized_shape(1);
-  int size = array.shape().Size();
+  size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
   mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, array.dtype());
   mxnet::op::xnor_cpu::get_binary_row((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, size);
@@ -127,6 +127,8 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
 int main(int argc, char ** argv){
   if (argc != 2) {
     std::cout << "usage: " + std::string(argv[0]) + " <mxnet *.params file>" << std::endl;
+    std::cout << "  will binarize the weights of the Convolutional Layers of your model," << std::endl;
+    std::cout << "  pack 32 values into one and save the result with the prefix 'binarized_'" << std::endl;
     return -1;
   }
 
