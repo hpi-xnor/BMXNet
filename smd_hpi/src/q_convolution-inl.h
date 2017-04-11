@@ -96,7 +96,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
     DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
-            .describe("Path to binarized weights. set automatically by model converter.");
+            .describe("Params file contains only binarized weights. Set automatically by model converter.");
   }
 };
 

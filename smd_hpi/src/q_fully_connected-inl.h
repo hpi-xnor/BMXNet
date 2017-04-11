@@ -18,6 +18,7 @@
 #include "./q_helper.h"
 #include <type_traits>
 
+#include <csignal>
 
 namespace mxnet {
 namespace op {
@@ -34,6 +35,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
   int num_hidden;
   bool no_bias;
   unsigned int act_bit;
+  bool binarized_weights_only;
   DMLC_DECLARE_PARAMETER(QFullyConnectedParam) {
     // TODO(bing) add support for boolean
     DMLC_DECLARE_FIELD(num_hidden).set_lower_bound(1)
@@ -42,6 +44,8 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
     .describe("Whether to disable bias parameter.");
     DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
+    DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
+            .describe("Params file contains only binarized weights. Set automatically by model converter.");
   }
 };
 
@@ -81,7 +85,14 @@ class QFullyConnectedOp : public Operator {
 
     Tensor<xpu, 2, DType> data = in_data[q_fullc::kData].get_with_shape<xpu, 2, DType>(
         Shape2(ishape[0], ishape.ProdShape(1, ishape.ndim())), s);
-    Tensor<xpu, 2, DType> wmat = in_data[q_fullc::kWeight].get<xpu, 2, DType>(s);
+    Tensor<xpu, 2, DType> wmat;
+    Tensor<xpu, 1, DType> wmat_binarized;
+
+    if (param_.binarized_weights_only) {
+      wmat_binarized = in_data[q_fullc::kWeight].get<xpu, 1, DType>(s);
+    } else {
+      wmat = in_data[q_fullc::kWeight].get<xpu, 2, DType>(s);
+    }
     Tensor<xpu, 2, DType> out = out_data[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 

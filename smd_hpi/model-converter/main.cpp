@@ -27,9 +27,8 @@ using mxnet::op::xnor_cpu::BINARY_WORD;
 
 void convert_to_binary(mxnet::NDArray& array) {
   assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
-  // dim. checks, watch out, second dim is checked to / 32, dont oversee if this really holds for fc
   assert(array.shape().ndim() >= 2); // second dimension is input depth from prev. layer, needed for next line
-  assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64) since we
+  assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64)
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
@@ -38,14 +37,44 @@ void convert_to_binary(mxnet::NDArray& array) {
   array = temp;
 }
 
+//void convert_to_binary_col(mxnet::NDArray& array) {
+//  assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
+//  assert(array.shape().ndim() == 2); // since we binarize column wise, we need to know no of rows and columns
+//  assert(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
+//  nnvm::TShape binarized_shape(1);
+//  size_t size = array.shape().Size();
+//  binarized_shape[0] = size / BITS_PER_BINARY_WORD;
+//  mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, array.dtype());
+//  mxnet::op::xnor_cpu::get_binary_col((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, array.shape()[0], array.shape()[1]);
+//  array = temp;
+//}
+//
+//template<typename DType>
+//void transpose(mxnet::NDArray& array) {
+//  assert(array.shape().ndim() == 2);
+//  nnvm::TShape tansposed_shape(2);
+//  int rows = array.shape()[0];
+//  int cols = array.shape()[1];
+//  tansposed_shape[0] = cols;
+//  tansposed_shape[1] = rows;
+//  mxnet::NDArray temp(tansposed_shape, mxnet::Context::CPU(), false, array.dtype());
+//  for (int row = 0; row < rows; row++) {
+//    for (int col = 0; col < cols; col++) {
+//      //temp.data().dptr_[col * rows + row] = array.data().dptr_[row * cols + col];
+//    }
+//  }
+//  array = temp;
+//}
+
 /**
  * @brief convert convolutional and fully connected layers of mxnet params file to binary format
  *
  * @param input_file path to mxnet params file with QConvolution and QFullyconnected layers
  * @param output_file path to converted file
+ * @param filter_strings list of strings with arrays to convert
  * @return success (0) or failure
  */
-int convert_params_file(const std::string& input_file, const std::string& output_file) {
+int convert_params_file(const std::string& input_file, const std::string& output_file, const std::vector<std::string> filter_strings) {
   std::vector<mxnet::NDArray> data;
   std::vector<std::string> keys;
 
@@ -54,10 +83,6 @@ int convert_params_file(const std::string& input_file, const std::string& output
     std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(input_file.c_str(), "r"));
     mxnet::NDArray::Load(fi.get(), &data, &keys);
   }
-
-  //const std::string filter_strings();
-  const std::vector<std::string> filter_strings {"qconvolution", "qfullyconnected"};
-
 
   auto containsFilterString = [filter_strings](std::string line_in_params) {
     auto containsSubString = [line_in_params](std::string filter_string) {
@@ -100,7 +125,7 @@ int convert_params_file(const std::string& input_file, const std::string& output
  * @param output_file path to converted symbol file
  * @return success (0) or failure
  */
-int convert_json_file(const std::string& input_fname, const std::string& output_fname) {
+int convert_json_file(const std::string& input_fname, const std::string& output_fname, std::vector<std::string>& filters_conv, std::vector<std::string>& filters_fc) {
   std::cout << "loading " << input_fname << "..." << std::endl;
   std::string json;
   {
@@ -134,6 +159,12 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
 
     assert((*itr).HasMember("name"));
     std::cout << "|- adjusting attributes for " << (*itr)["name"].GetString() << std::endl;
+
+    if (std::strcmp((*itr)["op"].GetString(), "QConvolution") == 0) {
+      filters_conv.push_back((*itr)["name"].GetString());
+    } else if (std::strcmp((*itr)["op"].GetString(), "QFullyConnected") == 0) {
+      filters_fc.push_back((*itr)["name"].GetString());
+    }
   }
 
   rapidjson::StringBuffer buffer;
@@ -176,14 +207,17 @@ int main(int argc, char ** argv){
   base_name.erase(base_name.rfind('-')); // watchout if no '-'
   const std::string output_name(path + "/" + "binarized_" + params_file_name);
 
-  if (int ret = convert_params_file(params_file, output_name) != 0) {
-    return ret;
-  }
-
   const std::string json_file_name(path + "/"                + base_name + "-symbol.json");
   const std::string json_out_fname(path + "/" + "binarized_" + base_name + "-symbol.json");
 
-  if (int ret = convert_json_file(json_file_name, json_out_fname) != 0) {
+  std::vector<std::string> filters_conv;
+  std::vector<std::string> filters_fc;
+
+  if (int ret = convert_json_file(json_file_name, json_out_fname, filters_conv, filters_fc) != 0) {
+    return ret;
+  }
+
+  if (int ret = convert_params_file(params_file, output_name, filters_conv) != 0) {
     return ret;
   }
 
