@@ -25,7 +25,7 @@ namespace xnor_cpu {
 
   //uint32_t, uint64_t, __int128
   typedef uint32_t BINARY_WORD;
-  #define BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT)
+  const int BITS_PER_BINARY_WORD (sizeof(mxnet::op::xnor_cpu::BINARY_WORD) * CHAR_BIT);
 
   /**
   * @brief a helper method for print out bit wise result
