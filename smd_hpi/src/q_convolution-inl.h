@@ -22,8 +22,7 @@
 #include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
 #include "./xnor_cpu.h"
-
-#include <csignal>
+#include <type_traits>
 
 namespace mxnet {
 namespace op {
@@ -205,7 +204,7 @@ class QConvolutionOp : public Operator {
         // to generate the same result as the dot() function.
         // this means for prediction phase and 1-bit, the QConvolutionForward(...)
         // should give the exactly same result as the sign( dot() ) method.
-        if(!ctx.is_train && this->param_.act_bit == 1){
+        if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
           CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
           //xnor based convolution
           int m = wmat_shape[1];
@@ -228,8 +227,44 @@ class QConvolutionOp : public Operator {
                                 temp_dst[gid]);
           }
         }else{
-          temp_dst[gid] = dot(wmat[gid], tmpc);
-        }                  
+          temp_dst[gid] = dot(wmat[gid], tmpc);       
+
+          //this converting is just for mimicing 2-bit xnor-popc operations
+          //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
+          if(this->param_.act_bit == 1)
+            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));
+          
+          //============================//
+          // here my testing codes
+          //============================//
+          /*
+          //get matrix dims
+          std::cout << "m: " ;
+          std::cout << wmat[gid].size(0) << std::endl;
+          std::cout << "n: ";
+          std::cout << wmat[gid].size(1) << std::endl;
+          std::cout << "k: ";
+          std::cout << tmpc.size(1) << std::endl;
+          std::cout << "dot output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << temp_dst.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+
+          //============================//
+          // here my testing codes
+          //============================//
+          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+          std::cout << "xnor output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << temp_dst.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+                          
+        */
+        }
       }
 
       out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,

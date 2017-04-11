@@ -117,7 +117,7 @@ def fit(args, network, data_loader, **kwargs):
 
 
     # load model
-    if 'arg_params' in kwargs and 'aux_params' in kwargs:    
+    if 'arg_params' in kwargs and 'aux_params' in kwargs:
         arg_params = kwargs['arg_params']
         aux_params = kwargs['aux_params']
     else:
@@ -126,7 +126,11 @@ def fit(args, network, data_loader, **kwargs):
             assert sym.tojson() == network.tojson()
 
     fixed_param_names = [name for name in network.list_arguments() \
-        if name.startswith('conv')]
+        if name.startswith('nothing')]
+    # helper information
+    if fixed_param_names:
+        logging.info("Freezed parameters: [" + ','.join(fixed_param_names) + ']')
+
     # save model
     checkpoint = _save_model(args, kv.rank)
 

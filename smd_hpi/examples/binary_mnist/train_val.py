@@ -63,29 +63,27 @@ def get_binary_lenet():
 	data = mx.symbol.Variable('data')
 
 	# first conv layer
-	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=32)
+	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=64)
 	bn1 = mx.sym.BatchNorm(data=conv1)
 	#tanh1 = mx.sym.Activation(data=bn1, act_type="tanh")
-	tanh1 = mx.sym.QActivation(data=bn1,  act_bit=BITA)
+	pool1 = mx.sym.Pooling(data=bn1, pool_type="max", kernel=(2,2), stride=(2,2))
 
-	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
-
+	tanh1 = mx.sym.QActivation(data=pool1,  act_bit=BITA)
 	# second conv layer
-	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
+	conv2 = mx.sym.QConvolution(data=tanh1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
 	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
 
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
-
 	bn2 = mx.sym.BatchNorm(data=conv2)
+	#bn2 = mx.sym.Custom(data=bn2, op_type='debug')
 
-	#tanh2 = mx.sym.Activation(data=bn2, act_type="tanh")
-	tanh2 = mx.sym.QActivation(data=bn2,  act_bit=BITA)
-
-	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
+	pool2 = mx.sym.Pooling(data=bn2, pool_type="max", kernel=(2,2), stride=(2,2))
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)	
-	fc1 = mx.symbol.QFullyConnected(data=flatten, num_hidden=1000, act_bit=BITW, is_train=True)
-	#fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
+	ba2 = mx.sym.QActivation(data=flatten,  act_bit=BITA)	
+	fc1 = mx.symbol.QFullyConnected(data=ba2, num_hidden=1000, act_bit=BITW)
+	#tanh2 = mx.sym.Activation(data=flatten, act_type="tanh")
+	#fc1 = mx.symbol.FullyConnected(data=tanh2, num_hidden=500)
 	
 	#fc1 = mx.sym.Custom(data=fc1, op_type='debug')
 
