@@ -176,15 +176,15 @@ int main(int argc, char ** argv){
   base_name.erase(base_name.rfind('-')); // watchout if no '-'
   const std::string output_name(path + "/" + "binarized_" + params_file_name);
 
-  if (convert_params_file(params_file, output_name) != 0) {
-    return -1;
+  if (int ret = convert_params_file(params_file, output_name) != 0) {
+    return ret;
   }
 
   const std::string json_file_name(path + "/"                + base_name + "-symbol.json");
   const std::string json_out_fname(path + "/" + "binarized_" + base_name + "-symbol.json");
 
-  if (convert_json_file(json_file_name, json_out_fname) != 0) {
-    return -1;
+  if (int ret = convert_json_file(json_file_name, json_out_fname) != 0) {
+    return ret;
   }
 
   return 0;
