@@ -25,7 +25,7 @@ using mxnet::op::xnor_cpu::BINARY_WORD;
  * @param array reference to an NDArray that should be binarized
  */
 
-void convert_to_binary(mxnet::NDArray& array) {
+void convert_to_binary_row(mxnet::NDArray& array) {
   assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
   assert(array.shape().ndim() >= 2); // second dimension is input depth from prev. layer, needed for next line
   assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64)
@@ -37,53 +37,59 @@ void convert_to_binary(mxnet::NDArray& array) {
   array = temp;
 }
 
-//void convert_to_binary_col(mxnet::NDArray& array) {
-//  assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
-//  assert(array.shape().ndim() == 2); // since we binarize column wise, we need to know no of rows and columns
-//  assert(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
-//  nnvm::TShape binarized_shape(1);
-//  size_t size = array.shape().Size();
-//  binarized_shape[0] = size / BITS_PER_BINARY_WORD;
-//  mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, array.dtype());
-//  mxnet::op::xnor_cpu::get_binary_col((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, array.shape()[0], array.shape()[1]);
-//  array = temp;
-//}
-//
-//template<typename DType>
-//void transpose(mxnet::NDArray& array) {
-//  assert(array.shape().ndim() == 2);
-//  nnvm::TShape tansposed_shape(2);
-//  int rows = array.shape()[0];
-//  int cols = array.shape()[1];
-//  tansposed_shape[0] = cols;
-//  tansposed_shape[1] = rows;
-//  mxnet::NDArray temp(tansposed_shape, mxnet::Context::CPU(), false, array.dtype());
-//  for (int row = 0; row < rows; row++) {
-//    for (int col = 0; col < cols; col++) {
-//      //temp.data().dptr_[col * rows + row] = array.data().dptr_[row * cols + col];
-//    }
-//  }
-//  array = temp;
-//}
+/**
+ * @brief transposes an NDArray
+ *
+ * @param array reference to an NDArray that should be transposed
+ */
+
+void transpose(mxnet::NDArray& array) {
+  assert(array.shape().ndim() == 2);
+  nnvm::TShape tansposed_shape(2);
+  int rows = array.shape()[0];
+  int cols = array.shape()[1];
+  tansposed_shape[0] = cols;
+  tansposed_shape[1] = rows;
+  mxnet::NDArray temp(tansposed_shape, mxnet::Context::CPU(), false, array.dtype());
+  MSHADOW_REAL_TYPE_SWITCH(array.dtype(), DType, {
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < cols; col++) {
+        ((DType*)temp.data().dptr_)[col * rows + row] = ((DType*)array.data().dptr_)[row * cols + col];
+      }
+    }
+  })
+  array = temp;
+}
 
 /**
- * @brief convert convolutional and fully connected layers of mxnet params file to binary format
+ * @brief transpose and then binarize an array column wise
  *
- * @param input_file path to mxnet params file with QConvolution and QFullyconnected layers
- * @param output_file path to converted file
- * @param filter_strings list of strings with arrays to convert
- * @return success (0) or failure
+ * @param array reference to an NDArray that should be binarized
  */
-int convert_params_file(const std::string& input_file, const std::string& output_file, const std::vector<std::string> filter_strings) {
-  std::vector<mxnet::NDArray> data;
-  std::vector<std::string> keys;
 
-  std::cout << "loading " << input_file << "..." << std::endl;
-  { // loading params file into data and keys
-    std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(input_file.c_str(), "r"));
-    mxnet::NDArray::Load(fi.get(), &data, &keys);
-  }
+void transpose_and_convert_to_binary_col(mxnet::NDArray& array) {
+  assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
+  transpose(array);
+  assert(array.shape().ndim() == 2); // since we binarize column wise, we need to know no of rows and columns
+  assert(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
+  nnvm::TShape binarized_shape(1);
+  size_t size = array.shape().Size();
+  binarized_shape[0] = size / BITS_PER_BINARY_WORD;
+  mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, array.dtype());
+  mxnet::op::xnor_cpu::get_binary_col((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, array.shape()[0], array.shape()[1]);
+  array = temp;
+}
 
+/**
+ * @brief transpose and then binarize an array column wise
+ *
+ * @param array reference to an NDArray that should be binarized
+ */
+
+void filter_for(std::vector<mxnet::NDArray>& data,
+                const std::vector<std::string>& keys,
+                const std::vector<std::string>& filter_strings,
+                std::function<void(mxnet::NDArray&)> task) {
   auto containsFilterString = [filter_strings](std::string line_in_params) {
     auto containsSubString = [line_in_params](std::string filter_string) {
       return line_in_params.find(filter_string) != std::string::npos;};
@@ -102,13 +108,34 @@ int convert_params_file(const std::string& input_file, const std::string& output
     std::cout << "|- converting weights " << *iter << "..." << std::endl;
     CHECK((*iter).find("weight") != std::string::npos) << "onyl weight binarization supported currently";
 
-    convert_to_binary(data[iter - keys.begin()]);
+    task(data[iter - keys.begin()]);
 
     iter = std::find_if(std::next(iter),
                         keys.end(),
                         containsFilterString);
   }
+}
 
+/**
+ * @brief convert convolutional and fully connected layers of mxnet params file to binary format
+ *
+ * @param input_file path to mxnet params file with QConvolution and QFullyconnected layers
+ * @param output_file path to converted file
+ * @param filter_strings list of strings with arrays to convert
+ * @return success (0) or failure
+ */
+int convert_params_file(const std::string& input_file, const std::string& output_file, const std::vector<std::string> conv_names, const std::vector<std::string> fc_names) {
+  std::vector<mxnet::NDArray> data;
+  std::vector<std::string> keys;
+
+  std::cout << "loading " << input_file << "..." << std::endl;
+  { // loading params file into data and keys
+    std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(input_file.c_str(), "r"));
+    mxnet::NDArray::Load(fi.get(), &data, &keys);
+  }
+
+  filter_for(data, keys, conv_names, convert_to_binary_row);
+  filter_for(data, keys, fc_names, transpose_and_convert_to_binary_col);
 
   { // saving params back to *_converted
     std::unique_ptr<dmlc::Stream> fo(dmlc::Stream::Create(output_file.c_str(), "w"));
@@ -217,7 +244,7 @@ int main(int argc, char ** argv){
     return ret;
   }
 
-  if (int ret = convert_params_file(params_file, output_name, filters_conv) != 0) {
+  if (int ret = convert_params_file(params_file, output_name, filters_conv, filters_fc) != 0) {
     return ret;
   }
 
