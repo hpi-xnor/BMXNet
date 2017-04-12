@@ -72,6 +72,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
 
   inline void QConvolutionForward(int m, int n, int k,
                                   const Tensor<gpu, 2, float> &wmat,
+																	const Tensor<gpu, 1, float> &workspace,
                                   const Tensor<gpu, 2, float> &in_col,
                                   const Tensor<gpu, 2, float> &temp_dst) {
     cuda::QConvolutionForward(wmat, in_col, temp_dst);
@@ -79,6 +80,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
 
   inline void QConvolutionForward(int m, int n, int k,
                                   const Tensor<gpu, 1, float> &wmat_binarized,
+																	const Tensor<gpu, 1, float> &workspace,
                                   const Tensor<gpu, 2, float> &in_col,
                                   const Tensor<gpu, 2, float> &temp_dst) {
     CHECK(false) << "cuda with pre-binarized weights not implemented";
@@ -87,6 +89,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
   template<typename DType>
   inline void QConvolutionForward(int m, int n, int k,
                                   const Tensor<gpu, 2, DType> &wmat,
+																	const Tensor<gpu, 1, DType> &workspace,
                                   const Tensor<gpu, 2, DType> &in_col,
                                   const Tensor<gpu, 2, DType> &temp_dst) {
     CHECK(false) << "only float supported";
@@ -96,6 +99,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
   template<typename DType>
   inline void QConvolutionForward(int m, int n, int k,
                                   const Tensor<gpu, 1, DType> &wmat_binarized,
+																	const Tensor<gpu, 1, DType> &workspace,
                                   const Tensor<gpu, 2, DType> &in_col,
                                   const Tensor<gpu, 2, DType> &temp_dst) {
     CHECK(false) << "only float supported";
