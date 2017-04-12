@@ -16,6 +16,7 @@
 #include <utility>
 #include "../../src/operator/operator_common.h"
 #include "./q_helper.h"
+#include "./xnor_cpu.h"
 #include <type_traits>
 
 #include <csignal>
@@ -97,12 +98,22 @@ class QFullyConnectedOp : public Operator {
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
     if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
-    	//XNOR based
-      Tensor<xpu, 2, DType> wmat_T =
-              NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);
-      wmat_T = wmat.T();
-      QFullyConnectedForward(data, wmat_T, out, param_);
-      mshadow::FreeSpace(&wmat_T);
+      int m = data.size(0);
+      int n = data.size(1);
+      int k = param_.num_hidden;
+      Tensor<xpu, 1, DType> binary_inputs_workspace =
+              ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(
+                      Shape1(n * m / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+
+      if (param_.binarized_weights_only) {
+        QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_binarized, out);
+      } else {
+        Tensor<xpu, 2, DType> wmat_T =
+                NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);
+        wmat_T = wmat.T();
+        QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_T, out);
+        mshadow::FreeSpace(&wmat_T);
+      }
     }else{
   		// mf quantize weights
   		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
@@ -213,7 +224,11 @@ class QFullyConnectedProp : public OperatorProperty {
     if (dshape.ndim() ==  0) return false;
 
     index_t num_input = dshape.ProdShape(1, dshape.ndim());
-    SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kWeight, Shape2(param_.num_hidden, num_input));
+    if (param_.binarized_weights_only) {
+      SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kWeight, Shape1(param_.num_hidden * num_input / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
+    } else {
+      SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kWeight, Shape2(param_.num_hidden, num_input));
+    }
     if (!param_.no_bias) {
       SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kBias, Shape1(param_.num_hidden));
     }

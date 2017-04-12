@@ -490,7 +490,6 @@ class QConvolutionProp : public OperatorProperty {
           << "Input data should be 4D in batch-num_filter-y-x";
       Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);
 
-      //std::raise(SIGINT);
       if (param_.binarized_weights_only) {
         CHECK_EQ(param_.num_group, 1) << "groups not (yet?) supported for pre-binarized weights";
         Shape<1> wshape = Shape1(dshape[1] * param_.num_filter * param_.kernel[0] * param_.kernel[1] / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD);
