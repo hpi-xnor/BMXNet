@@ -213,18 +213,19 @@ class QConvolutionOp : public Operator {
           Tensor<xpu, 1, DType> binary_inputs_workspace =
                   ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
                           Shape1(n * k / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+          Tensor<xpu, 2, DType> temp_dst_gid = temp_dst[gid];
           if (param_.binarized_weights_only) {
             QConvolutionForward(m, n, k,
                                 wmat_binarized,
                                 binary_inputs_workspace,
                                 tmpc,
-                                temp_dst[gid]);
+                                temp_dst_gid);
           } else {
             QConvolutionForward(m, n, k,
                                 wmat[gid],
                                 binary_inputs_workspace,
                                 tmpc,
-                                temp_dst[gid]);
+                                temp_dst_gid);
           }
         }else{
           temp_dst[gid] = dot(wmat[gid], tmpc);       

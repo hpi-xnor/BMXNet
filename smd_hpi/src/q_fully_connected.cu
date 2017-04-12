@@ -70,20 +70,38 @@ inline void QFullyConnectedForward(const Tensor<gpu, 2, float> &data,
 }  // namespace cuda
 
 
-inline void QFullyConnectedForward(const Tensor<gpu, 2, float> &data,
-                                const Tensor<gpu, 2, float> &wmat,
-                                const Tensor<gpu, 2, float> &out,
-                                const mxnet::op::QFullyConnectedParam &param){
-	cuda::QFullyConnectedForward(data, wmat, out);
-}
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<gpu, 2, float> &data,
+                                     Tensor<gpu, 1, float> &workspace,
+                                     const Tensor<gpu, 1, float> &wmat_binarized,
+                                     Tensor<gpu, 2, float> &out) {
+    CHECK(false) << "cuda with pre-binarized weights not implemented";
+  }
 
-template<typename DType>
-inline void QFullyConnectedForward(const Tensor<gpu, 2, DType> &data,
-                                const Tensor<gpu, 2, DType> &wmat,
-                                const Tensor<gpu, 2, DType> &out,
-                                const mxnet::op::QFullyConnectedParam &param) {
-  CHECK(false) << "only float supported";
-}
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<gpu, 2, float> &data,
+                                     Tensor<gpu, 1, float> &workspace,
+                                     const Tensor<gpu, 2, float> &wmat,
+                                     Tensor<gpu, 2, float> &out) {
+    cuda::QFullyConnectedForward(data, wmat, out);
+  }
+
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<gpu, 2, DType> &data,
+                                     Tensor<gpu, 1, DType> &workspace,
+                                     const Tensor<gpu, 1, DType> &wmat_binarized,
+                                     Tensor<gpu, 2, DType> &out) {
+    CHECK(false) << "only float supported";
+  }
+
+  template<typename DType>
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<gpu, 2, DType> &data,
+                                     Tensor<gpu, 1, DType> &workspace,
+                                     const Tensor<gpu, 2, DType> &wmat,
+                                     Tensor<gpu, 2, DType> &out) {
+    CHECK(false) << "only float supported";
+  }
 } // namespace mshadow
 
 

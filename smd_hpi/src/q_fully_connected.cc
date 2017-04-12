@@ -13,9 +13,9 @@ namespace mshadow {
 
   inline void _QFullyConnectedForward(int m, int n, int k,
                                       const Tensor<cpu, 2, float> &data,
-                                      const Tensor<cpu, 1, float> &workspace,
+                                      Tensor<cpu, 1, float> &workspace,
                                       BINARY_WORD* binary_weights_col,
-                                      const Tensor<cpu, 2, float> &out) {
+                                      Tensor<cpu, 2, float> &out) {
     CHECK_EQ(data.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_fully_connected layer is not divisible by "
                                                      << BITS_PER_BINARY_WORD;
     //check matrix dims:
@@ -28,10 +28,7 @@ namespace mshadow {
 
     get_binary_row(data.dptr_, binary_row, m*n);
 
-    #pragma omp parallel for
-    for (int i = 0; i < out.shape_.Size(); ++i) {
-      out.dptr_[i] = 0;
-    }
+    out = 0;
 
     xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
               binary_row, n/BITS_PER_BINARY_WORD,
@@ -41,17 +38,17 @@ namespace mshadow {
 
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<cpu, 2, float> &data,
-                                     const Tensor<cpu, 1, float> &workspace,
+                                     Tensor<cpu, 1, float> &workspace,
                                      const Tensor<cpu, 1, float> &wmat_binarized,
-                                     const Tensor<cpu, 2, float> &out) {
+                                     Tensor<cpu, 2, float> &out) {
     _QFullyConnectedForward(m, n, k, data, workspace, (BINARY_WORD*) wmat_binarized.dptr_, out);
   }
 
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<cpu, 2, float> &data,
-                                     const Tensor<cpu, 1, float> &workspace,
+                                     Tensor<cpu, 1, float> &workspace,
                                      const Tensor<cpu, 2, float> &wmat,
-                                     const Tensor<cpu, 2, float> &out) {
+                                     Tensor<cpu, 2, float> &out) {
     BINARY_WORD binary_col[n * k/BITS_PER_BINARY_WORD];
     get_binary_col(wmat.dptr_, &binary_col[0], n, k);
 
@@ -96,18 +93,18 @@ namespace mshadow {
   template<typename DType>
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<cpu, 2, DType> &data,
-                                     const Tensor<cpu, 1, DType> &workspace,
+                                     Tensor<cpu, 1, DType> &workspace,
                                      const Tensor<cpu, 1, DType> &wmat_binarized,
-                                     const Tensor<cpu, 2, DType> &out) {
+                                     Tensor<cpu, 2, DType> &out) {
     CHECK(false) << "only float supported";
   }
 
   template<typename DType>
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<cpu, 2, DType> &data,
-                                     const Tensor<cpu, 1, DType> &workspace,
+                                     Tensor<cpu, 1, DType> &workspace,
                                      const Tensor<cpu, 2, DType> &wmat,
-                                     const Tensor<cpu, 2, DType> &out) {
+                                     Tensor<cpu, 2, DType> &out) {
     CHECK(false) << "only float supported";
   }
 
