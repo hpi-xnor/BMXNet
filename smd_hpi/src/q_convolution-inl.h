@@ -96,7 +96,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
     DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
-            .describe("Path to binarized weights. set automatically by model converter.");
+            .describe("Params file contains only binarized weights. Set automatically by model converter.");
   }
 };
 
@@ -213,18 +213,19 @@ class QConvolutionOp : public Operator {
           Tensor<xpu, 1, DType> binary_inputs_workspace =
                   ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
                           Shape1(n * k / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+          Tensor<xpu, 2, DType> temp_dst_gid = temp_dst[gid];
           if (param_.binarized_weights_only) {
             QConvolutionForward(m, n, k,
                                 wmat_binarized,
                                 binary_inputs_workspace,
                                 tmpc,
-                                temp_dst[gid]);
+                                temp_dst_gid);
           } else {
             QConvolutionForward(m, n, k,
                                 wmat[gid],
                                 binary_inputs_workspace,
                                 tmpc,
-                                temp_dst[gid]);
+                                temp_dst_gid);
           }
         }else{
           temp_dst[gid] = dot(wmat[gid], tmpc);       
@@ -490,7 +491,6 @@ class QConvolutionProp : public OperatorProperty {
           << "Input data should be 4D in batch-num_filter-y-x";
       Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);
 
-      //std::raise(SIGINT);
       if (param_.binarized_weights_only) {
         CHECK_EQ(param_.num_group, 1) << "groups not (yet?) supported for pre-binarized weights";
         Shape<1> wshape = Shape1(dshape[1] * param_.num_filter * param_.kernel[0] * param_.kernel[1] / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD);
