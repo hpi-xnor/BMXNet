@@ -86,6 +86,7 @@ inline void QFullyConnectedForward(const Tensor<gpu, 2, float> &data,
     cuda::QFullyConnectedForward(data, wmat, out);
   }
 
+  template<typename DType>
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<gpu, 2, DType> &data,
                                      Tensor<gpu, 1, DType> &workspace,
