@@ -9,50 +9,105 @@
 
 
 namespace mshadow {
-
 	using namespace mxnet::op::xnor_cpu;
-    inline void QFullyConnectedForward(const Tensor<cpu, 2, float> &data,
-                                    const Tensor<cpu, 2, float> &wmat,
-                                    const Tensor<cpu, 2, float> &out,
-                                    const mxnet::op::QFullyConnectedParam &param) {
-      	CHECK_EQ(data.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_fully_connected layer is not divisible by "
-                                                          << BITS_PER_BINARY_WORD;
-      	int m = data.size(0);
-      	int n = data.size(1);
-      	int k = wmat.size(1);
-      	//check matrix dims:
-      	// 	data.size(1) should equal wmat.size(0)
-      	//	out should have dims (m, k)
-      	CHECK_EQ((int)data.size(1), (int)wmat.size(0));
-      	CHECK_EQ((int)out.size(0), (int)data.size(0));
 
-        BINARY_WORD* binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
-        BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+  inline void _QFullyConnectedForward(int m, int n, int k,
+                                      const Tensor<cpu, 2, float> &data,
+                                      Tensor<cpu, 1, float> &workspace,
+                                      BINARY_WORD* binary_weights_col,
+                                      Tensor<cpu, 2, float> &out) {
+    CHECK_EQ(data.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_fully_connected layer is not divisible by "
+                                                     << BITS_PER_BINARY_WORD;
+    //check matrix dims:
+    //	out should have dims (m, k)
+    CHECK_EQ((int)out.size(0), m);
+    CHECK_EQ((int)out.size(1), k);
 
-        get_binary_row(data.dptr_, binary_row, m*n);
-        get_binary_col(wmat.dptr_, binary_col, n, k);
+    CHECK_EQ(workspace.shape_.Size(), n * m / BITS_PER_BINARY_WORD);
+    BINARY_WORD* binary_row = (BINARY_WORD*) workspace.dptr_;
 
-        #pragma omp parallel for
-        for (int i = 0; i < out.shape_.Size(); ++i) {
-          out.dptr_[i] = 0;
-        }
+    get_binary_row(data.dptr_, binary_row, m*n);
 
-        xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-                  binary_row, n/BITS_PER_BINARY_WORD,
-                  binary_col, k,
-                  out.dptr_, k);
+    out = 0;
 
-    		free(binary_row);
-    		free(binary_col);
+    xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+              binary_row, n/BITS_PER_BINARY_WORD,
+              binary_weights_col, k,
+              out.dptr_, k);
+  }
+
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<cpu, 2, float> &data,
+                                     Tensor<cpu, 1, float> &workspace,
+                                     const Tensor<cpu, 1, float> &wmat_binarized,
+                                     Tensor<cpu, 2, float> &out) {
+    _QFullyConnectedForward(m, n, k, data, workspace, (BINARY_WORD*) wmat_binarized.dptr_, out);
+  }
+
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<cpu, 2, float> &data,
+                                     Tensor<cpu, 1, float> &workspace,
+                                     const Tensor<cpu, 2, float> &wmat,
+                                     Tensor<cpu, 2, float> &out) {
+    BINARY_WORD binary_col[n * k/BITS_PER_BINARY_WORD];
+    get_binary_col(wmat.dptr_, &binary_col[0], n, k);
+
+    _QFullyConnectedForward(m, n, k, data, workspace, binary_col, out);
+  }
+
+  inline void QFullyConnectedForward_deprecated(const Tensor<cpu, 2, float> &data,
+                                     const Tensor<cpu, 2, float> &wmat,
+                                     const Tensor<cpu, 2, float> &out,
+                                     const mxnet::op::QFullyConnectedParam &param) {
+    CHECK_EQ(data.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_fully_connected layer is not divisible by "
+                                                      << BITS_PER_BINARY_WORD;
+    int m = data.size(0);
+    int n = data.size(1);
+    int k = wmat.size(1);
+    //check matrix dims:
+    // 	data.size(1) should equal wmat.size(0)
+    //	out should have dims (m, k)
+    CHECK_EQ((int)data.size(1), (int)wmat.size(0));
+    CHECK_EQ((int)out.size(0), (int)data.size(0));
+
+    BINARY_WORD* binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+    BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
+
+    get_binary_row(data.dptr_, binary_row, m*n);
+    get_binary_col(wmat.dptr_, binary_col, n, k);
+
+    #pragma omp parallel for
+    for (int i = 0; i < out.shape_.Size(); ++i) {
+      out.dptr_[i] = 0;
     }
 
-    template<typename DType>
-    inline void QFullyConnectedForward(const Tensor<cpu, 2, DType> &data,
-                                    const Tensor<cpu, 2, DType> &wmat,
-                                    const Tensor<cpu, 2, DType> &out,
-                                    const mxnet::op::QFullyConnectedParam &param) {
-      CHECK(false) << "only float supported";
-    }
+    xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+              binary_row, n/BITS_PER_BINARY_WORD,
+              binary_col, k,
+              out.dptr_, k);
+
+    free(binary_row);
+    free(binary_col);
+  }
+
+  template<typename DType>
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<cpu, 2, DType> &data,
+                                     Tensor<cpu, 1, DType> &workspace,
+                                     const Tensor<cpu, 1, DType> &wmat_binarized,
+                                     Tensor<cpu, 2, DType> &out) {
+    CHECK(false) << "only float supported";
+  }
+
+  template<typename DType>
+  inline void QFullyConnectedForward(int m, int n, int k,
+                                     const Tensor<cpu, 2, DType> &data,
+                                     Tensor<cpu, 1, DType> &workspace,
+                                     const Tensor<cpu, 2, DType> &wmat,
+                                     Tensor<cpu, 2, DType> &out) {
+    CHECK(false) << "only float supported";
+  }
+
 }
 
 namespace mxnet {
