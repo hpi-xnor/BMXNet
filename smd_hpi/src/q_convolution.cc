@@ -17,7 +17,7 @@ using get_time = std::chrono::steady_clock ;
 namespace mshadow {
     using namespace mxnet::op::xnor_cpu;
 
-    inline void Forward(int m, int n, int k,
+    inline void _QConvolutionForward(int m, int n, int k,
                         BINARY_WORD* binary_weights_row,
 						const Tensor<cpu, 1, float> &workspace,
                         const Tensor<cpu, 2, float> &in_col,
@@ -31,7 +31,8 @@ namespace mshadow {
 		for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
 		temp_dst.dptr_[i] = 0;
 		}
-		//temp_dst = 0;
+		
+		//temp_dst = 0;//cannot be compiled!
 
       	//auto start = std::chrono::high_resolution_clock::now();
 
@@ -52,7 +53,7 @@ namespace mshadow {
                                     const Tensor<cpu, 2, float> &in_col,
                                     Tensor<cpu, 2, float> &temp_dst) {
 
-		Forward(m, n, k, (BINARY_WORD*) wmat_binarized.dptr_, workspace, in_col, temp_dst);
+		_QConvolutionForward(m, n, k, (BINARY_WORD*) wmat_binarized.dptr_, workspace, in_col, temp_dst);
     }
 
 	inline void QConvolutionForward(int m, int n, int k,
@@ -62,7 +63,7 @@ namespace mshadow {
 																		Tensor<cpu, 2, float> &temp_dst) {
       	BINARY_WORD binary_row[m * n/BITS_PER_BINARY_WORD];
       	get_binary_row(wmat.dptr_, &binary_row[0], m*n);
-		Forward(m, n, k, binary_row, workspace, in_col, temp_dst);
+		_QConvolutionForward(m, n, k, binary_row, workspace, in_col, temp_dst);
 	}
 
 
