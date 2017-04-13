@@ -149,8 +149,8 @@ class QConvolutionOp : public Operator {
     // xnor related check
     CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
 
-    // for training we apply quantization function on weights.
-    if(ctx.is_train){
+    // for training or prediction in gpu mode, we apply quantization function on weights.
+    if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
       // mf quantize weights
       Tensor<xpu, 1, DType> w1d = in_data[q_conv::kWeight].FlatTo1D<xpu, DType>(s);
       Tensor<xpu, 1, DType> abs = ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
@@ -189,6 +189,18 @@ class QConvolutionOp : public Operator {
                                     param_.stride[1],
                                     param_.dilate[0],
                                     param_.dilate[1]);
+        
+        //If there is padding occurred, we have to do the binarization or quantization 
+        //to the input data again, since the padding elements are all "0"
+        if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
+          if(this->param_.act_bit == 1){
+            temp_col = F<mshadow_op::det_sign>(temp_col);
+          }else{
+            temp_col = F<mshadow_op::quantize>(
+                          F<mshadow_op::maximum>(F<mshadow_op::minimum>(temp_col, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
+                          scalar(DType(this->param_.act_bit)));
+          }
+        }
       }
 
       const index_t gstride = temp_col.size(0) / param_.num_group;
@@ -200,7 +212,7 @@ class QConvolutionOp : public Operator {
         // For the training in order to make the training easier and faster, 
         // we binarize the input and weights of Qconv layer to +1 and -1, 
         // still apply the standard dot() operator to generate the 
-        // gemm result. But for 1-bit prediction we then apply xnor+_popc
+        // gemm result. But for 1-bit prediction by using CPU we then apply xnor+_popc
         // to generate the same result as the dot() function.
         // this means for prediction phase and 1-bit, the QConvolutionForward(...)
         // should give the exactly same result as the sign( dot() ) method.
@@ -232,7 +244,7 @@ class QConvolutionOp : public Operator {
           //this converting is just for mimicing 2-bit xnor-popc operations
           //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
           if(this->param_.act_bit == 1)
-            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));
+            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
           
           //============================//
           // here my testing codes
@@ -243,11 +255,12 @@ class QConvolutionOp : public Operator {
           std::cout << wmat[gid].size(0) << std::endl;
           std::cout << "n: ";
           std::cout << wmat[gid].size(1) << std::endl;
+          std::cout << tmpc.size(0) << std::endl;
           std::cout << "k: ";
           std::cout << tmpc.size(1) << std::endl;
           std::cout << "dot output:" << std::endl;
           for (int x = 0; x < 100; ++x) {
-            std::cout << temp_dst.dptr_[x]; 
+            std::cout << round(temp_dst.dptr_[x]); 
             std::cout << " ";
           }
           std::cout << std::endl;
@@ -255,7 +268,10 @@ class QConvolutionOp : public Operator {
           //============================//
           // here my testing codes
           //============================//
-          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+          Tensor<xpu, 1, DType> binary_inputs_workspace =
+                  ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
+                          Shape1(wmat[gid].size(1) * tmpc.size(1) / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+          QConvolutionForward(wmat[gid].size(0), tmpc.size(0), tmpc.size(1), wmat[gid], binary_inputs_workspace,tmpc,temp_dst[gid]);          
           std::cout << "xnor output:" << std::endl;
           for (int x = 0; x < 100; ++x) {
             std::cout << temp_dst.dptr_[x]; 

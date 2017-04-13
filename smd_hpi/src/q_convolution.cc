@@ -22,12 +22,12 @@ namespace mshadow {
 												const Tensor<cpu, 1, float> &workspace,
                         const Tensor<cpu, 2, float> &in_col,
                         const Tensor<cpu, 2, float> &temp_dst) {
-			CHECK_EQ(workspace.shape_.Size(), n * k / BITS_PER_BINARY_WORD);
+	  CHECK_EQ(workspace.shape_.Size(), n * k / BITS_PER_BINARY_WORD);
       BINARY_WORD* binary_col = (BINARY_WORD*) workspace.dptr_;
 
       get_binary_col(in_col.dptr_, binary_col, n, k);
 
-      //#pragma omp parallel for
+      #pragma omp parallel for
       for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
         temp_dst.dptr_[i] = 0;
       }
@@ -54,7 +54,7 @@ namespace mshadow {
       Forward(m, n, k, (BINARY_WORD*) wmat_binarized.dptr_, workspace, in_col, temp_dst);
     }
 
-		inline void QConvolutionForward(int m, int n, int k,
+	inline void QConvolutionForward(int m, int n, int k,
                                     const Tensor<cpu, 2, float> &wmat,
 																		const Tensor<cpu, 1, float> &workspace,
 																		const Tensor<cpu, 2, float> &in_col,
@@ -63,7 +63,7 @@ namespace mshadow {
       get_binary_row(wmat.dptr_, &binary_row[0], m*n);
 
       Forward(m, n, k, binary_row, workspace, in_col, temp_dst);
-		}
+	}
 
     inline void QConvolutionForward_deprecated(int m, int n, int k,
                                                const Tensor<cpu, 4, float> &data,
