@@ -239,11 +239,11 @@ namespace xnor_cpu {
                         float *C, int ldc){
     int i,n,k;
 
-    //#pragma omp parallel for collapse(2)
+    #pragma omp parallel for collapse(2)
     for(i = 0; i < M; ++i){
       for(n = 0; n < N; ++n){
         BINARY_WORD A_PART = A[i*lda+n];
-        //#pragma omp parallel for
+        #pragma omp parallel for
         for(k = 0; k < K; ++k){
           C[i*ldc+k] += (float)__builtin_popcountl(~(A_PART ^ B[n*ldb+k]));
 
