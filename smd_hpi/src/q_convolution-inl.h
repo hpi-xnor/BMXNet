@@ -195,10 +195,6 @@ class QConvolutionOp : public Operator {
         if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
           if(this->param_.act_bit == 1){
             temp_col = F<mshadow_op::det_sign>(temp_col);
-          }else{
-            temp_col = F<mshadow_op::quantize>(
-                          F<mshadow_op::maximum>(F<mshadow_op::minimum>(temp_col, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
-                          scalar(DType(this->param_.act_bit)));
           }
         }
       }
