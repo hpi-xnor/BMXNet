@@ -43,7 +43,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
     .describe("Number of hidden nodes of the output.");
     DMLC_DECLARE_FIELD(no_bias).set_default(true)
     .describe("Whether to disable bias parameter.");
-    DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
+    DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
     DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
             .describe("Params file contains only binarized weights. Set automatically by model converter.");
@@ -114,19 +114,40 @@ class QFullyConnectedOp : public Operator {
         QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_T, out);
         mshadow::FreeSpace(&wmat_T);
       }
+      
+      //this converting is just for mimicing binary-dot() operations
+      //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h   
+      out = out * scalar(DType(2.0f)) - ScalarExp<DType>(n);
+
     }else{
+      //============================================//
+      //            WEIGHTS quantization            //            
+      // for training or prediction in gpu mode,    //
+      // we apply quantization function on weights. //
+      //============================================//
   		// mf quantize weights
   		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
   		Tensor<xpu, 1, DType> abs = ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
   		helper::quantize(w1d, abs, this->param_.act_bit);
   		// /mf quantize weights
+      //============================================//
+      //             INPUT quantization             //   
+      //============================================//
+      if(this->param_.act_bit == 1){
+        data = F<mshadow_op::det_sign>(data);
+      }else{
+        data = F<mshadow_op::quantize>(F<mshadow_op::maximum>(
+                                            F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
+                                            scalar(DType(this->param_.act_bit)));
+      }// /mf quantize input
 
   		out = dot(data, wmat.T());
 
+      //NOTE: the following lines of codes will be removed once everything works fine!
       //this converting is just for mimicing 2-bit xnor-popc operations
       //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
-      if(this->param_.act_bit == 1)
-        out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
+      //if(this->param_.act_bit == 1)
+      //  out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
 
   		if (!param_.no_bias) {
   		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
@@ -178,6 +199,17 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> gdata = in_grad[q_fullc::kData].get_with_shape<xpu, 2, DType>(
         Shape2(ishape[0], ishape.ProdShape(1, ishape.ndim())), s);
     Assign(gdata, req[q_fullc::kData], dot(grad, wmat));
+
+    //========================================//
+    //         Quantized Activation           //
+    //========================================//
+    Tensor<xpu, 2, DType> m_in_data = in_data[q_fullc::kData].FlatTo2D<xpu, DType>(s);
+    Tensor<xpu, 2, DType> m_in_grad = in_grad[q_fullc::kData].FlatTo2D<xpu, DType>(s);
+    if(this->param_.act_bit == 1){
+      Assign(m_in_grad, req[q_fullc::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_in_grad);
+    }else{
+      Assign(m_in_grad, req[q_fullc::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_in_grad);
+    } 
   }
 
  private:

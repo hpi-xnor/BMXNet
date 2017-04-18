@@ -71,6 +71,9 @@ class BatchNormOp : public Operator {
     }
 
     Stream<xpu> *s = ctx.get_stream<xpu>();
+
+
+
     const real_t scale = static_cast<real_t>(in_data[batchnorm::kData].shape_[1]) /
                          static_cast<real_t>(in_data[batchnorm::kData].shape_.Size());
     Tensor<xpu, 4> data;
@@ -84,6 +87,25 @@ class BatchNormOp : public Operator {
       data = in_data[batchnorm::kData].get<xpu, 4, real_t>(s);
       out = out_data[batchnorm::kOut].get<xpu, 4, real_t>(s);
     }
+
+/*
+          //============================//
+          // here my testing codes
+          //============================//          
+          out = F<mshadow_op::det_sign>(data);
+          //get matrix dims
+          std::cout << "shift binary output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << out.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+*/
+
+
+
+
+
     Tensor<xpu, 1> slope = in_data[batchnorm::kGamma].get<xpu, 1, real_t>(s);
     Tensor<xpu, 1> bias = in_data[batchnorm::kBeta].get<xpu, 1, real_t>(s);
     Tensor<xpu, 1> moving_mean = aux_states[batchnorm::kMovingMean].get<xpu, 1, real_t>(s);
@@ -112,6 +134,22 @@ class BatchNormOp : public Operator {
              broadcast<1>(bias - (slope * moving_mean) /
                           F<mshadow_op::square_root>(moving_var + param_.eps), data.shape_));
     }
+
+
+
+
+/*
+          //============================//
+          // here my testing codes
+          //============================//
+          out = F<mshadow_op::det_sign>(out);
+          std::cout << "BN output:" << std::endl;
+          for (int x = 0; x < 100; ++x) {
+            std::cout << out.dptr_[x]; 
+            std::cout << " ";
+          }
+          std::cout << std::endl;
+*/
   }
 
   virtual void Backward(const OpContext &ctx,
