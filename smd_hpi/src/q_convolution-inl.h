@@ -21,6 +21,7 @@
 #include "../../src/operator/operator_common.h"
 #include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
+#include "./xnor_cpu.h"
 #include <type_traits>
 
 namespace mxnet {
@@ -48,6 +49,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
   // mf quantization and binarization variables
   uint32_t act_bit;
   bool scaling_factor;
+  bool binarized_weights_only;
   DMLC_DECLARE_PARAMETER(QConvolutionParam) {
     DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
     DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -93,6 +95,8 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
             .describe("Number of bits to quantize weights to.");
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
+    DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
+            .describe("Params file contains only binarized weights. Set automatically by model converter.");
   }
 };
 
@@ -115,7 +119,9 @@ class QConvolutionOp : public Operator {
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
+    //std::raise(SIGINT);
     CHECK_EQ(req[q_conv::kOut], kWriteTo);
+    CHECK(param_.binarized_weights_only ? !ctx.is_train : true);
     size_t expected = param_.no_bias ? 2 : 3;
     CHECK_EQ(in_data.size(), expected);
     CHECK_EQ(out_data.size(), 1);
@@ -128,8 +134,13 @@ class QConvolutionOp : public Operator {
         Shape3(param_.num_group,
                param_.num_filter / param_.num_group,
                data.shape_[1] / param_.num_group * param_.kernel[0] * param_.kernel[1]);
-    Tensor<xpu, 3, DType> wmat =
-        in_data[q_conv::kWeight].get_with_shape<xpu, 3, DType>(wmat_shape, s);
+    Tensor<xpu, 3, DType> wmat;
+    Tensor<xpu, 1, DType> wmat_binarized;
+    if (param_.binarized_weights_only) {
+      wmat_binarized = in_data[q_conv::kWeight].get<xpu, 1, DType>(s);
+    } else {
+      wmat = in_data[q_conv::kWeight].get_with_shape<xpu, 3, DType>(wmat_shape, s);
+    }
     Tensor<xpu, 4, DType> out = out_data[q_conv::kOut].get<xpu, 4, DType>(s);
 #if defined(__CUDACC__)
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
@@ -138,8 +149,8 @@ class QConvolutionOp : public Operator {
     // xnor related check
     CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
 
-    // for training we apply quantization function on weights.
-    if(ctx.is_train){
+    // for training or prediction in gpu mode, we apply quantization function on weights.
+    if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
       // mf quantize weights
       Tensor<xpu, 1, DType> w1d = in_data[q_conv::kWeight].FlatTo1D<xpu, DType>(s);
       Tensor<xpu, 1, DType> abs = ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
@@ -178,6 +189,14 @@ class QConvolutionOp : public Operator {
                                     param_.stride[1],
                                     param_.dilate[0],
                                     param_.dilate[1]);
+        
+        //If there is padding occurred, we have to do the binarization or quantization 
+        //to the input data again, since the padding elements are all "0"
+        if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
+          if(this->param_.act_bit == 1){
+            temp_col = F<mshadow_op::det_sign>(temp_col);
+          }
+        }
       }
 
       const index_t gstride = temp_col.size(0) / param_.num_group;
@@ -189,21 +208,40 @@ class QConvolutionOp : public Operator {
         // For the training in order to make the training easier and faster, 
         // we binarize the input and weights of Qconv layer to +1 and -1, 
         // still apply the standard dot() operator to generate the 
-        // gemm result. But for 1-bit prediction we then apply xnor+_popc
+        // gemm result. But for 1-bit prediction by using CPU we then apply xnor+_popc
         // to generate the same result as the dot() function.
         // this means for prediction phase and 1-bit, the QConvolutionForward(...)
         // should give the exactly same result as the sign( dot() ) method.
         if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
+          CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
           //xnor based convolution
-          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
-
+          int m = wmat_shape[1];
+          int n = wmat_shape[2];
+          int k = tmpc.size(1);
+          Tensor<xpu, 1, DType> binary_inputs_workspace =
+                  ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
+                          Shape1(n * k / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+          Tensor<xpu, 2, DType> temp_dst_gid = temp_dst[gid];
+          if (param_.binarized_weights_only) {
+            QConvolutionForward(m, n, k,
+                                wmat_binarized,
+                                binary_inputs_workspace,
+                                tmpc,
+                                temp_dst_gid);
+          } else {
+            QConvolutionForward(m, n, k,
+                                wmat[gid],
+                                binary_inputs_workspace,
+                                tmpc,
+                                temp_dst_gid);
+          }
         }else{
           temp_dst[gid] = dot(wmat[gid], tmpc);       
 
           //this converting is just for mimicing 2-bit xnor-popc operations
           //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
           if(this->param_.act_bit == 1)
-            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));
+            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
           
           //============================//
           // here my testing codes
@@ -214,11 +252,12 @@ class QConvolutionOp : public Operator {
           std::cout << wmat[gid].size(0) << std::endl;
           std::cout << "n: ";
           std::cout << wmat[gid].size(1) << std::endl;
+          std::cout << tmpc.size(0) << std::endl;
           std::cout << "k: ";
           std::cout << tmpc.size(1) << std::endl;
           std::cout << "dot output:" << std::endl;
           for (int x = 0; x < 100; ++x) {
-            std::cout << temp_dst.dptr_[x]; 
+            std::cout << round(temp_dst.dptr_[x]); 
             std::cout << " ";
           }
           std::cout << std::endl;
@@ -226,7 +265,10 @@ class QConvolutionOp : public Operator {
           //============================//
           // here my testing codes
           //============================//
-          QConvolutionForward(data, wmat[gid], tmpc, temp_dst[gid], out, param_);
+          Tensor<xpu, 1, DType> binary_inputs_workspace =
+                  ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
+                          Shape1(wmat[gid].size(1) * tmpc.size(1) / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+          QConvolutionForward(wmat[gid].size(0), tmpc.size(0), tmpc.size(1), wmat[gid], binary_inputs_workspace,tmpc,temp_dst[gid]);          
           std::cout << "xnor output:" << std::endl;
           for (int x = 0; x < 100; ++x) {
             std::cout << temp_dst.dptr_[x]; 
@@ -446,6 +488,7 @@ class QConvolutionProp : public OperatorProperty {
                   std::vector<TShape> *aux_shape) const override {
     using namespace mshadow;
     if (!param_.no_bias) {
+      LOG(WARNING) << "convolution with bias untested //mf";
       CHECK_EQ((int)in_shape->size(), 3) << "Input:[data, weight, bias]";
     } else {
       CHECK_EQ((int)in_shape->size(), 2) << "Input:[data, weight]";
@@ -459,15 +502,22 @@ class QConvolutionProp : public OperatorProperty {
       CHECK_EQ((int)dshp.ndim(), 4) \
           << "Input data should be 4D in batch-num_filter-y-x";
       Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);
-      Shape<4> wshape = Shape4(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
-                               param_.kernel[0], param_.kernel[1]);
-      wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
-      wshape[0] *= param_.num_group;
-      SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+
+      if (param_.binarized_weights_only) {
+        CHECK_EQ(param_.num_group, 1) << "groups not (yet?) supported for pre-binarized weights";
+        Shape<1> wshape = Shape1(dshape[1] * param_.num_filter * param_.kernel[0] * param_.kernel[1] / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD);
+        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+      } else {
+        Shape<4> wshape = Shape4(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
+                                 param_.kernel[0], param_.kernel[1]);
+        wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
+        wshape[0] *= param_.num_group;
+        SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kWeight, wshape);
+      }
+
       if (!param_.no_bias) {
         SHAPE_ASSIGN_CHECK(*in_shape, q_conv::kBias, Shape1(param_.num_filter));
       }
-
       const index_t ksize_y = static_cast<index_t>(param_.kernel[0]);
       const index_t ksize_x = static_cast<index_t>(param_.kernel[1]);
       CHECK_EQ(dshape[1] % param_.num_group, 0) \
@@ -504,6 +554,9 @@ class QConvolutionProp : public OperatorProperty {
     CHECK_GE((int)in_type->size(), 1);
     int dtype = (*in_type)[0];
     CHECK_NE(dtype, -1) << "First input must have specified type";
+    CHECK_EQ(sizeof(mxnet::op::xnor_cpu::BINARY_WORD), mshadow::mshadow_sizeof(dtype))
+      << "We store our binarized weights in mxnets data structures,"
+      << "so we rely on sizeof(BINARY_WORD) == sizeof(DType)";
     for (index_t i = 0; i < in_type->size(); ++i) {
       if ((*in_type)[i] == -1) {
         (*in_type)[i] = dtype;

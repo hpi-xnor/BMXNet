@@ -6,7 +6,7 @@ import os
 import logging
 
 
-def score(model, data_val, metrics, gpus, batch_size, rgb_mean,
+def score(model_prefix, epoch, data_val, metrics, gpus, batch_size, rgb_mean,
           image_shape='3,224,224', data_nthreads=4):
     # create data iterator
     rgb_mean = [float(i) for i in rgb_mean.split(',')]
@@ -24,12 +24,12 @@ def score(model, data_val, metrics, gpus, batch_size, rgb_mean,
         rand_mirror        = False)
 
     # download model
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    (prefix, epoch) = modelzoo.download_model(
-        model, os.path.join(dir_path, 'model'))
+#    dir_path = os.path.dirname(os.path.realpath(__file__))
+#    (prefix, epoch) = modelzoo.download_model(
+#        model, os.path.join(dir_path, 'model'))
 
     # create module
-    sym, arg_params, aux_params = mx.model.load_checkpoint(prefix, epoch)
+    sym, arg_params, aux_params = mx.model.load_checkpoint(model_prefix, epoch)
     if gpus == '':
         devs = mx.cpu()
     else:
@@ -42,6 +42,7 @@ def score(model, data_val, metrics, gpus, batch_size, rgb_mean,
     mod.set_params(arg_params, aux_params)
     if not isinstance(metrics, list):
         metrics = [metrics,]
+    logging.info('Info: model scoring started...')
     tic = time.time()
     num = 0
     for batch in data:
@@ -54,15 +55,17 @@ def score(model, data_val, metrics, gpus, batch_size, rgb_mean,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='score a model on a dataset')
-    parser.add_argument('--model', type=str, required=True,
-                        help = 'the model name.')
+    parser.add_argument('--model-prefix', type=str, required=True,
+                        help = 'the model prefix.')
     parser.add_argument('--gpus', type=str, default='0')
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--rgb-mean', type=str, default='0,0,0')
+    parser.add_argument('--rgb-mean', type=str, default='123.68,116.779,103.939')
     parser.add_argument('--data-val', type=str, required=True)
     parser.add_argument('--image-shape', type=str, default='3,224,224')
     parser.add_argument('--data-nthreads', type=int, default=4,
                         help='number of threads for data decoding')
+    parser.add_argument('--epoch', type=int, default=0,
+                        help='epoch of the model')
     args = parser.parse_args()
 
     logger = logging.getLogger()

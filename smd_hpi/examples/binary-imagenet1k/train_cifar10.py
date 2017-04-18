@@ -71,7 +71,7 @@ if __name__ == '__main__':
     args_params=None
     auxs_params=None
     if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 300)#inception-bn-0039.param
+        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 303)
         logger.info("Start training with {} from pretrained model {}"
                 .format(str(devs), args.pretrained))
     

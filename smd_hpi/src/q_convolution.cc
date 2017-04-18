@@ -17,18 +17,63 @@ using get_time = std::chrono::steady_clock ;
 namespace mshadow {
     using namespace mxnet::op::xnor_cpu;
 
-    inline void QConvolutionForward(const Tensor<cpu, 4, float> &data,
-                                    const Tensor<cpu, 2, float> &wmat,
-                                    const Tensor<cpu, 2, float> &in_col,
-                                    const Tensor<cpu, 2, float> &temp_dst,
-                                    const Tensor<cpu, 4, float> &out,
-                                    const mxnet::op::QConvolutionParam &param) {
-      	CHECK_EQ(wmat.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_convolution layer is not divisible by "
-                                                          << BITS_PER_BINARY_WORD;
+    inline void _QConvolutionForward(int m, int n, int k,
+                        BINARY_WORD* binary_weights_row,
+						Tensor<cpu, 1, float> &workspace,
+                        const Tensor<cpu, 2, float> &in_col,
+                        Tensor<cpu, 2, float> &temp_dst) {
+		CHECK_EQ(workspace.shape_.Size(), n * k / BITS_PER_BINARY_WORD);
+      	BINARY_WORD* binary_col = (BINARY_WORD*) workspace.dptr_;
 
-		int m = wmat.size(0);
-		int n = wmat.size(1);
-		int k = in_col.size(1);		
+		get_binary_col(in_col.dptr_, binary_col, n, k);
+		
+		temp_dst = 0;
+
+      	//auto start = std::chrono::high_resolution_clock::now();
+
+      	xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+                binary_weights_row, n/BITS_PER_BINARY_WORD,
+                binary_col, k,
+                temp_dst.dptr_, k);
+
+		//auto finish = std::chrono::high_resolution_clock::now();
+		//std::chrono::duration<double> elapsed = finish - start;
+		//std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+    }
+
+
+    inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 1, float> &wmat_binarized,
+									Tensor<cpu, 1, float> &workspace,
+                                    const Tensor<cpu, 2, float> &in_col,
+                                    Tensor<cpu, 2, float> &temp_dst) {
+
+		_QConvolutionForward(m, n, k, (BINARY_WORD*) wmat_binarized.dptr_, workspace, in_col, temp_dst);
+    }
+
+	inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 2, float> &wmat,
+									Tensor<cpu, 1, float> &workspace,
+									const Tensor<cpu, 2, float> &in_col,
+									Tensor<cpu, 2, float> &temp_dst) {
+      	BINARY_WORD binary_row[m * n/BITS_PER_BINARY_WORD];
+      	get_binary_row(wmat.dptr_, &binary_row[0], m*n);
+		_QConvolutionForward(m, n, k, binary_row, workspace, in_col, temp_dst);
+	}
+
+
+    inline void QConvolutionForward_deprecated(int m, int n, int k,
+                                               const Tensor<cpu, 4, float> &data,
+                                               const Tensor<cpu, 2, float> &wmat,
+                                               const Tensor<cpu, 2, float> &in_col,
+                                               const Tensor<cpu, 2, float> &temp_dst,
+                                               const mxnet::op::QConvolutionParam &param) {
+//		int m = wmat.size(0);
+//		int n = wmat.size(1);
+//		int k = in_col.size(1);
+		CHECK_EQ(wmat.size(1) % BITS_PER_BINARY_WORD, 0) << "input channel number for Q_convolution layer is not divisible by "
+																											<< BITS_PER_BINARY_WORD;
+
 		BINARY_WORD* binary_row = (BINARY_WORD*) malloc(m * n/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 		BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 
@@ -61,10 +106,10 @@ namespace mshadow {
 		get_binary_row(wmat.dptr_, binary_row, m*n);
 		get_binary_col(in_col.dptr_, binary_col, n, k);
 
-	    #pragma omp parallel for
-	    for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
-	      temp_dst.dptr_[i] = 0;
-	    }
+		#pragma omp parallel for
+		for (int i = 0; i < temp_dst.shape_.Size(); ++i) {
+			temp_dst.dptr_[i] = 0;
+		}
 
 		//auto start = std::chrono::high_resolution_clock::now();
 
@@ -105,12 +150,20 @@ namespace mshadow {
     }
 
     template<typename DType>
-    inline void QConvolutionForward(const Tensor<cpu, 4, DType> &data,
+    inline void QConvolutionForward(int m, int n, int k,
                                     const Tensor<cpu, 2, DType> &wmat,
+									Tensor<cpu, 1, DType> &workspace,
                                     const Tensor<cpu, 2, DType> &in_col,
-                                    const Tensor<cpu, 2, DType> &temp_dst,
-                                    const Tensor<cpu, 4, DType> &out,
-                                    const mxnet::op::QConvolutionParam &param) {
+                                    Tensor<cpu, 2, DType> &temp_dst) {
+      CHECK(false) << "only float supported";
+    }
+
+    template<typename DType>
+    inline void QConvolutionForward(int m, int n, int k,
+                                    const Tensor<cpu, 1, DType> &wmat_binarized,
+									Tensor<cpu, 1, DType> &workspace,
+                                    const Tensor<cpu, 2, DType> &in_col,
+                                    Tensor<cpu, 2, DType> &temp_dst) {
       CHECK(false) << "only float supported";
     }
 }
