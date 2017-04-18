@@ -43,10 +43,13 @@ def score(model_prefix, epoch, data_val, metrics, gpus, batch_size, rgb_mean,
     if not isinstance(metrics, list):
         metrics = [metrics,]
     logging.info('Info: model scoring started...')
-    tic = time.time()
+    total_bat = 0
     num = 0
     for batch in data:
+        tic = time.time()
         mod.forward(batch, is_train=False)
+        total_bat = time.time() - tic
+        logging.info('%f second per image', total_bat/batch_size)
         for m in metrics:
             mod.update_metric(m, batch.label)
         num += batch_size
