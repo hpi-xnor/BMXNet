@@ -45,14 +45,16 @@ def score(model_prefix, epoch, data_val, metrics, gpus, batch_size, rgb_mean,
     logging.info('Info: model scoring started...')
     total_bat = 0
     num = 0
-    for batch in data:
-        tic = time.time()
+    tic = time.time()
+    for batch in data:        
         mod.forward(batch, is_train=False)
-        total_bat = time.time() - tic
-        logging.info('%f second per image', total_bat/batch_size)
-        for m in metrics:
-            mod.update_metric(m, batch.label)
+        #for m in metrics:
+        #    mod.update_metric(m, batch.label)
         num += batch_size
+        if num >= 1000:
+            total_bat = time.time() - tic
+            logging.info('%f second per image, total time: %f', total_bat/num, total_bat)
+            break
     return (num / (time.time() - tic), )
 
 
