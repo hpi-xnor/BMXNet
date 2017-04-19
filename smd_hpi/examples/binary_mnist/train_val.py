@@ -154,11 +154,11 @@ def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, ba
          	   label_shapes=val_iter.provide_label, for_training=False)  # create memory by given input shapes
 	model.init_params()  # initial parameters with the default random initializer
 	n = randint(0,100)
-	plt.imshow(val_img[n], cmap='Greys_r')
-	plt.axis('off')
-	plt.show()
+	#plt.imshow(val_img[n], cmap='Greys_r')
+	#plt.axis('off')
+	#plt.show()
 	prob = model.predict(eval_data=val_iter, num_batch=1)[n].asnumpy() 
-	print 'Classified as %d with probability %f' % (prob.argmax(), max(prob))
+	print 'Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
 	lenet = get_binary_lenet()

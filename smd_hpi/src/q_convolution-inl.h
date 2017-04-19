@@ -119,7 +119,6 @@ class QConvolutionOp : public Operator {
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    //std::raise(SIGINT);
     CHECK_EQ(req[q_conv::kOut], kWriteTo);
     CHECK(param_.binarized_weights_only ? !ctx.is_train : true);
     size_t expected = param_.no_bias ? 2 : 3;
@@ -135,9 +134,9 @@ class QConvolutionOp : public Operator {
                param_.num_filter / param_.num_group,
                data.shape_[1] / param_.num_group * param_.kernel[0] * param_.kernel[1]);
     Tensor<xpu, 3, DType> wmat;
-    Tensor<xpu, 1, DType> wmat_binarized;
+    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized;
     if (param_.binarized_weights_only) {
-      wmat_binarized = in_data[q_conv::kWeight].get<xpu, 1, DType>(s);
+      wmat_binarized = (mxnet::op::xnor_cpu::BINARY_WORD*) in_data[q_conv::kWeight].dptr_;
     } else {
       wmat = in_data[q_conv::kWeight].get_with_shape<xpu, 3, DType>(wmat_shape, s);
     }
@@ -147,7 +146,8 @@ class QConvolutionOp : public Operator {
         << "Must init CuBLAS handle in stream";
 #endif
     // xnor related check
-    CHECK_EQ(data.shape_[1] % 32, 0) << "input channel currently have to be multiple of 32 but are: " << data.shape_[1];
+    CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
+      << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
 
     //============================================//
     //            WEIGHTS quantization            //            
@@ -234,9 +234,10 @@ class QConvolutionOp : public Operator {
           int m = wmat_shape[1];
           int n = wmat_shape[2];
           int k = tmpc.size(1);
+          // @todo: watch out, we get 32bit float space here and later possibly cast it into 64bit space
           Tensor<xpu, 1, DType> binary_inputs_workspace =
                   ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
-                          Shape1(n * k / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+                          Shape1(n * k / (sizeof(DType) * CHAR_BIT)), s);
           Tensor<xpu, 2, DType> temp_dst_gid = temp_dst[gid];
           if (param_.binarized_weights_only) {
             QConvolutionForward(m, n, k,
@@ -582,17 +583,23 @@ class QConvolutionProp : public OperatorProperty {
     CHECK_GE((int)in_type->size(), 1);
     int dtype = (*in_type)[0];
     CHECK_NE(dtype, -1) << "First input must have specified type";
-    CHECK_EQ(sizeof(mxnet::op::xnor_cpu::BINARY_WORD), mshadow::mshadow_sizeof(dtype))
-      << "We store our binarized weights in mxnets data structures,"
-      << "so we rely on sizeof(BINARY_WORD) == sizeof(DType)";
+
     for (index_t i = 0; i < in_type->size(); ++i) {
       if ((*in_type)[i] == -1) {
         (*in_type)[i] = dtype;
       } else {
+        if (param_.binarized_weights_only &&
+           (i == q_conv::kWeight)) {
+          continue;
+        }
         CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "
                                        << "Expected " << dtype << " v.s. given "
                                        << (*in_type)[i] << " at " << ListArguments()[i];
       }
+    }
+
+    if (param_.binarized_weights_only) {
+      (*in_type)[q_conv::kWeight] = mxnet::op::xnor_cpu::corresponding_dtype();
     }
     out_type->clear();
     out_type->push_back(dtype);
