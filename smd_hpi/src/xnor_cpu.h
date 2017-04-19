@@ -262,6 +262,8 @@ namespace xnor_cpu {
     }
   }
 
+
+
   /**
    * @brief simple naive baseline gemm implementation
    *
@@ -281,6 +283,40 @@ namespace xnor_cpu {
     }
   }
 
+
+// /**
+//  * @brief optimized gemm without multiplication but instead XNOR and POPCNT
+//  * __builtin_popcountl suitable for both 32bit and 64bit 
+//  *
+//  */
+// inline void T_xnor_gemm(int M, int K, int N,
+//                       BINARY_WORD *A, int lda,
+//                       BINARY_WORD *B, int ldb,
+//                       float *C, int ldc){
+//   int i,n,k;
+//   #pragma omp parallel for collapse(2)
+//   for(n = 0; n < N; ++n){
+//     for(i = 0; i < M; ++i){
+//       BINARY_WORD A_PART = A[i*lda+n];
+//       #pragma omp parallel for
+//       for(k = 0; k < K; ++k){                  
+//           BINARY_WORD B_PART = B[k*lda+n];
+//           C[i*ldc+k] += (float)__builtin_popcountl(~(A_PART ^ B_PART));
+          
+//           /* testing code, will be removed wenn everything works fine.
+//           std::cout << "A_PART: ";
+//           print_int2Bin(A_PART);
+//           std::cout << "B_PART: ";
+//           print_int2Bin(B[n*ldb+k]);
+//           std::cout << "_XNOR_: ";
+//           print_int2Bin(~(A_PART ^ B[n*ldb+k]));
+//           std::cout << "POPC_: ";
+//           std::cout << __builtin_popcountl(~(A_PART ^ B[n*ldb+k])) << std::endl;
+//           */
+//         }
+//       }
+//   }
+// }
 //  /**
 // * binary gemm. instead of standard dot product
 // * we apply binary_dot: _popcount( xnor() ) operators to perform the convolution
