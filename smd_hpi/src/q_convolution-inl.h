@@ -250,26 +250,15 @@ class QConvolutionOp : public Operator {
                                 binary_inputs_workspace,
                                 tmpc,
                                 temp_dst_gid);
-          }
-
-          //========================================//
-          // Instead of BatchNorm function we apply //
-          // a simple shift function to normalize   //
-          // output into range of (-N, N), by which //
-          // N = wmat[gid].size(1), to increase the //  
-          // processing speed.                      //
-          //========================================//
-          //this converting is just for mimicing binary-dot() operations
-          //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h   
-          temp_dst_gid = temp_dst_gid * scalar(DType(2.0)) - ScalarExp<DType>(n);          
+          }      
 
         }else{ // for training phase...
           temp_dst[gid] = dot(wmat[gid], tmpc);       
 
           //NOTE: the following lines of codes will be removed once everything works fine!
           //this converting is just for mimicing 1-bit xnor-popc operations
-          //if(this->param_.act_bit == 1)
-          //  temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
+          if(this->param_.act_bit == 1)
+            temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
           
           //============================//
           // here my testing codes

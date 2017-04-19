@@ -22,10 +22,12 @@
 namespace mxnet {
 namespace op {
 namespace xnor_cpu {
-
+  // variable, position, value
+  #define SET_BIT(var, pos, val) var |= (val << pos)
   //uint32_t, uint64_t, __int128
   typedef uint32_t BINARY_WORD;
   const int BITS_PER_BINARY_WORD (sizeof(mxnet::op::xnor_cpu::BINARY_WORD) * CHAR_BIT);
+  
 
   /**
   * @brief a helper method for print out bit wise result
@@ -194,16 +196,15 @@ namespace xnor_cpu {
    */
   inline void get_binary_row(float* row, BINARY_WORD * b_row, int size){
 
+    #pragma omp parallel for
     for (int i = 0; i < size; i+=BITS_PER_BINARY_WORD) {
-      float * array = new float[BITS_PER_BINARY_WORD];
-
-      #pragma omp parallel for
+      BINARY_WORD rvalue=0;
+      BINARY_WORD sign;
       for (int j = 0;j < BITS_PER_BINARY_WORD; ++j) {
-        array[j] = row[i+j];
+        sign = (row[i+j]>=0);
+        SET_BIT(rvalue, j, sign);
       }
-
-      b_row[i/BITS_PER_BINARY_WORD] = concatenate(array);
-      delete[] array;
+      b_row[i/BITS_PER_BINARY_WORD] = rvalue;
     }
   }
 
@@ -216,20 +217,19 @@ namespace xnor_cpu {
     #pragma omp parallel for collapse(2)
     for(int x=0; x < k; ++x){
       for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
-        float * array = new float[BITS_PER_BINARY_WORD];
-        #pragma omp parallel for
+        BINARY_WORD rvalue=0;
+        BINARY_WORD sign;    
         for(int b=0; b<BITS_PER_BINARY_WORD; ++b){
-          array[b] = col[(y*BITS_PER_BINARY_WORD+b)*k + x];
+          sign = (col[(y*BITS_PER_BINARY_WORD+b)*k + x]>=0);          
+          SET_BIT(rvalue, b, sign);
         }
-
-        b_col[y*k + x] = concatenate(array);
-        delete[] array;
+        b_col[y*k + x] = rvalue;
       }
     }
   }
 
   /**
-   * @brief optimized gemm without multiplication but instead XOR and POPCNT
+   * @brief optimized gemm without multiplication but instead XNOR and POPCNT
    * __builtin_popcountl suitable for both 32bit and 64bit 
    *
    */

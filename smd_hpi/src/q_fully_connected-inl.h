@@ -114,10 +114,6 @@ class QFullyConnectedOp : public Operator {
         QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_T, out);
         mshadow::FreeSpace(&wmat_T);
       }
-      
-      //this converting is just for mimicing binary-dot() operations
-      //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h   
-      out = out * scalar(DType(2.0f)) - ScalarExp<DType>(n);
 
     }else{
       //============================================//
@@ -143,11 +139,10 @@ class QFullyConnectedOp : public Operator {
 
   		out = dot(data, wmat.T());
 
-      //NOTE: the following lines of codes will be removed once everything works fine!
       //this converting is just for mimicing 2-bit xnor-popc operations
       //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
-      //if(this->param_.act_bit == 1)
-      //  out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
+      if(this->param_.act_bit == 1)
+        out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
 
   		if (!param_.no_bias) {
   		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
