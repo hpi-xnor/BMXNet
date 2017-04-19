@@ -28,7 +28,7 @@ namespace mshadow {
 
     get_binary_row(data.dptr_, binary_row, m*n);
 
-    out = 0;
+    out = 0;    
 
     xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
               binary_row, n/BITS_PER_BINARY_WORD,

@@ -91,7 +91,7 @@ struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
     .set_default(dmlc::optional<int>())
     .describe("Set layout for input, output and weight. Empty for\n    "
               "default layout: NCHW for 2d and NCDHW for 3d.");
-    DMLC_DECLARE_FIELD(act_bit).set_default(32).set_range(1, 32)
+    DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
             .describe("Number of bits to quantize weights to.");
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
@@ -149,7 +149,11 @@ class QConvolutionOp : public Operator {
     CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
       << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
 
-    // for training or prediction in gpu mode, we apply quantization function on weights.
+    //============================================//
+    //            WEIGHTS quantization            //            
+    // for training or prediction in gpu mode,    //
+    // we apply quantization function on weights. //
+    //============================================//
     if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
       // mf quantize weights
       Tensor<xpu, 1, DType> w1d = in_data[q_conv::kWeight].FlatTo1D<xpu, DType>(s);
@@ -188,14 +192,23 @@ class QConvolutionOp : public Operator {
                                     param_.stride[0],
                                     param_.stride[1],
                                     param_.dilate[0],
-                                    param_.dilate[1]);
-        
-        //If there is padding occurred, we have to do the binarization or quantization 
-        //to the input data again, since the padding elements are all "0"
-        if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
-          if(this->param_.act_bit == 1){
-            temp_col = F<mshadow_op::det_sign>(temp_col);
-          }
+                                    param_.dilate[1]);        
+      }
+
+      //============================================//
+      //             INPUT quantization             //            
+      // for training or prediction in gpu mode,    //
+      // we apply quantization function on input    //
+      // This process should be after padding stuff //
+      // since the padding elements are all "0"     //
+      //============================================//
+      if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
+        if(this->param_.act_bit == 1){
+          temp_col = F<mshadow_op::det_sign>(temp_col);
+        }else{
+          temp_col = F<mshadow_op::quantize>(F<mshadow_op::maximum>(
+                                              F<mshadow_op::minimum>(temp_col, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
+                                              scalar(DType(this->param_.act_bit)));
         }
       }
 
@@ -204,17 +217,20 @@ class QConvolutionOp : public Operator {
       for (uint32_t gid = 0; gid < param_.num_group; ++gid) {
         mshadow::Tensor<xpu, 2, DType> tmpc = temp_col.Slice(gstride * gid,
                                        gstride * (gid + 1));
-        //=================================================================//
-        // For the training in order to make the training easier and faster, 
-        // we binarize the input and weights of Qconv layer to +1 and -1, 
-        // still apply the standard dot() operator to generate the 
-        // gemm result. But for 1-bit prediction by using CPU we then apply xnor+_popc
-        // to generate the same result as the dot() function.
-        // this means for prediction phase and 1-bit, the QConvolutionForward(...)
-        // should give the exactly same result as the sign( dot() ) method.
+        //==================================================================//
+        // For the training in order to make the training easier and faster,// 
+        // we binarize the input and weights of Qconv layer to +1 and -1,   //
+        // still apply the standard dot() operator to generate the gemm     //
+        // result. But for 1-bit prediction by using CPU we then apply      //
+        //   xnor+_popc                                                     //
+        // to generate the same result as the dot() function.               // 
+        // this means that for the prediction phase in 1-bit, the           //
+        //   QConvolutionForward(...)                                       //         
+        // should produce the exactly same result as the dot(bina(..))method//
+        //==================================================================//
         if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
           CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
-          //xnor based convolution
+          
           int m = wmat_shape[1];
           int n = wmat_shape[2];
           int k = tmpc.size(1);
@@ -235,12 +251,13 @@ class QConvolutionOp : public Operator {
                                 binary_inputs_workspace,
                                 tmpc,
                                 temp_dst_gid);
-          }
-        }else{
+          }      
+
+        }else{ // for training phase...
           temp_dst[gid] = dot(wmat[gid], tmpc);       
 
-          //this converting is just for mimicing 2-bit xnor-popc operations
-          //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
+          //NOTE: the following lines of codes will be removed once everything works fine!
+          //this converting is just for mimicing 1-bit xnor-popc operations
           if(this->param_.act_bit == 1)
             temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
           
@@ -407,6 +424,17 @@ class QConvolutionOp : public Operator {
       Tensor<xpu, 1, DType> gbias = in_grad[q_conv::kBias].get<xpu, 1, DType>(s);
       Assign(gbias, req[q_conv::kBias], sumall_except_dim<1>(grad));
     }
+
+    //========================================//
+    //         Quantized Activation           //
+    //========================================//
+    Tensor<xpu, 2, DType> m_in_data = in_data[q_conv::kData].FlatTo2D<xpu, DType>(s);
+    Tensor<xpu, 2, DType> m_in_grad = in_grad[q_conv::kData].FlatTo2D<xpu, DType>(s);
+    if(this->param_.act_bit == 1){
+      Assign(m_in_grad, req[q_conv::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_in_grad);
+    }else{
+      Assign(m_in_grad, req[q_conv::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_in_grad);
+    } 
   }
 
  private:
