@@ -14,7 +14,6 @@
 
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
 
 using mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD;
 using mxnet::op::xnor_cpu::BINARY_WORD;
@@ -26,13 +25,12 @@ using mxnet::op::xnor_cpu::BINARY_WORD;
  */
 
 void convert_to_binary_row(mxnet::NDArray& array) {
-  assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
   assert(array.shape().ndim() >= 2); // second dimension is input depth from prev. layer, needed for next line
   assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64)
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
-  mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, array.dtype());
+  mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, mxnet::op::xnor_cpu::corresponding_dtype());
   mxnet::op::xnor_cpu::get_binary_row((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, size);
   array = temp;
 }
@@ -68,22 +66,20 @@ void transpose(mxnet::NDArray& array) {
  */
 
 void transpose_and_convert_to_binary_col(mxnet::NDArray& array) {
-  assert(mshadow::mshadow_sizeof(array.dtype()) == sizeof(BINARY_WORD));
   transpose(array);
   assert(array.shape().ndim() == 2); // since we binarize column wise, we need to know no of rows and columns
   assert(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
-  mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, array.dtype());
+  mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, mxnet::op::xnor_cpu::corresponding_dtype());
   mxnet::op::xnor_cpu::get_binary_col((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, array.shape()[0], array.shape()[1]);
   array = temp;
 }
 
 /**
- * @brief transpose and then binarize an array column wise
+ * @brief filter an array of strings for some keys and then perform task on data
  *
- * @param array reference to an NDArray that should be binarized
  */
 
 void filter_for(std::vector<mxnet::NDArray>& data,

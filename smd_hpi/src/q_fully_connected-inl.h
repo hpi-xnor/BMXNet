@@ -87,10 +87,9 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> data = in_data[q_fullc::kData].get_with_shape<xpu, 2, DType>(
         Shape2(ishape[0], ishape.ProdShape(1, ishape.ndim())), s);
     Tensor<xpu, 2, DType> wmat;
-    Tensor<xpu, 1, DType> wmat_binarized;
-
+    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized;
     if (param_.binarized_weights_only) {
-      wmat_binarized = in_data[q_fullc::kWeight].get<xpu, 1, DType>(s);
+      wmat_binarized = (mxnet::op::xnor_cpu::BINARY_WORD*) in_data[q_fullc::kWeight].dptr_;
     } else {
       wmat = in_data[q_fullc::kWeight].get<xpu, 2, DType>(s);
     }
@@ -103,7 +102,7 @@ class QFullyConnectedOp : public Operator {
       int k = param_.num_hidden;
       Tensor<xpu, 1, DType> binary_inputs_workspace =
               ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(
-                      Shape1(n * m / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
+                      Shape1(n * m / (sizeof(DType) * CHAR_BIT)), s);
 
       if (param_.binarized_weights_only) {
         QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_binarized, out);
@@ -247,10 +246,17 @@ class QFullyConnectedProp : public OperatorProperty {
       if ((*in_type)[i] == -1) {
         (*in_type)[i] = dtype;
       } else {
+        if (param_.binarized_weights_only &&
+            (i == q_fullc::kWeight)) {
+          continue;
+        }
         CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "
                                        << "Expected " << dtype << " v.s. given "
                                        << (*in_type)[i] << " at " << ListArguments()[i];
       }
+    }
+    if (param_.binarized_weights_only) {
+      (*in_type)[q_fullc::kWeight] = mxnet::op::xnor_cpu::corresponding_dtype();
     }
     out_type->clear();
     out_type->push_back(dtype);

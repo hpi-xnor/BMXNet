@@ -28,6 +28,20 @@ namespace xnor_cpu {
   const int BITS_PER_BINARY_WORD (sizeof(mxnet::op::xnor_cpu::BINARY_WORD) * CHAR_BIT);
 
   /**
+  * @brief returns a mshadow dtype with corresponding bitwidth to BINARY_WORD
+  *
+  */
+  inline mshadow::TypeFlag corresponding_dtype() {
+    if (BITS_PER_BINARY_WORD == 32) {
+      return mshadow::kFloat32;
+    } else if (BITS_PER_BINARY_WORD == 64) {
+      return mshadow::kFloat64;
+    }
+    assert(false);
+    return mshadow::kFloat32;
+  }
+
+  /**
   * @brief a helper method for print out bit wise result
   * of a binary_word
   *
