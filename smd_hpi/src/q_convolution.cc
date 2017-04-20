@@ -21,22 +21,20 @@ namespace mshadow {
 			CHECK_EQ(workspace.shape_.Size() * sizeof(workspace[0]) * CHAR_BIT, n * k);
 			BINARY_WORD* binary_col = (BINARY_WORD*) workspace.dptr_;
 
-      auto start_col = std::chrono::high_resolution_clock::now();
-      get_binary_col(in_col.dptr_, binary_col, n, k);
-      auto finish_col = std::chrono::high_resolution_clock::now();
+			get_binary_col(in_col.dptr_, binary_col, n, k);
 
 			temp_dst = 0;
 
-      auto start_gemm = std::chrono::high_resolution_clock::now();
-      xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+      	//auto start = std::chrono::high_resolution_clock::now();
+
+      	xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
                 binary_weights_row, n/BITS_PER_BINARY_WORD,
                 binary_col, k,
                 temp_dst.dptr_, k);
-      auto finish_gemm = std::chrono::high_resolution_clock::now();
 
-      std::chrono::duration<double> elapsed_col = finish_col - start_col;
-      std::chrono::duration<double> elapsed_gemm = finish_gemm - start_gemm;
-		  std::cout << "xnor Elapsed time [get_binary_col, xnor_gemm]: " << elapsed_col.count() << "s " << elapsed_gemm.count() << "s\n";
+		//auto finish = std::chrono::high_resolution_clock::now();
+		//std::chrono::duration<double> elapsed = finish - start;
+		//std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
     }
 
 
