@@ -22,8 +22,9 @@
 namespace mxnet {
 namespace op {
 namespace xnor_cpu {
+
   // variable, position, value
-  #define SET_BIT(var, pos, val) var |= (val << pos)
+  #define BIT_SET(var, pos, val) var |= (val << pos)
   //uint32_t, uint64_t, __int128
   typedef uint32_t BINARY_WORD;
   const int BITS_PER_BINARY_WORD (sizeof(mxnet::op::xnor_cpu::BINARY_WORD) * CHAR_BIT);
@@ -202,7 +203,7 @@ namespace xnor_cpu {
       BINARY_WORD sign;
       for (int j = 0;j < BITS_PER_BINARY_WORD; ++j) {
         sign = (row[i+j]>=0);
-        SET_BIT(rvalue, j, sign);
+        BIT_SET(rvalue, j, sign);
       }
       b_row[i/BITS_PER_BINARY_WORD] = rvalue;
     }
@@ -212,20 +213,20 @@ namespace xnor_cpu {
   * @brief binarize matrix column wise
   *
   */
-  inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){
+  inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){        
 
-    #pragma omp parallel for collapse(2)
-    for(int x=0; x < k; ++x){
-      for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
+    for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
+      #pragma omp parallel for
+      for(int x=0; x < k; ++x){          
         BINARY_WORD rvalue=0;
         BINARY_WORD sign;    
         for(int b=0; b<BITS_PER_BINARY_WORD; ++b){
           sign = (col[(y*BITS_PER_BINARY_WORD+b)*k + x]>=0);          
-          SET_BIT(rvalue, b, sign);
+          BIT_SET(rvalue, b, sign);
         }
         b_col[y*k + x] = rvalue;
       }
-    }
+    }    
   }
 
   /**
@@ -238,10 +239,9 @@ namespace xnor_cpu {
                         BINARY_WORD *B, int ldb,
                         float *C, int ldc){
     int i,n,k;
-
-    #pragma omp parallel for collapse(2)
-    for(i = 0; i < M; ++i){
-      for(n = 0; n < N; ++n){
+    #pragma omp parallel for collapse(2)    
+    for(i = 0; i < M; ++i){         
+      for(n = 0; n < N; ++n){ 
         BINARY_WORD A_PART = A[i*lda+n];
         #pragma omp parallel for
         for(k = 0; k < K; ++k){
@@ -263,7 +263,6 @@ namespace xnor_cpu {
   }
 
 
-
   /**
    * @brief simple naive baseline gemm implementation
    *
@@ -273,16 +272,17 @@ namespace xnor_cpu {
                             float *B, int ldb,
                             float *C, int ldc){
     int i,n,k;
+    //#pragma omp parallel for collapse(2) 
     for(i = 0; i < M; ++i){
       for(n = 0; n < N; ++n){
         float A_PART = A[i*lda+n];
+        //#pragma omp parallel for
         for(k = 0; k < K; ++k){
           C[i*ldc+k] += A_PART * B[n*ldb+k];
         }
       }
     }
   }
-
 
 // /**
 //  * @brief optimized gemm without multiplication but instead XNOR and POPCNT

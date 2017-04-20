@@ -230,7 +230,6 @@ class QConvolutionOp : public Operator {
         //==================================================================//
         if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
           CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
-          
           int m = wmat_shape[1];
           int n = wmat_shape[2];
           int k = tmpc.size(1);
@@ -250,12 +249,10 @@ class QConvolutionOp : public Operator {
                                 binary_inputs_workspace,
                                 tmpc,
                                 temp_dst_gid);
-          }      
-
+          }     
         }else{ // for training phase...
-          temp_dst[gid] = dot(wmat[gid], tmpc);       
-
-          //NOTE: the following lines of codes will be removed once everything works fine!
+          temp_dst[gid] = dot(wmat[gid], tmpc);      
+                    
           //this converting is just for mimicing 1-bit xnor-popc operations
           if(this->param_.act_bit == 1)
             temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
