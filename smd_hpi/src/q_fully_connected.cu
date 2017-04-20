@@ -73,7 +73,7 @@ inline void QFullyConnectedForward(const Tensor<gpu, 2, float> &data,
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<gpu, 2, float> &data,
                                      Tensor<gpu, 1, float> &workspace,
-                                     const Tensor<gpu, 1, float> &wmat_binarized,
+                                     BINARY_WORD* &wmat_binarized,
                                      Tensor<gpu, 2, float> &out) {
     CHECK(false) << "cuda with pre-binarized weights not implemented";
   }
@@ -90,7 +90,7 @@ inline void QFullyConnectedForward(const Tensor<gpu, 2, float> &data,
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<gpu, 2, DType> &data,
                                      Tensor<gpu, 1, DType> &workspace,
-                                     const Tensor<gpu, 1, DType> &wmat_binarized,
+                                     BINARY_WORD* &wmat_binarized,
                                      Tensor<gpu, 2, DType> &out) {
     CHECK(false) << "only float supported";
   }

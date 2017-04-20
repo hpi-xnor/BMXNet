@@ -70,7 +70,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
 }  // namespace cuda
 
 	inline void QConvolutionForward(int m, int n, int k,
-																	const Tensor<gpu, 1, float> &wmat_binarized,
+																	BINARY_WORD* &wmat_binarized,
 																	Tensor<gpu, 1, float> &workspace,
 																	const Tensor<gpu, 2, float> &in_col,
 																	Tensor<gpu, 2, float> &temp_dst) {
@@ -96,7 +96,7 @@ inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
 
 	template<typename DType>
 	inline void QConvolutionForward(int m, int n, int k,
-																	const Tensor<gpu, 1, DType> &wmat_binarized,
+																	BINARY_WORD* &wmat_binarized,
 																	Tensor<gpu, 1, DType> &workspace,
 																	const Tensor<gpu, 2, DType> &in_col,
 																	Tensor<gpu, 2, DType> &temp_dst) {
