@@ -243,6 +243,26 @@ namespace xnor_cpu {
     }    
   }
 
+    /**
+    * @brief adv binarize matrix column wise
+    *
+    */
+    inline void get_binary_col_adv(float* col, BINARY_WORD * b_col, int n, int k){
+
+#pragma omp parallel for
+      for(int ni = 0; ni < n/BITS_PER_BINARY_WORD; ni++){
+        for (int b = 0; b < BITS_PER_BINARY_WORD; b++) {
+#pragma omp parallel for
+          for(int ki = 0; ki < k; ++ki) {
+            if (col[(ni * BITS_PER_BINARY_WORD + b) * k + ki] < 0) {
+              continue;
+            }
+            b_col[ni * k + ki] |= (1 << b);
+          }
+        }
+      }
+    }
+
   /**
    * @brief optimized gemm without multiplication but instead XNOR and POPCNT
    * __builtin_popcountl suitable for both 32bit and 64bit 
