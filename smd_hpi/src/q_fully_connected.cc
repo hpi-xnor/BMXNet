@@ -23,7 +23,7 @@ namespace mshadow {
     CHECK_EQ((int)out.size(0), m);
     CHECK_EQ((int)out.size(1), k);
 
-    CHECK_EQ(workspace.shape_.Size(), n * m / BITS_PER_BINARY_WORD);
+    CHECK_EQ(workspace.shape_.Size() * sizeof(workspace[0]) * CHAR_BIT, n * m);
     BINARY_WORD* binary_row = (BINARY_WORD*) workspace.dptr_;
 
     get_binary_row(data.dptr_, binary_row, m*n);
@@ -39,9 +39,9 @@ namespace mshadow {
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<cpu, 2, float> &data,
                                      Tensor<cpu, 1, float> &workspace,
-                                     const Tensor<cpu, 1, float> &wmat_binarized,
+                                     BINARY_WORD* wmat_binarized,
                                      Tensor<cpu, 2, float> &out) {
-    _QFullyConnectedForward(m, n, k, data, workspace, (BINARY_WORD*) wmat_binarized.dptr_, out);
+    _QFullyConnectedForward(m, n, k, data, workspace, wmat_binarized, out);
   }
 
   inline void QFullyConnectedForward(int m, int n, int k,
@@ -94,7 +94,7 @@ namespace mshadow {
   inline void QFullyConnectedForward(int m, int n, int k,
                                      const Tensor<cpu, 2, DType> &data,
                                      Tensor<cpu, 1, DType> &workspace,
-                                     const Tensor<cpu, 1, DType> &wmat_binarized,
+                                     BINARY_WORD* wmat_binarized,
                                      Tensor<cpu, 2, DType> &out) {
     CHECK(false) << "only float supported";
   }
