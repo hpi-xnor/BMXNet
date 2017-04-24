@@ -25,10 +25,16 @@ namespace xnor_cpu {
 
   // variable, position, value
   #define BIT_SET(var, pos, val) var |= (val << pos)
-  //uint32_t, uint64_t, __int128
-  typedef uint32_t BINARY_WORD;
-  const int BITS_PER_BINARY_WORD (sizeof(mxnet::op::xnor_cpu::BINARY_WORD) * CHAR_BIT);
   
+  //uint32_t, uint64_t, __int128
+  #if BINARY_WORD_32 == 1
+    typedef uint32_t BINARY_WORD;
+  #endif
+  #if BINARY_WORD_64 == 1
+    typedef uint64_t BINARY_WORD;
+  #endif
+
+  const int BITS_PER_BINARY_WORD (sizeof(BINARY_WORD) * CHAR_BIT);
 
   /**
   * @brief returns a mshadow dtype with corresponding bitwidth to BINARY_WORD
@@ -53,6 +59,19 @@ namespace xnor_cpu {
   {
      
     for (int i=0; i <BITS_PER_BINARY_WORD; i++ )
+    {
+      if( a & (1 << i) ) 
+        std::cout << 1;
+      else
+        std::cout << 0;
+    }
+    std::cout<<std::endl;
+  }
+
+  inline void print_int2Bin64 ( uint64_t a )
+  {
+     
+    for (int i=0; i <64; i++ )
     {
       if( a & (1 << i) ) 
         std::cout << 1;
@@ -228,7 +247,7 @@ namespace xnor_cpu {
   *
   */
   inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){        
-
+    
     for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
       #pragma omp parallel for
       for(int x=0; x < k; ++x){          
@@ -258,9 +277,9 @@ namespace xnor_cpu {
       for(n = 0; n < N; ++n){ 
         BINARY_WORD A_PART = A[i*lda+n];
         #pragma omp parallel for
-        for(k = 0; k < K; ++k){
-          C[i*ldc+k] += (float)__builtin_popcountl(~(A_PART ^ B[n*ldb+k]));
-
+        for(k = 0; k < K; ++k){          
+          C[i*ldc+k] += __builtin_popcountl(~(A_PART ^ B[n*ldb+k]));
+          
           /* testing code, will be removed wenn everything works fine.
           std::cout << "A_PART: ";
           print_int2Bin(A_PART);
