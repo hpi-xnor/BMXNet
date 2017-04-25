@@ -253,13 +253,20 @@ namespace xnor_cpu {
                         BINARY_WORD *B, int ldb,
                         float *C, int ldc){
     int m,k,n;
+    assert(K % 4 == 0);
     #pragma omp parallel for collapse(2)    
     for (m = 0; m < M; ++m) {
-      for (k = 0; k < K; ++k) {
-        BINARY_WORD A_PART = A[m*lda+k];
+      for (k = 0; k < K; k+=4) {
+        BINARY_WORD A_PART1 = A[m*lda+k];
+        BINARY_WORD A_PART2 = A[m*lda+k+1];
+        BINARY_WORD A_PART3 = A[m*lda+k+2];
+        BINARY_WORD A_PART4 = A[m*lda+k+3];
         #pragma omp parallel for
         for (n = 0; n < N; ++n) {
-          C[m*ldc+n] += (float)__builtin_popcountl(~(A_PART ^ B[k*ldb+n]));
+          C[m*ldc+n] += (float)__builtin_popcountl(~(A_PART1 ^ B[k*ldb+n]));
+          C[m*ldc+n] += (float)__builtin_popcountl(~(A_PART2 ^ B[(k+1)*ldb+n]));
+          C[m*ldc+n] += (float)__builtin_popcountl(~(A_PART3 ^ B[(k+2)*ldb+n]));
+          C[m*ldc+n] += (float)__builtin_popcountl(~(A_PART4 ^ B[(k+3)*ldb+n]));
 
           /* testing code, will be removed wenn everything works fine.
           std::cout << "A_PART: ";
