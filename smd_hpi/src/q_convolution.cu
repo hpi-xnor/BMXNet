@@ -7,99 +7,100 @@
 
 #include "./q_convolution-inl.h"
 #include <mshadow/tensor.h>
-#include "./xnor_kernels.h"
 
 namespace mshadow {
-namespace cuda {
-
-inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
-                                const Tensor<gpu, 2, float> &in_col,
-                                const Tensor<gpu, 2, float> &temp_dst) {
-	//======== TODO: able to support arbitrary input channel size ==========//
-	CHECK_EQ(in_col.size(0) % BITS_PER_BINARY_WORD, 0) << "input channel number for binary convolution layer is not divisible by 32.";
+// !deprecated! will be removed later
+// namespace cuda {
+//#include "./xnor_kernels.h"
+// inline void QConvolutionForward(const Tensor<gpu, 2, float> &wmat,
+//                                 const Tensor<gpu, 2, float> &in_col,
+//                                 const Tensor<gpu, 2, float> &temp_dst) {
+// 	//======== TODO: able to support arbitrary input channel size ==========//
+// 	CHECK_EQ(in_col.size(0) % BITS_PER_BINARY_WORD, 0) << "input channel number for binary convolution layer is not divisible by 32.";
                             
-	//get matrix dimension		
-	int m, n, k;
-	int basic_factor_nchannel_input = BITS_PER_BINARY_WORD;
-	m = wmat.size(0);
-	n = wmat.size(1);
-	k = in_col.size(1);	
+// 	//get matrix dimension		
+// 	int m, n, k;
+// 	int basic_factor_nchannel_input = BITS_PER_BINARY_WORD;
+// 	m = wmat.size(0);
+// 	n = wmat.size(1);
+// 	k = in_col.size(1);	
 	
-	//check matrix dims:
-	// 	wmat.size(1) should equal in_col.size(0)
-	//	temp_dst should have dims (m x k)
-	CHECK_EQ((int)wmat.size(1), (int)in_col.size(0));
-	CHECK_EQ((int)temp_dst.size(0), (int)wmat.size(0));
-	CHECK_EQ((int)temp_dst.size(1), (int)in_col.size(1));
+// 	//check matrix dims:
+// 	// 	wmat.size(1) should equal in_col.size(0)
+// 	//	temp_dst should have dims (m x k)
+// 	CHECK_EQ((int)wmat.size(1), (int)in_col.size(0));
+// 	CHECK_EQ((int)temp_dst.size(0), (int)wmat.size(0));
+// 	CHECK_EQ((int)temp_dst.size(1), (int)in_col.size(1));
 	
-	cudaStream_t stream = Stream<gpu>::GetStream(temp_dst.stream_);
+// 	cudaStream_t stream = Stream<gpu>::GetStream(temp_dst.stream_);
 	
-	//set memory
-	float *fA = wmat.dptr_; 
-	float *fB = in_col.dptr_;
-	float *fC = temp_dst.dptr_;	
+// 	//set memory
+// 	float *fA = wmat.dptr_; 
+// 	float *fB = in_col.dptr_;
+// 	float *fC = temp_dst.dptr_;	
 			
-	//set bit memory
-	//!!NOTE!! here we save 32 float numbers into one binary word
-	unsigned int *Aconc, *Bconc;
-	cudaMalloc(&Aconc, m*n/basic_factor_nchannel_input*sizeof(int));
-	cudaMalloc(&Bconc, n*k/basic_factor_nchannel_input*sizeof(int));				
+// 	//set bit memory
+// 	//!!NOTE!! here we save 32 float numbers into one binary word
+// 	BINARY_WORD *Aconc, *Bconc;
+// 	cudaMalloc(&Aconc, m*n/basic_factor_nchannel_input*sizeof(int));
+// 	cudaMalloc(&Bconc, n*k/basic_factor_nchannel_input*sizeof(int));				
 	
-	//concatinates matrix (m x n) -> (m x n/32)
-	// kMaxThreadsPerBlock defined in "mxnet/mshadow/mshadow/cuda/tensor_gpu-inl.cuh"
-	int threads_per_block = kMaxThreadsPerBlock;
-	int blocks_per_grid = m * n / (threads_per_block * basic_factor_nchannel_input) + 1;
-	concatenate_rows_kernel<<<blocks_per_grid, threads_per_block, 0, stream>>>(fA, Aconc, m * n / basic_factor_nchannel_input);
+// 	//concatinates matrix (m x n) -> (m x n/32)
+// 	// kMaxThreadsPerBlock defined in "mxnet/mshadow/mshadow/cuda/tensor_gpu-inl.cuh"
+// 	int threads_per_block = kMaxThreadsPerBlock;
+// 	int blocks_per_grid = m * n / (threads_per_block * basic_factor_nchannel_input) + 1;
+// 	concatenate_rows_kernel<<<blocks_per_grid, threads_per_block, 0, stream>>>(fA, Aconc, m * n / basic_factor_nchannel_input);
 
-	//concatinates matrix (n x k) -> (n/32 x k)
-	threads_per_block = kMaxThreadsPerBlock;
-	blocks_per_grid = k / threads_per_block + 1;
-	concatenate_cols_kernel<<<blocks_per_grid, threads_per_block, 0, stream>>>(fB, Bconc, n, k);
-	cudaDeviceSynchronize();
+// 	//concatinates matrix (n x k) -> (n/32 x k)
+// 	threads_per_block = kMaxThreadsPerBlock;
+// 	blocks_per_grid = k / threads_per_block + 1;
+// 	concatenate_cols_kernel<<<blocks_per_grid, threads_per_block, 0, stream>>>(fB, Bconc, n, k);
+// 	cudaDeviceSynchronize();
 	
-	//perform xnor gemm
-	threads_per_block = BLOCK_SIZE_XNOR;
-	dim3 blockDim(threads_per_block, threads_per_block);
-	dim3 gridDim(k / threads_per_block + 1, m / threads_per_block + 1);
-	xnor_gemm<<<gridDim, blockDim, 0, stream>>>(Aconc, Bconc, fC, m, n / basic_factor_nchannel_input, k);		
-	cudaDeviceSynchronize();	
+// 	//perform xnor gemm
+// 	threads_per_block = BLOCK_SIZE_XNOR;
+// 	dim3 blockDim(threads_per_block, threads_per_block);
+// 	dim3 gridDim(k / threads_per_block + 1, m / threads_per_block + 1);
+// 	xnor_gemm<<<gridDim, blockDim, 0, stream>>>(Aconc, Bconc, fC, m, n / basic_factor_nchannel_input, k);		
+// 	cudaDeviceSynchronize();	
 			
-	cudaFree(Aconc);
-	cudaFree(Bconc);
-}
-}  // namespace cuda
+// 	cudaFree(Aconc);
+// 	cudaFree(Bconc);
+// }
+// }  // namespace cuda
 
 	inline void QConvolutionForward(int m, int n, int k,
-																	BINARY_WORD* &wmat_binarized,
-																	Tensor<gpu, 1, float> &workspace,
-																	const Tensor<gpu, 2, float> &in_col,
-																	Tensor<gpu, 2, float> &temp_dst) {
+									mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized,
+									Tensor<gpu, 1, float> &workspace,
+									const Tensor<gpu, 2, float> &in_col,
+									Tensor<gpu, 2, float> &temp_dst) {
 		CHECK(false) << "cuda with pre-binarized weights not implemented";
 	}
 
 	inline void QConvolutionForward(int m, int n, int k,
-																	const Tensor<gpu, 2, float> &wmat,
-																	Tensor<gpu, 1, float> &workspace,
-																	const Tensor<gpu, 2, float> &in_col,
-																	Tensor<gpu, 2, float> &temp_dst) {
-		cuda::QConvolutionForward(wmat, in_col, temp_dst);
+									const Tensor<gpu, 2, float> &wmat,
+									Tensor<gpu, 1, float> &workspace,
+									const Tensor<gpu, 2, float> &in_col,
+									Tensor<gpu, 2, float> &temp_dst) {
+		//!deprecated! will be removed later
+		//cuda::QConvolutionForward(wmat, in_col, temp_dst);
 	}
 
 	template<typename DType>
 	inline void QConvolutionForward(int m, int n, int k,
-																	const Tensor<gpu, 2, DType> &wmat,
-																	Tensor<gpu, 1, DType> &workspace,
-																	const Tensor<gpu, 2, DType> &in_col,
-																	Tensor<gpu, 2, DType> &temp_dst) {
+									const Tensor<gpu, 2, DType> &wmat,
+									Tensor<gpu, 1, DType> &workspace,
+									const Tensor<gpu, 2, DType> &in_col,
+									Tensor<gpu, 2, DType> &temp_dst) {
 		CHECK(false) << "only float supported";
 	}
 
 	template<typename DType>
 	inline void QConvolutionForward(int m, int n, int k,
-																	BINARY_WORD* &wmat_binarized,
-																	Tensor<gpu, 1, DType> &workspace,
-																	const Tensor<gpu, 2, DType> &in_col,
-																	Tensor<gpu, 2, DType> &temp_dst) {
+									mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized,
+									Tensor<gpu, 1, DType> &workspace,
+									const Tensor<gpu, 2, DType> &in_col,
+									Tensor<gpu, 2, DType> &temp_dst) {
 		CHECK(false) << "only float supported";
 	}
 } // namespace mshadow

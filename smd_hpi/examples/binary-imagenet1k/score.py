@@ -52,7 +52,7 @@ def score(model_prefix, epoch, data_val, metrics, gpus, batch_size, rgb_mean,
         #for m in metrics:
         #    mod.update_metric(m, batch.label)
         num += batch_size
-        if num >= 3:
+        if num >= 1:
             total_bat = time.time() - tic
             logging.info('%f second per image, total time: %f', total_bat/num, total_bat)
             break
