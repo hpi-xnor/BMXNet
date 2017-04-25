@@ -248,18 +248,18 @@ namespace xnor_cpu {
    * __builtin_popcountl suitable for both 32bit and 64bit 
    *
    */
-  inline void xnor_gemm(int M, int K, int N,
+  inline void xnor_gemm(int M, int N, int K,
                         BINARY_WORD *A, int lda,
                         BINARY_WORD *B, int ldb,
                         float *C, int ldc){
-    int i,n,k;
+    int m,k,n;
     #pragma omp parallel for collapse(2)    
-    for(i = 0; i < M; ++i){         
-      for(n = 0; n < N; ++n){ 
-        BINARY_WORD A_PART = A[i*lda+n];
+    for (m = 0; m < M; ++m) {
+      for (k = 0; k < K; ++k) {
+        BINARY_WORD A_PART = A[m*lda+k];
         #pragma omp parallel for
-        for(k = 0; k < K; ++k){
-          C[i*ldc+k] += (float)__builtin_popcountl(~(A_PART ^ B[n*ldb+k]));
+        for (n = 0; n < N; ++n) {
+          C[m*ldc+n] += (float)__builtin_popcountl(~(A_PART ^ B[k*ldb+n]));
 
           /* testing code, will be removed wenn everything works fine.
           std::cout << "A_PART: ";
