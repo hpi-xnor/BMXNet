@@ -264,14 +264,17 @@ namespace xnor_cpu {
   }
 
   /**
-   * @brief optimized gemm without multiplication but instead XNOR and POPCNT
-   * __builtin_popcountl suitable for both 32bit and 64bit 
+   * @brief based-line xnor-gemm implementation without 
+   * dot product, but use XNOR and POPCNT
+   * __builtin_popcountll suitable for both 32bit and 64bit 
+   *
    *
    */
   void xnor_gemm(int M, int N, int K,
                         BINARY_WORD *A, int lda,
                         BINARY_WORD *B, int ldb,
                         float *C, int ldc);
+
 
 
   /**
@@ -283,11 +286,11 @@ namespace xnor_cpu {
                             float *B, int ldb,
                             float *C, int ldc){
     int i,n,k;
-    //#pragma omp parallel for collapse(2) 
+    #pragma omp parallel for collapse(2) 
     for(i = 0; i < M; ++i){
       for(n = 0; n < N; ++n){
         float A_PART = A[i*lda+n];
-        //#pragma omp parallel for
+        #pragma omp parallel for
         for(k = 0; k < K; ++k){
           C[i*ldc+k] += A_PART * B[n*ldb+k];
         }

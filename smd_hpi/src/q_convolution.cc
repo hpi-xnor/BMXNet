@@ -25,10 +25,10 @@ namespace mshadow {
 
 			temp_dst = 0;
 
-    	xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-                binary_weights_row, n/BITS_PER_BINARY_WORD,
-                binary_col, k,
-                temp_dst.dptr_, k);
+			xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+								binary_weights_row, n/BITS_PER_BINARY_WORD,
+								binary_col, k,
+								temp_dst.dptr_, k);
     }
 
 
