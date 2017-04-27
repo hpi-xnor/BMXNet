@@ -280,7 +280,7 @@ void xnor_gemm(int M, int N, int K,
 
   std::ostringstream line;
   line.setf(std::ios::fixed,std::ios::floatfield);
-  line.precision(5);
+  line.precision(4);
 
   for (auto gemm : gemm_methods) {
     //reset output array
@@ -292,7 +292,7 @@ void xnor_gemm(int M, int N, int K,
 
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
-    line << round(elapsed.count() * 1000.0) / 1000.0 << ", ";
+    line << round(elapsed.count() * 10000.0) / 10000.0 << ", ";
   }
 
   for (auto gemm : gemm_methods) {
