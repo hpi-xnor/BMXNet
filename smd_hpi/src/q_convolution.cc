@@ -25,20 +25,10 @@ namespace mshadow {
 
 			temp_dst = 0;
 
-      	auto start = std::chrono::high_resolution_clock::now();
-
-      	// xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-       //          binary_weights_row, n/BITS_PER_BINARY_WORD,
-       //          binary_col, k,
-       //          temp_dst.dptr_, k);
-
-		xnor_gemm2(m, k, n/BITS_PER_BINARY_WORD,
-                binary_weights_row, n/BITS_PER_BINARY_WORD,
-                binary_col, k,
-                temp_dst.dptr_, k);
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+			xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+								binary_weights_row, n/BITS_PER_BINARY_WORD,
+								binary_col, k,
+								temp_dst.dptr_, k);
     }
 
 
