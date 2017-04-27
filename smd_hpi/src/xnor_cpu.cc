@@ -7,6 +7,7 @@
 
 #include "xnor_cpu.h"
 #include <chrono>
+#include <cstring>
 
 namespace mxnet {
 namespace op {
