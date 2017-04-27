@@ -50,7 +50,7 @@ namespace mshadow {
                                      const Tensor<cpu, 2, float> &wmat,
                                      Tensor<cpu, 2, float> &out) {
     BINARY_WORD binary_col[n * k/BITS_PER_BINARY_WORD];
-    get_binary_col(wmat.dptr_, &binary_col[0], n, k);
+    get_binary_col2(wmat.dptr_, &binary_col[0], n, k);
 
     _QFullyConnectedForward(m, n, k, data, workspace, binary_col, out);
   }
@@ -74,14 +74,14 @@ namespace mshadow {
     BINARY_WORD* binary_col = (BINARY_WORD*) malloc(n * k/BITS_PER_BINARY_WORD * sizeof(BINARY_WORD));
 
     get_binary_row(data.dptr_, binary_row, m*n);
-    get_binary_col(wmat.dptr_, binary_col, n, k);
+    get_binary_col2(wmat.dptr_, binary_col, n, k);
 
     #pragma omp parallel for
     for (int i = 0; i < out.shape_.Size(); ++i) {
       out.dptr_[i] = 0;
     }
 
-    xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
+    xnor_gemm2(m, k, n/BITS_PER_BINARY_WORD,
               binary_row, n/BITS_PER_BINARY_WORD,
               binary_col, k,
               out.dptr_, k);

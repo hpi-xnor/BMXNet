@@ -18,27 +18,27 @@ namespace mshadow {
 									 Tensor<cpu, 1, float> &workspace,
 									 const Tensor<cpu, 2, float> &in_col,
 									 Tensor<cpu, 2, float> &temp_dst) {
-			CHECK_EQ(workspace.shape_.Size() * sizeof(workspace[0]) * CHAR_BIT, n * k);
-			BINARY_WORD* binary_col = (BINARY_WORD*) workspace.dptr_;
+  			CHECK_EQ(workspace.shape_.Size() * sizeof(workspace[0]) * CHAR_BIT, n * k);
+  			BINARY_WORD* binary_col = (BINARY_WORD*) workspace.dptr_;
 
-			get_binary_col(in_col.dptr_, binary_col, n, k);
+  			//auto start = std::chrono::high_resolution_clock::now();
+  			
+  			get_binary_col2(in_col.dptr_, binary_col, n, k);
+  			
+  			// auto finish = std::chrono::high_resolution_clock::now();
+  			// std::chrono::duration<double> elapsed = finish - start;
+  			// std::cout << "get_binary_col Elapsed time: " << elapsed.count() << " s\n";
 
-			temp_dst = 0;
+  			temp_dst = 0;
 
-      	auto start = std::chrono::high_resolution_clock::now();
-
-      	// xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-       //          binary_weights_row, n/BITS_PER_BINARY_WORD,
-       //          binary_col, k,
-       //          temp_dst.dptr_, k);
-
-		xnor_gemm2(m, k, n/BITS_PER_BINARY_WORD,
-                binary_weights_row, n/BITS_PER_BINARY_WORD,
-                binary_col, k,
-                temp_dst.dptr_, k);
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
+      	//auto start = std::chrono::high_resolution_clock::now();
+    		xnor_gemm2(m, k, n/BITS_PER_BINARY_WORD,
+                    binary_weights_row, n/BITS_PER_BINARY_WORD,
+                    binary_col, k,
+                    temp_dst.dptr_, k);
+    		//auto finish = std::chrono::high_resolution_clock::now();
+    		//std::chrono::duration<double> elapsed = finish - start;
+    		//std::cout << "xnor Elapsed time: " << elapsed.count() << " s\n";
     }
 
 

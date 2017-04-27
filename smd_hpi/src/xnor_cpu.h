@@ -328,10 +328,11 @@ namespace xnor_cpu {
   #define C(i,j) c[ (j)*ldc + (i) ]
 
   /* Block sizes which are based on L2-cache of cpu*/
-  #define mc 256
+  #define mc 128
   #define kc 128
+  #define nc 256
 
-  inline void PackMatrixB( int k, BINARY_WORD *b, int ldb, BINARY_WORD *b_to )
+  inline void pack_matrixB( int k, BINARY_WORD *b, int ldb, BINARY_WORD *b_to )
   {
     int j;    
     for( j=0; j<k; j++){  /* loop over rows of B */
@@ -346,7 +347,7 @@ namespace xnor_cpu {
     }
   }
 
-  inline void AddDot4x4( int k, BINARY_WORD *a, int lda,  BINARY_WORD *b, int ldb, float *c, int ldc )
+  inline void add_dot_4x4( int k, BINARY_WORD *a, int lda,  BINARY_WORD *b, int ldb, float *c, int ldc )
   {
     int p;
     register BINARY_WORD 
@@ -377,10 +378,10 @@ namespace xnor_cpu {
     a_p2_pntr = &A( 0, 2 );
     a_p3_pntr = &A( 0, 3 );
 
-    c_00_reg = 0.0f;   c_01_reg = 0.0f;   c_02_reg = 0.0f;   c_03_reg = 0.0f;
-    c_10_reg = 0.0f;   c_11_reg = 0.0f;   c_12_reg = 0.0f;   c_13_reg = 0.0f;
-    c_20_reg = 0.0f;   c_21_reg = 0.0f;   c_22_reg = 0.0f;   c_23_reg = 0.0f;
-    c_30_reg = 0.0f;   c_31_reg = 0.0f;   c_32_reg = 0.0f;   c_33_reg = 0.0f;
+    c_00_reg = 0;   c_01_reg = 0;   c_02_reg = 0;   c_03_reg = 0;
+    c_10_reg = 0;   c_11_reg = 0;   c_12_reg = 0;   c_13_reg = 0;
+    c_20_reg = 0;   c_21_reg = 0;   c_22_reg = 0;   c_23_reg = 0;
+    c_30_reg = 0;   c_31_reg = 0;   c_32_reg = 0;   c_33_reg = 0;
 
     for ( p=0; p<k; p++ ){
       b_0p_reg = B( 0, p );
@@ -426,7 +427,7 @@ namespace xnor_cpu {
     C( 3, 0 ) += c_30_reg;   C( 3, 1 ) += c_31_reg;   C( 3, 2 ) += c_32_reg;   C( 3, 3 ) += c_33_reg;
   }
 
-  inline void InnerKernel( int m, int n, int k, BINARY_WORD *a, int lda, 
+  inline void xnor_gemm2_inner_kernel( int m, int n, int k, BINARY_WORD *a, int lda, 
                                          BINARY_WORD *b, int ldb,
                                          float *c, int ldc, int first_time )
   {
@@ -436,19 +437,23 @@ namespace xnor_cpu {
     #pragma omp parallel for
     for ( j=0; j<n; j+=4 ){          /* Loop over the columns of C, unrolled by 4 */  
         if(first_time)
-          PackMatrixB( k, &B( j, 0 ), ldb, &packedB[ j*k ] ); 
+          pack_matrixB( k, &B( j, 0 ), ldb, &packedB[ j*k ] ); 
       #pragma omp parallel for
       for ( i=0; i<m; i+=4 ){        /* Loop over the rows of C */
         /* Update C( i,j ), C( i,j+1 ), C( i,j+2 ), and C( i,j+3 ) in
         one routine (four inner products) */
-          //AddDot4x4( k, &A( 0,i ), lda, &B( j,0 ), ldb, &C( j,i ), ldc );
-        AddDot4x4( k, &A( 0,i ), lda, &packedB[ j*k ], 4, &C( j,i ), ldc );
+          //add_dot_4x4( k, &A( 0,i ), lda, &B( j,0 ), ldb, &C( j,i ), ldc );
+        add_dot_4x4( k, &A( 0,i ), lda, &packedB[ j*k ], 4, &C( j,i ), ldc );
       }
     }
   }
 
 
-
+ /**
+  * applys blocking, packing, loop unrolling, register vars to improve the
+  * xnor_gemm performance. ~100% performance improvement without openmp
+  * compared with xnor_gemm() method.
+  */
   inline void xnor_gemm2( int m, int n, int k, BINARY_WORD *a, int lda, 
                                       BINARY_WORD *b, int ldb,
                                       float *c, int ldc )
@@ -460,260 +465,84 @@ namespace xnor_cpu {
       pb = std::min( kc, k-p );      
       for ( i=0; i<m; i+=mc ){
         ib = std::min( mc, m-i );
-        InnerKernel( ib, n, pb, &A(p, i), lda, &B(0, p), ldb, &C( 0, i ), ldc, i==0 );
+        xnor_gemm2_inner_kernel( ib, n, pb, &A(p, i), lda, &B(0, p), ldb, &C( 0, i ), ldc, i==0 );
       }
     }
   }
-  //========================= END optimized xnor GEMM ===============================//
 
-// /**
-//  * @brief optimized gemm without multiplication but instead XNOR and POPCNT
-//  * __builtin_popcountl suitable for both 32bit and 64bit 
-//  *
-//  */
-// inline void T_xnor_gemm(int M, int K, int N,
-//                       BINARY_WORD *A, int lda,
-//                       BINARY_WORD *B, int ldb,
-//                       float *C, int ldc){
-//   int i,n,k;
-//   #pragma omp parallel for collapse(2)
-//   for(n = 0; n < N; ++n){
-//     for(i = 0; i < M; ++i){
-//       BINARY_WORD A_PART = A[i*lda+n];
-//       #pragma omp parallel for
-//       for(k = 0; k < K; ++k){                  
-//           BINARY_WORD B_PART = B[k*lda+n];
-//           C[i*ldc+k] += (float)__builtin_popcountl(~(A_PART ^ B_PART));
-          
-//           /* testing code, will be removed wenn everything works fine.
-//           std::cout << "A_PART: ";
-//           print_int2Bin(A_PART);
-//           std::cout << "B_PART: ";
-//           print_int2Bin(B[n*ldb+k]);
-//           std::cout << "_XNOR_: ";
-//           print_int2Bin(~(A_PART ^ B[n*ldb+k]));
-//           std::cout << "POPC_: ";
-//           std::cout << __builtin_popcountl(~(A_PART ^ B[n*ldb+k])) << std::endl;
-//           */
-//         }
-//       }
-//   }
-// }
-//  /**
-// * binary gemm. instead of standard dot product
-// * we apply binary_dot: _popcount( xnor() ) operators to perform the convolution
-// *
-// * params:
-// * 	weights: (m x n)
-// * 	col_input: inputs, unpacked via patch2col (NOT n x k, !BUT TRANSPOSED!: k x n)
-// * 	output: (m x k)
-// * 	m, n, k: size of matrices
-// */
-//
-//  inline void binary_gemm(BINARY_WORD* weights, BINARY_WORD* col_input, float* output, int m, int n, int k) {
-//    CHECK_EQ(n % 32, 0) << "!!! no masking yet, only input channel % 32==0";
-//
-//    int bitwords_per_row = n / BITS_PER_BINARY_WORD;
-//
-//    for (int mi = 0; mi < m; mi++) {
-//      for (int ki = 0; ki < k; ki++) {
-//        float accum = 0;
-//        for (int bitword_index_in_row = 0; bitword_index_in_row < bitwords_per_row; bitword_index_in_row++) {
-//          // masking or only 32bit support important cause !gaah!
-//          BINARY_WORD pixel = col_input[ki * bitwords_per_row + bitword_index_in_row];
-//          BINARY_WORD weight = weights[mi * bitwords_per_row + bitword_index_in_row];
-//          accum += __builtin_popcount(~(pixel ^ weight));
-//        }
-//
-//        output[mi * k + ki] = accum;
-//      }
-//    }
-//  }
-//
-///**
-// * binary convolution implementation. instead of standard dot product
-// * we apply binary_dot: _popcount( xnor() ) operators to perform the convolution
-// * on binary input(I) and weight matrix (W), the alpha is the scaling factor
-// * for W, 2D_beta consist of all scaling factor beta for the input tensor.
-// * The calculation follows the equation:
-// * 		I * W ≈ (sign(I) (binary_dot) sign(W)) (dot) (2D_beta)(alpha)
-// *
-// * params:
-// * 	output:output data array
-// * 	input: input tensor
-// * 	weights: weight filter
-// */
-//
-//inline void binary_conv2D(float* output,  const BINARY_WORD *input,
-//						  const BINARY_WORD *weights, int ix, int iy,
-//						  int wx, int wy, int pad_x, int pad_y, int stride,
-//						  int output_width, int output_height, int filter_iter_base) {
-//    int r, rd, c, cd;
-//    int wx_2 = wx / 2;
-//    int wy_2 = wy / 2;
-//
-//    // Indexing for weights
-//    int wsx, wex, wsy, wey;
-//    wsx = -wx_2;				// weight start x
-//    wsy = -wy_2;	 			// weight start y
-//
-//    if (wx % 2 == 1)  		// odd weights w
-//        wex = wx_2 + 1;			// weight end x
-//    else
-//        wex = wx_2;
-//    if (wy % 2 == 1)  		// odd weights h
-//		wey = wy_2 + 1;			// weight end y
-//	else
-//		wey = wy_2;
-//
-//    // Indexing for input pixels. since stride can only be 1 now,
-//    int sx = pad_x + wx_2;               // start x
-//    int ex = ix + pad_x - wx_2;      // end x
-//    int sy = pad_y + wy_2;               // start y
-//    int ey = iy + pad_y - wy_2;      // end y
-//
-//    //padded input width
-//    int px = ix + 2*pad_x;
-//
-//    for (r = sy; r < ey; ++r) { 					// slide in y on input
-//        for (c = sx; c < ex; ++c) {				// slide in x on input
-//            int accumulator = 0;
-//            for (rd = wsy; rd < wey; ++rd) {		//	slide in y on weight filter
-//                for (cd = wsx; cd < wex; ++cd) {	//	slide in x on weight filter
-//
-//                	// calculates the index of data in the input data array (y*width + x)
-//                	int iidx = (r+rd)*px + (c+cd);
-//                    BINARY_WORD pixel = input[iidx];
-//
-//                    // calculates the index of data in the weights data array (y*width + x)
-//                    int widx = (rd + wy_2)*wx + (cd+wx_2);
-//                    BINARY_WORD weight = weights[widx];
-//
-//                    // binary convolution operation
-//                    accumulator += __builtin_popcount(~(pixel ^ weight));
-//                }
-//            }
-//            // write to output, padded space
-//            int oidx = (r-wy_2)*output_width + (c-wx_2);
-//            oidx += filter_iter_base;
-//            output[oidx] += (float) accumulator;
-//        }
-//    }
-//};
-//
-///**
-// * pointwise multiplication of two array
-// */
-//inline void pointwise_mul_mm(float *output, const float *input, int step_size){
-//    int i = 0;
-//
-//    //!!!!! Why? !!!!!
-//    /*while (i + 8 <= step_size) {
-//        output[i+0] *= input[i+0];
-//        output[i+1] *= input[i+1];
-//        output[i+2] *= input[i+2];
-//        output[i+3] *= input[i+3];
-//        output[i+4] *= input[i+4];
-//        output[i+5] *= input[i+5];
-//        output[i+6] *= input[i+6];
-//        output[i+7] *= input[i+7];
-//
-//        i += 8;
-//    }*/
-//
-//    while (++i < step_size) // finish iteration leftover
-//         output[i] *= input[i];
-//};
-//
-///**
-// * Performs a tiled pointwise matrix multiplication between two 2D tensors
-// * Pre-conditions: wx < ix, and wy < iy
-// */
-//inline void pointwise_mul_mm_2D(float *output, const float *alpha,
-//								int input_w, int input_h, int filter_w, int filter_h,
-//								int pad_x, int pad_y){
-//// Slower version
-////      for (int y = 0; y < input_h; ++y)
-////          for (int x = 0; x < input_w; x++)
-////              output[y*input_w+x] *= input[(y % filter_h)*filter_w + (x % filter_w)];
-//
-//	int padded_input_w = input_w+2*pad_x;
-//
-//    // Stride prefetch optimized
-//    for (int s = 0; s < filter_h; ++s) {  // for each strip
-//
-//    	const float *strip_ptr = &alpha[s*filter_w];
-//
-//        for (int y = pad_y; y < pad_y + (input_h / filter_h); ++y) {   //
-//            int stride = y*(padded_input_w*filter_h) + s*padded_input_w;
-//            float *output_ptr = &output[stride];
-//
-//            for (int x = 0; x < input_w; ++x) {
-//                output_ptr[x] *= strip_ptr[x % filter_w];
-//            }
-//        }
-//    }
-//};
-//
-///**
-// * Description: this function will perform the binary convolution for the input
-// *  binary layer.
-// * params:
-// *  BinaryLayer: which contains structure and data that the binary convolution required.
-// */
-//inline void xnor_forward(std::unique_ptr<mxnet::op::BinaryLayer> const &binary_layer) {
-//	CHECK(binary_layer->binary_input != nullptr) << "xnor_forward: must init layer input";
-//	CHECK(binary_layer->binary_weights != nullptr) << "xnor_forward: must init layer weights";
-//	CHECK(binary_layer->output != nullptr) << "xnor_forward: must set layer output";
-//	CHECK(binary_layer->alpha != nullptr) << "xnor_forward: must init weight scaling factor alpha";
-//	CHECK(binary_layer->beta != nullptr) << "xnor_forward: must init input scaling factor beta";
-//
-//
-//	//======== TODO: able to support arbitrary channel size ==========//
-//	CHECK_EQ(binary_layer->input_channels % 32, 0) << "Channel is not divisible by 32."
-//												"before supporting arbitrary channel size. For now, "
-//												"set the channel size to the nearest multiple of 32 "
-//												"and ignore any ''extra'' channels unused.";
-//
-//	//smaller the input channel number, divided by 32, because we will process per word 32 bit number
-//	//later.
-//	int input_channels_mod_bits = binary_layer->input_channels / BITS_PER_BINARY_WORD;   // 32
-//    //===============================================================//
-//
-//    // padded input size
-//    int padded_w = (int) binary_layer->input_width + 2*binary_layer->padding_x;
-//    int padded_h = (int) binary_layer->input_height + 2*binary_layer->padding_y;
-//
-//    BINARY_WORD *binary_weights = binary_layer->binary_weights;
-//
-//    // do forward calc
-//    for (int z = 0; z < binary_layer->num_filters; ++z) {    // for each filter map
-//        BINARY_WORD *binary_input = binary_layer->binary_input;
-//        for (int c = 0; c < input_channels_mod_bits; ++c) {    // for each input channel
-//        	binary_conv2D(binary_layer->output, binary_input, binary_weights,
-//        						binary_layer->input_width, binary_layer->input_height,
-//								binary_layer->kernel_width, binary_layer->kernel_height,
-//								binary_layer->padding_x, binary_layer->padding_y, binary_layer->stride,
-//								binary_layer->output_width, binary_layer->output_height,
-//								z*binary_layer->output_width*binary_layer->output_height);
-//
-//        	// increment with next input image
-//        	//length of binary_input: input_channels(original) * input_w * input_h / BITS_PER_BINARY_WORD
-//            *binary_input += padded_w * padded_h;
-//
-//            //length of binary_weights: num_filters * input_channels(original) * kernel_width * kernel_heihgt / BITS_PER_BINARY_WORD
-//            *binary_weights += binary_layer->kernel_width * binary_layer->kernel_height;
-//
-//            //====== !!NON-binary operations!! =======//
-//            /*pointwise_mul_mm(binary_layer->output, binary_layer->beta, padded_w * padded_h);
-//            pointwise_mul_mm_2D(binary_layer->output, binary_layer->alpha, binary_layer->output_width, binary_layer->output_height,
-//            		binary_layer->kernel_width, binary_layer->kernel_height,
-//					binary_layer->padding_x, binary_layer->padding_y);
-//            *///=======================================//
-//        }
-//    }
-//
-//};
+
+ /**
+  * @brief binarize matrix column wise. 
+  * Loop unroll and using register vars.
+  * ~30% performance improvement without openmp
+  * compared with get_binary_col() method.
+  */
+  inline void get_binary_col2(float* col, BINARY_WORD * b_col, int n, int k){        
+    #pragma omp parallel for
+    for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
+      BINARY_WORD * y_col_pt = &b_col[y*k];
+      #pragma omp parallel for
+      for(int x=0; x < k; x+=4){          
+        register BINARY_WORD rvalue0=0, rvalue1=0, rvalue2=0, rvalue3=0;
+           
+        for(int b=0; b<BITS_PER_BINARY_WORD; b+=4){
+          register BINARY_WORD sign0, sign1, sign2, sign3, sign4, sign5, sign6, sign7,
+          sign8, sign9, sign10, sign11, sign12, sign13, sign14, sign15;
+
+          float* col_0 = &col[(y*BITS_PER_BINARY_WORD+b)*k + x];
+          float* col_1 = &col[(y*BITS_PER_BINARY_WORD+b+1)*k + x];
+          float* col_2 = &col[(y*BITS_PER_BINARY_WORD+b+2)*k + x];
+          float* col_3 = &col[(y*BITS_PER_BINARY_WORD+b+3)*k + x];
+
+          sign0 = (*col_0>=0);          
+          sign1 = (*col_1>=0);          
+          sign2 = (*col_2>=0);          
+          sign3 = (*col_3>=0);          
+         
+          BIT_SET(rvalue0, b, sign0);
+          BIT_SET(rvalue0, (b+1), sign1);
+          BIT_SET(rvalue0, (b+2), sign2);
+          BIT_SET(rvalue0, (b+3), sign3);
+
+          sign4 = (*(col_0+1)>=0);          
+          sign5 = (*(col_1+1)>=0);          
+          sign6 = (*(col_2+1)>=0);          
+          sign7 = (*(col_3+1)>=0);          
+         
+          BIT_SET(rvalue1, b, sign4);
+          BIT_SET(rvalue1, (b+1), sign5);
+          BIT_SET(rvalue1, (b+2), sign6);
+          BIT_SET(rvalue1, (b+3), sign7);
+
+          sign8 = (*(col_0+2)>=0);          
+          sign9 = (*(col_1+2)>=0);          
+          sign10 = (*(col_2+2)>=0);          
+          sign11 = (*(col_3+2)>=0);          
+         
+          BIT_SET(rvalue2, b, sign8);
+          BIT_SET(rvalue2, (b+1), sign9);
+          BIT_SET(rvalue2, (b+2), sign10);
+          BIT_SET(rvalue2, (b+3), sign11);
+
+          sign12 = (*(col_0+3)>=0);          
+          sign13 = (*(col_1+3)>=0);          
+          sign14 = (*(col_2+3)>=0);          
+          sign15 = (*(col_3+3)>=0);          
+         
+          BIT_SET(rvalue3, b, sign12);
+          BIT_SET(rvalue3, (b+1), sign13);
+          BIT_SET(rvalue3, (b+2), sign14);
+          BIT_SET(rvalue3, (b+3), sign15);
+        }
+        BINARY_WORD * pnter = &y_col_pt[x];
+        *pnter = rvalue0;   
+        *(pnter+1) = rvalue1;        
+        *(pnter+2) = rvalue2;        
+        *(pnter+3) = rvalue3;        
+      }
+    }     
+  }
+  //========================= END optimized xnor GEMM ===============================//
 
 } //namespace xnor_cpu
 } //namespace op
