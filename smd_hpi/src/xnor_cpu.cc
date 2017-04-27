@@ -272,13 +272,15 @@ void xnor_gemm(int M, int N, int K,
                float *C, int ldc)
 {
   std::vector<std::pair<std::string, std::function<void(int,int,int,BINARY_WORD*,int,BINARY_WORD*,int,float*,int)>>> gemm_methods;
-  gemm_methods.push_back(std::make_pair("xnor_gemm_baseline", xnor_gemm_baseline));
-  gemm_methods.push_back(std::make_pair("xnor_gemm_baseline (no omp)", xnor_gemm_baseline_no_omp));
-  gemm_methods.push_back(std::make_pair("xnor_gemm_convert_to_int", xnor_gemm_convert_to_int));
-  gemm_methods.push_back(std::make_pair("xnor_gemm_unrolled", xnor_gemm_unrolled));
-  gemm_methods.push_back(std::make_pair("xnor_gemm_blocking_packing", xnor_gemm_blocking_packing));
+  gemm_methods.push_back(std::make_pair("baseline", xnor_gemm_baseline));
+  gemm_methods.push_back(std::make_pair("baseline (no omp)", xnor_gemm_baseline_no_omp));
+  gemm_methods.push_back(std::make_pair("convert_to_int", xnor_gemm_convert_to_int));
+  gemm_methods.push_back(std::make_pair("unrolled", xnor_gemm_unrolled));
+  gemm_methods.push_back(std::make_pair("blocking_packing", xnor_gemm_blocking_packing));
 
-  std::cout << "xnor_gemm with M: " << M << " N: " << N << " K: " << K << std::endl;
+  std::ostringstream line;
+  line.setf(std::ios::fixed,std::ios::floatfield);
+  line.precision(5);
 
   for (auto gemm : gemm_methods) {
     //reset output array
@@ -290,9 +292,16 @@ void xnor_gemm(int M, int N, int K,
 
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
-    std::cout << elapsed.count() << "s (" << gemm.first << ")" << std::endl;
+    line << round(elapsed.count() * 1000.0) / 1000.0 << ", ";
   }
 
+  for (auto gemm : gemm_methods) {
+    line << gemm.first << ", ";
+  }
+
+  line << "(xnor_gemm, M: " << M << " N: " << N << " K: " << K << ")";
+
+  std::cout << line.str() << std::endl;
 }
 
 } //namespace xnor_cpu
