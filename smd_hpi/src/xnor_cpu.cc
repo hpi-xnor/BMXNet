@@ -160,11 +160,9 @@ void xnor_gemm_baseline_no_omp(int M, int N, int K,
                       BINARY_WORD *B, int ldb,
                       float *C, int ldc){
   int m,k,n;
-  // #pragma omp parallel for collapse(2)    
   for (m = 0; m < M; ++m) {
     for (k = 0; k < K; k++) {
       BINARY_WORD A_PART = A[m*lda+k];
-      // #pragma omp parallel for
       for (n = 0; n < N; ++n) {
         C[m*ldc+n] += __builtin_popcountl(~(A_PART ^ B[k*ldb+n]));
       }
@@ -185,7 +183,7 @@ void xnor_gemm_baseline_no_omp(int M, int N, int K,
 #define kc 128
 #define nc 256
 
-inline void pack_matrixB( int k, BINARY_WORD *b, int ldb, BINARY_WORD *b_to )
+void pack_matrixB( int k, BINARY_WORD *b, int ldb, BINARY_WORD *b_to )
 {
   int j;    
   for( j=0; j<k; j++){  /* loop over rows of B */
@@ -200,7 +198,7 @@ inline void pack_matrixB( int k, BINARY_WORD *b, int ldb, BINARY_WORD *b_to )
   }
 }
 
-inline void add_dot_4x4( int k, BINARY_WORD *a, int lda,  BINARY_WORD *b, int ldb, float *c, int ldc )
+void add_dot_4x4( int k, BINARY_WORD *a, int lda,  BINARY_WORD *b, int ldb, float *c, int ldc )
 {
   int p;
   register BINARY_WORD 
@@ -280,7 +278,7 @@ inline void add_dot_4x4( int k, BINARY_WORD *a, int lda,  BINARY_WORD *b, int ld
   C( 3, 0 ) += c_30_reg;   C( 3, 1 ) += c_31_reg;   C( 3, 2 ) += c_32_reg;   C( 3, 3 ) += c_33_reg;
 }
 
-inline void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY_WORD *a, int lda, 
+void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY_WORD *a, int lda, 
                                        BINARY_WORD *b, int ldb,
                                        float *c, int ldc, int first_time )
 {
@@ -300,7 +298,7 @@ inline void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY
   }
 }
 
-inline void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY_WORD *a, int lda, 
+void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY_WORD *a, int lda, 
                                        BINARY_WORD *b, int ldb,
                                        float *c, int ldc, int first_time )
 {
@@ -324,7 +322,7 @@ inline void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k,
 * xnor_gemm performance. ~100% performance improvement without openmp
 * compared with xnor_gemm() method.
 */
-inline void xnor_gemm_blocking_packing( int m, int n, int k, BINARY_WORD *a, int lda, 
+void xnor_gemm_blocking_packing( int m, int n, int k, BINARY_WORD *a, int lda, 
                                     BINARY_WORD *b, int ldb,
                                     float *c, int ldc )
 {
@@ -340,7 +338,7 @@ inline void xnor_gemm_blocking_packing( int m, int n, int k, BINARY_WORD *a, int
   }
 }
 
-inline void xnor_gemm_blocking_packing_no_omp( int m, int n, int k, BINARY_WORD *a, int lda, 
+void xnor_gemm_blocking_packing_no_omp( int m, int n, int k, BINARY_WORD *a, int lda, 
                                     BINARY_WORD *b, int ldb,
                                     float *c, int ldc )
 {
@@ -357,9 +355,19 @@ inline void xnor_gemm_blocking_packing_no_omp( int m, int n, int k, BINARY_WORD 
 }
 //========================= END optimized xnor GEMM ===============================//
 
+void xnor_gemm_combined(int M, int N, int K,
+               BINARY_WORD *A, int lda,
+               BINARY_WORD *B, int ldb,
+               float *C, int ldc){
+  if(K < 4)
+    xnor_gemm_baseline(M, N, K, A, lda, B, ldb, C, ldc);
+  else if(M <= 64 && K <= 18)
+    xnor_gemm_unrolled(M, N, K, A, lda, B, ldb, C, ldc);
+  else
+    xnor_gemm_blocking_packing(M, N, K, A, lda, B, ldb, C, ldc);
+}
 
-
-void xnor_gemm(int M, int N, int K,
+void xnor_gemm_benchmarking(int M, int N, int K,
                BINARY_WORD *A, int lda,
                BINARY_WORD *B, int ldb,
                float *C, int ldc)
@@ -372,7 +380,8 @@ void xnor_gemm(int M, int N, int K,
   gemm_methods.push_back(std::make_pair("baseline", xnor_gemm_baseline));
   gemm_methods.push_back(std::make_pair("convert_to_int", xnor_gemm_convert_to_int));
   gemm_methods.push_back(std::make_pair("unrolled", xnor_gemm_unrolled));
-  gemm_methods.push_back(std::make_pair("blocking_packing", xnor_gemm_blocking_packing));  
+  gemm_methods.push_back(std::make_pair("blocking_packing", xnor_gemm_blocking_packing));
+  gemm_methods.push_back(std::make_pair("combined", xnor_gemm_combined));  
 
   std::ostringstream line;
   line.setf(std::ios::fixed,std::ios::floatfield);
@@ -422,7 +431,7 @@ void xnor_gemm(int M, int N, int K,
   for (auto gemm : gemm_methods) {
     if(i >3){
       line << gemm.first << std::setw(20);
-      if(i==7){
+      if(i==8){
         line << "\t (Methods USE omp)";
         line << std::endl;
       }
@@ -443,7 +452,7 @@ void xnor_gemm(int M, int N, int K,
       auto finish = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed = finish - start;
       line << round(elapsed.count() * 10000.0) / 10000.0;
-      if(i != 7) line << std::setw(20);
+      if(i != 8) line << std::setw(20);
     }
     i++;
   }
@@ -452,10 +461,21 @@ void xnor_gemm(int M, int N, int K,
   for (auto gemm : gemm_methods) {
     line << "-----------";
   }
-  std::cout << line.str() << std::endl;
-
-  
+  std::cout << line.str() << std::endl;  
 }
+
+
+ /*
+  * XNOR GEMM kernel
+  */
+  void xnor_gemm(int M, int N, int K,
+                 BINARY_WORD *A, int lda,
+                 BINARY_WORD *B, int ldb,
+                 float *C, int ldc){
+    //benchmarking several xnor_gemm methods
+    //xnor_gemm_benchmarking(M, N, K, A, lda, B, ldb, C, ldc);
+    xnor_gemm_combined(M, N, K, A, lda, B, ldb, C, ldc);
+  }
 
 } //namespace xnor_cpu
 } //namespace op
