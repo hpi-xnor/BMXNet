@@ -230,6 +230,7 @@ class QConvolutionOp : public Operator {
         //==================================================================//
         if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
           CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
+
           int m = wmat_shape[1];
           int n = wmat_shape[2];
           int k = tmpc.size(1);

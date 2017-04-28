@@ -38,7 +38,7 @@ namespace mshadow {
                                     const Tensor<cpu, 2, float> &in_col,
                                     Tensor<cpu, 2, float> &temp_dst) {
 
-		_QConvolutionForward(m, n, k, wmat_binarized, workspace, in_col, temp_dst);
+		    _QConvolutionForward(m, n, k, wmat_binarized, workspace, in_col, temp_dst);
     }
 
 	inline void QConvolutionForward(int m, int n, int k,
@@ -48,7 +48,7 @@ namespace mshadow {
 									Tensor<cpu, 2, float> &temp_dst) {
       	BINARY_WORD binary_row[m * n/BITS_PER_BINARY_WORD];
       	get_binary_row(wmat.dptr_, &binary_row[0], m*n);
-		_QConvolutionForward(m, n, k, binary_row, workspace, in_col, temp_dst);
+		    _QConvolutionForward(m, n, k, binary_row, workspace, in_col, temp_dst);
 	}
 
 

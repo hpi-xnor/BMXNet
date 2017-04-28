@@ -229,6 +229,7 @@ namespace xnor_cpu {
    * @brief binarize matrix
    *
    */
+  __attribute__((optimize("unroll-loops")))
   inline void get_binary_row(float* row, BINARY_WORD * b_row, int size){
 
     #pragma omp parallel for
@@ -247,6 +248,7 @@ namespace xnor_cpu {
   * @brief binarize matrix column wise
   *
   */
+  __attribute__((optimize("unroll-loops")))
   inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){        
     
     for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
@@ -270,6 +272,7 @@ namespace xnor_cpu {
   * ~30% performance improvement without openmp
   * compared with get_binary_col() method.
   */
+  __attribute__((optimize("unroll-loops")))
   inline void get_binary_col_unrolled(float* col, BINARY_WORD * b_col, int n, int k){        
     #pragma omp parallel for
     for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
@@ -368,6 +371,7 @@ namespace xnor_cpu {
       }
     }
   }
+
 } //namespace xnor_cpu
 } //namespace op
 } //namespace mxnet
