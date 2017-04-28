@@ -378,21 +378,8 @@ void xnor_gemm(int M, int N, int K,
   line.setf(std::ios::fixed,std::ios::floatfield);
   line.precision(4);
 
-  for (int i=0; i<9; ++i) {
-    
-    line << ' ';
-    if(i!=8)
-      line << std::setw(20);
-    if(i==1)
-      line << "Methods NO omp";
-    if(i==5)
-      line << "Methods USE omp";    
-    if(i==3)
-      line << "|" << std::setw(20);
-  }
-  line << std::endl;
   for (auto gemm : gemm_methods) {
-    line << "------------------------";
+    line << "-----------";
   }
   line << std::endl;
   line << "xnor_gemm:(M: " << M << " N: " << N << " K: " << K << ")";
@@ -401,34 +388,69 @@ void xnor_gemm(int M, int N, int K,
   int i = 0;
   for (auto gemm : gemm_methods) {
     line << gemm.first;
-    if(i!=7)
+    if(i==3){
+      line << "\t (Methods NO omp)" << std::endl;
+      break;
+    }else
       line << std::setw(20);
-    if(i==3)
-      line << "|"<< std::setw(20);    
     i++;
   }
-  line << std::endl;
+
 
   i = 0;
   for (auto gemm : gemm_methods) {
-    //reset output array
-    std::memset(C, 0, M * N * sizeof(float));
+    if(i<4){
+      //reset output array
+      std::memset(C, 0, M * N * sizeof(float));
 
-    auto start = std::chrono::high_resolution_clock::now();
+      auto start = std::chrono::high_resolution_clock::now();
 
-    gemm.second(M, N, K, A, lda, B, ldb, C, ldc);
+      gemm.second(M, N, K, A, lda, B, ldb, C, ldc);
 
-    auto finish = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = finish - start;
-    line << round(elapsed.count() * 10000.0) / 10000.0 << std::setw(20);
-    if(i==3)
-      line <<"|"<< std::setw(20);
+      auto finish = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed = finish - start;
+      line << round(elapsed.count() * 10000.0) / 10000.0;
+      if(i != 3) line << std::setw(20);
+    }else{
+      line << std::endl;
+      break;
+    }
+    i++;
+  }
+  
+  i = 0;
+  for (auto gemm : gemm_methods) {
+    if(i >3){
+      line << gemm.first << std::setw(20);
+      if(i==7){
+        line << "\t (Methods USE omp)";
+        line << std::endl;
+      }
+    }
+    i++;
+  }
+
+  i = 0;
+  for (auto gemm : gemm_methods) {
+    if(i>3){
+      //reset output array
+      std::memset(C, 0, M * N * sizeof(float));
+
+      auto start = std::chrono::high_resolution_clock::now();
+
+      gemm.second(M, N, K, A, lda, B, ldb, C, ldc);
+
+      auto finish = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed = finish - start;
+      line << round(elapsed.count() * 10000.0) / 10000.0;
+      if(i != 7) line << std::setw(20);
+    }
     i++;
   }
   line << std::endl;
 
   for (auto gemm : gemm_methods) {
-    line << "------------------------";
+    line << "-----------";
   }
   std::cout << line.str() << std::endl;
 
