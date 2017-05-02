@@ -3,7 +3,7 @@
  * \brief Mininum DMLC library Amalgamation, used for easy plugin of dmlc lib.
  *  Normally this is not needed.
  */
-#if defined(__clang__)
+#if defined(__ANDROID__)
 	#include <cstdio>
 	#define fopen64 std::fopen
 #endif

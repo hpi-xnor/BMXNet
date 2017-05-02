@@ -39,6 +39,10 @@ ifeq ($(ANDROID), 1)
 	ifeq ($(CC), arm-linux-androideabi-clang)
 		LDFLAGS += -L${NDK_TOOLCHAIN_ROOT}/arm-linux-androideabi/lib/armv7-a
 	endif
+
+	ifeq ($(CC), arm-linux-androideabi-gcc)
+		DEFS+=-isystem ${NDK_TOOLCHAIN_ROOT}/include/c++/4.9.x
+	endif
 endif
 
 all: android libmxnet_predict.a ${MXNET_ROOT}/lib/libmxnet_predict.so
