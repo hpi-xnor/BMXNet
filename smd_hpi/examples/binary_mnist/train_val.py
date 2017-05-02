@@ -30,20 +30,26 @@ def get_lenet():
 	"""
 	data = mx.symbol.Variable('data')
 	# first conv layer
-	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=32)
+	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=64)
 	tanh1 = mx.sym.Activation(data=conv1, act_type="tanh")	
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
-	# second conv layer
-	conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)	
-	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=50)	
-	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
+	bn1 = mx.sym.BatchNorm(data=pool1)
 
-	tanh2 = mx.sym.Activation(data=conv2, act_type="tanh")
+	# second conv layer
+	#conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)	
+	conv2 = mx.sym.Convolution(data=bn1, kernel=(5,5), num_filter=64)	
+	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
+	bn2 = mx.sym.BatchNorm(data=conv2)
+
+	tanh2 = mx.sym.Activation(data=bn2, act_type="tanh")
 	pool2 = mx.sym.Pooling(data=tanh2, pool_type="max", kernel=(2,2), stride=(2,2))
+	
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)
-	fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=500)
-	tanh3 = mx.sym.Activation(data=fc1, act_type="tanh")
+	fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=1000)
+	bn3 = mx.sym.BatchNorm(data=fc1)
+	tanh3 = mx.sym.Activation(data=bn3, act_type="tanh")
+
 	# second fullc
 	fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
 	# softmax loss
@@ -63,25 +69,25 @@ def get_binary_lenet():
 	data = mx.symbol.Variable('data')
 
 	# first conv layer
-	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=64)
-	bn1 = mx.sym.BatchNorm(data=conv1)
-	#tanh1 = mx.sym.Activation(data=bn1, act_type="tanh")
-	pool1 = mx.sym.Pooling(data=bn1, pool_type="max", kernel=(2,2), stride=(2,2))
+	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=64)	
+	tanh1 = mx.sym.Activation(data=conv1, act_type="tanh")
+	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
+	bn1 = mx.sym.BatchNorm(data=pool1)
 
-	tanh1 = mx.sym.QActivation(data=pool1,  act_bit=BITA)
+	#tanh1 = mx.sym.QActivation(data=pool1,  act_bit=BITA)
 	# second conv layer
-	conv2 = mx.sym.QConvolution(data=tanh1, kernel=(5,5), num_filter=64, act_bit=BITW, scaling_factor=False)
+	conv2 = mx.sym.QConvolution(data=bn1, kernel=(5,5), num_filter=64, act_bit=BITW)
 	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
-
-	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 	bn2 = mx.sym.BatchNorm(data=conv2)
+	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')	
 	#bn2 = mx.sym.Custom(data=bn2, op_type='debug')
-
 	pool2 = mx.sym.Pooling(data=bn2, pool_type="max", kernel=(2,2), stride=(2,2))
+	
+
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)	
-	ba2 = mx.sym.QActivation(data=flatten,  act_bit=BITA)	
-	fc1 = mx.symbol.QFullyConnected(data=ba2, num_hidden=1000, act_bit=BITW)
+	#ba2 = mx.sym.QActivation(data=flatten,  act_bit=BITA)	
+	fc1 = mx.symbol.QFullyConnected(data=flatten, num_hidden=1000, act_bit=BITW)
 	#tanh2 = mx.sym.Activation(data=flatten, act_type="tanh")
 	#fc1 = mx.symbol.FullyConnected(data=tanh2, num_hidden=500)
 	
@@ -148,11 +154,11 @@ def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, ba
          	   label_shapes=val_iter.provide_label, for_training=False)  # create memory by given input shapes
 	model.init_params()  # initial parameters with the default random initializer
 	n = randint(0,100)
-	plt.imshow(val_img[n], cmap='Greys_r')
-	plt.axis('off')
-	plt.show()
+	#plt.imshow(val_img[n], cmap='Greys_r')
+	#plt.axis('off')
+	#plt.show()
 	prob = model.predict(eval_data=val_iter, num_batch=1)[n].asnumpy() 
-	print 'Classified as %d with probability %f' % (prob.argmax(), max(prob))
+	print 'Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
 	lenet = get_binary_lenet()
