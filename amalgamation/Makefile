@@ -1,6 +1,9 @@
 export MXNET_ROOT=`pwd`/..
 # Change this to path of openblas
-export OPENBLAS_ROOT=/usr/local/opt/openblas
+export OPENBLAS_ROOT=/home/bartzi/Downloads/OpenBLAS/install
+
+# set this to root folder of ndk toolchain
+export NDK_TOOLCHAIN_ROOT=/home/bartzi/Documents/android/arm-toolchain
 
 # Whether use minimum build without blas and SSE, this will make the library super slow
 ifndef MIN
@@ -18,13 +21,25 @@ endif
 
 .PHONY: all clean
 
-DEFS+=-DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_MKL=0 -DMSHADOW_RABIT_PS=0 -DMSHADOW_DIST_PS=0 -DMSHADOW_FORCE_STREAM -DMXNET_USE_OPENCV=1 -DMXNET_PREDICT_ONLY=1 -DDISABLE_OPENMP=1
+DEFS+=-DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_MKL=0 -DMSHADOW_RABIT_PS=0 -DMSHADOW_DIST_PS=0 -DMSHADOW_FORCE_STREAM -DMXNET_PREDICT_ONLY=1 -DDMLC_LOG_STACK_TRACE=0 -DMXNET_USE_OPENCV=0
 CFLAGS=-std=c++11 -Wno-unknown-pragmas -Wall $(DEFS)
+CFLAGS += -I${MXNET_ROOT}/ -I${MXNET_ROOT}/mshadow/ -I${MXNET_ROOT}/dmlc-core/include -I${MXNET_ROOT}/nnvm -I${MXNET_ROOT}/nnvm/include -I${MXNET_ROOT}/include -I${OPENBLAS_ROOT} -I${OPENBLAS_ROOT}/include -D__MIN__=$(MIN)
+
+
+# definitions for binarization
+DEFS += -DBINARY_WORD_32=1 -DBINARY_WORD_64=0
 ifneq ($(MIN), 1)
-	CFLAGS += -I${OPENBLAS_ROOT} -I${OPENBLAS_ROOT}/include -I/home/fb10dl02/workspace/opencv3.0/install/include -I/usr/lib/jvm/java-8-openjdk-amd64/include/ -I/usr/lib/jvm/java-8-openjdk-amd64/include/linux
-	LDFLAGS+= -L${OPENBLAS_ROOT} -L${OPENBLAS_ROOT}/lib -lopenblas -L/home/fb10dl02/workspace/opencv3.0/install/lib -lopencv_core
+	CFLAGS += -I${OPENBLAS_ROOT} -I${OPENBLAS_ROOT}/include -I/usr/lib/jvm/java-8-openjdk/include/ -I/usr/lib/jvm/java-8-openjdk/include/linux
+	LDFLAGS+= -L${OPENBLAS_ROOT} -L${OPENBLAS_ROOT}/lib -lopenblas
 endif
 
+ifeq ($(ANDROID), 1)
+	CFLAGS += -I${NDK_TOOLCHAIN_ROOT}/include/c++/4.9.x
+
+	ifeq ($(CC), arm-linux-androideabi-clang)
+		LDFLAGS += -L${NDK_TOOLCHAIN_ROOT}/arm-linux-androideabi/lib/armv7-a
+	endif
+endif
 
 all: android libmxnet_predict.a ${MXNET_ROOT}/lib/libmxnet_predict.so
 
@@ -48,7 +63,7 @@ mxnet_predict0.d: mxnet_predict0.cc nnvm.d dmlc.d
 
 mxnet_predict-all.cc:  mxnet_predict0.d dmlc-minimum0.cc nnvm.cc mxnet_predict0.cc mxnet_hpi0.cc
 	@echo "Generating amalgamation to " $@
-	python ./amalgamation.py $+ $@ $(MIN) $(ANDROID)
+	python2 ./amalgamation.py $+ $@ $(MIN) $(ANDROID)
 
 mxnet_predict-all.o: mxnet_predict-all.cc
 	${CXX} ${CFLAGS} -fPIC -o $@ -c $+

@@ -3,6 +3,11 @@
  * \brief Mininum DMLC library Amalgamation, used for easy plugin of dmlc lib.
  *  Normally this is not needed.
  */
+#if defined(__clang__)
+	#include <cstdio>
+	#define fopen64 std::fopen
+#endif
+
 #include "../dmlc-core/src/io/line_split.cc"
 #include "../dmlc-core/src/io/recordio_split.cc"
 #include "../dmlc-core/src/io/input_split_base.cc"
