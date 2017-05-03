@@ -59,57 +59,57 @@ endif
 all: android libmxnet_predict.a ${MXNET_ROOT}/lib/libmxnet_predict.so
 
 nnvm.d:
-    ./prep_nnvm.sh $(ANDROID) $(OPENMP)
+	./prep_nnvm.sh $(ANDROID) $(OPENMP)
 
 dmlc.d: dmlc-minimum0.cc
-    ${CXX} ${CFLAGS} -M -MT dmlc-minimum0.o \
-    -I ${MXNET_ROOT}/dmlc-core/include \
-    -D__MIN__=$(MIN) $+ > dmlc.d
+	${CXX} ${CFLAGS} -M -MT dmlc-minimum0.o \
+	-I ${MXNET_ROOT}/dmlc-core/include \
+	-D__MIN__=$(MIN) $+ > dmlc.d
 
 
 mxnet_predict0.d: mxnet_predict0.cc nnvm.d dmlc.d
-    ${CXX} ${CFLAGS} -M -MT mxnet_predict0.o \
-    -I ${MXNET_ROOT}/ -I ${MXNET_ROOT}/mshadow/ -I ${MXNET_ROOT}/dmlc-core/include \
-    -I ${MXNET_ROOT}/nnvm/include \
-    -I ${MXNET_ROOT}/include \
-    -D__MIN__=$(MIN) mxnet_predict0.cc mxnet_hpi0.cc > mxnet_predict0.d
-    cat dmlc.d >> mxnet_predict0.d
-    cat nnvm.d >> mxnet_predict0.d
+	${CXX} ${CFLAGS} -M -MT mxnet_predict0.o \
+	-I ${MXNET_ROOT}/ -I ${MXNET_ROOT}/mshadow/ -I ${MXNET_ROOT}/dmlc-core/include \
+	-I ${MXNET_ROOT}/nnvm/include \
+	-I ${MXNET_ROOT}/include \
+	-D__MIN__=$(MIN) mxnet_predict0.cc mxnet_hpi0.cc > mxnet_predict0.d
+	cat dmlc.d >> mxnet_predict0.d
+	cat nnvm.d >> mxnet_predict0.d
 
 mxnet_predict-all.cc:  mxnet_predict0.d dmlc-minimum0.cc nnvm.cc mxnet_predict0.cc mxnet_hpi0.cc
-    @echo "Generating amalgamation to " $@
-    python2 ./amalgamation.py $+ $@ $(MIN) $(ANDROID) $(OPENMP)
+	@echo "Generating amalgamation to " $@
+	python2 ./amalgamation.py $+ $@ $(MIN) $(ANDROID) $(OPENMP)
 
 mxnet_predict-all.o: mxnet_predict-all.cc
-    ${CXX} ${CFLAGS} -fPIC -o $@ -c $+
+	${CXX} ${CFLAGS} -fPIC -o $@ -c $+
 
 libmxnet_predict.a: mxnet_predict-all.o
-    ar rcs libmxnet_predict.a $+
+	ar rcs libmxnet_predict.a $+
 
 jni_libmxnet_predict.o: mxnet_predict-all.cc
-    ${CXX} ${CFLAGS} -fPIC -o $@ -c jni/predictor.cc
+	${CXX} ${CFLAGS} -fPIC -o $@ -c jni/predictor.cc
 
 jni_libmxnet_predict.so: jni_libmxnet_predict.o
-    ${CXX} ${CFLAGS} -shared -o $@ $(filter %.o %.a, $^) $(LDFLAGS)
+	${CXX} ${CFLAGS} -shared -o $@ $(filter %.o %.a, $^) $(LDFLAGS)
 
 ifneq ($(ANDROID), 1)
-        android:
+    android:
 else
-        CFLAGS+=  -mhard-float -D_NDK_MATH_NO_SOFTFP=1 -O3
-        LDFLAGS+=  -Wl,--no-warn-mismatch -lm_hard
-        android: jni_libmxnet_predict.so
+    CFLAGS+=  -mhard-float -D_NDK_MATH_NO_SOFTFP=1 -O3
+    LDFLAGS+=  -Wl,--no-warn-mismatch -lm_hard
+    android: jni_libmxnet_predict.so
 endif
 
 libmxnet_predict.js: mxnet_predict-all.cc
-    emcc -std=c++11 -O2 $(DEFS) -DMSHADOW_USE_SSE=0 -D__MXNET_JS__  -o $@ $+ \
-    -s EXPORTED_FUNCTIONS="['_MXPredCreate', '_MXPredGetOutputShape', '_MXPredSetInput', '_MXPredForward', '_MXPredPartialForward', '_MXPredGetOutput', '_MXPredFree', '_MXNDListCreate', '_MXNDListGet', '_MXNDListFree']" \
-    -s ALLOW_MEMORY_GROWTH=1
+	emcc -std=c++11 -O2 $(DEFS) -DMSHADOW_USE_SSE=0 -D__MXNET_JS__  -o $@ $+ \
+	-s EXPORTED_FUNCTIONS="['_MXPredCreate', '_MXPredGetOutputShape', '_MXPredSetInput', '_MXPredForward', '_MXPredPartialForward', '_MXPredGetOutput', '_MXPredFree', '_MXNDListCreate', '_MXNDListGet', '_MXNDListFree']" \
+	-s ALLOW_MEMORY_GROWTH=1
 
 
 ${MXNET_ROOT}/lib/libmxnet_predict.so:  mxnet_predict-all.o
-    @mkdir -p ${MXNET_ROOT}/lib
-    ${CXX} ${CFLAGS} -shared -o $@ $(filter %.o %.a, $^) $(LDFLAGS)
-    ls -alh $@
+	@mkdir -p ${MXNET_ROOT}/lib
+	${CXX} ${CFLAGS} -shared -o $@ $(filter %.o %.a, $^) $(LDFLAGS)
+	ls -alh $@
 
 clean:
-    rm -f *.d *.o *.so *.a mxnet_predict-all.cc nnvm.cc
+	rm -f *.d *.o *.so *.a mxnet_predict-all.cc nnvm.cc
