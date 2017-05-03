@@ -283,7 +283,7 @@ void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY_WORD *
                                        float *c, int ldc, int first_time )
 {
   int i, j;
-  BINARY_WORD packedB[ n * k ];   
+  BINARY_WORD* packedB = new BINARY_WORD[ n * k ];
   
   #pragma omp parallel for 
   for ( j=0; j<n; j+=4 ){          /* Loop over the columns of C, unrolled by 4 */  
@@ -298,6 +298,8 @@ void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY_WORD *
       add_dot_4x4( k, &A( 0,i ), lda, &packedB[ j*k ], 4, &C( j,i ), ldc );
     }
   }
+
+  delete packedB;
 }
 
 void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY_WORD *a, int lda, 
@@ -305,7 +307,8 @@ void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY
                                        float *c, int ldc, int first_time )
 {
   int i, j;
-  BINARY_WORD packedB[ n * k ];   
+  BINARY_WORD*  packedB = new BINARY_WORD[ n * k ];
+  
   for ( j=0; j<n; j+=4 ){          /* Loop over the columns of C, unrolled by 4 */  
       if(first_time)
         pack_matrixB( k, &B( j, 0 ), ldb, &packedB[ j*k ] ); 
@@ -316,6 +319,8 @@ void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY
       add_dot_4x4( k, &A( 0,i ), lda, &packedB[ j*k ], 4, &C( j,i ), ldc );
     }
   }
+
+  delete packedB;
 }
 
 /**
