@@ -146,8 +146,8 @@ class QConvolutionOp : public Operator {
         << "Must init CuBLAS handle in stream";
 #endif
     // xnor related check
-    CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
-      << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
+    //CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
+    //  << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
 
     //============================================//
     //            WEIGHTS quantization            //            
@@ -230,7 +230,7 @@ class QConvolutionOp : public Operator {
         //==================================================================//
         if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
           CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
-
+          
           int m = wmat_shape[1];
           int n = wmat_shape[2];
           int k = tmpc.size(1);
@@ -251,7 +251,7 @@ class QConvolutionOp : public Operator {
                                 binary_inputs_workspace,
                                 tmpc,
                                 temp_dst_gid);
-          }     
+          }
         }else{ // for training phase...
           temp_dst[gid] = dot(wmat[gid], tmpc);      
                     

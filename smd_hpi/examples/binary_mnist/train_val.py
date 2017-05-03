@@ -83,7 +83,6 @@ def get_binary_lenet():
 	#bn2 = mx.sym.Custom(data=bn2, op_type='debug')
 	pool2 = mx.sym.Pooling(data=bn2, pool_type="max", kernel=(2,2), stride=(2,2))
 	
-
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)	
 	#ba2 = mx.sym.QActivation(data=flatten,  act_bit=BITA)	
