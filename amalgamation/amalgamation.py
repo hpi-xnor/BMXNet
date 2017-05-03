@@ -12,6 +12,7 @@ blacklist = [
 ]
 minimum = int(sys.argv[7]) if len(sys.argv) > 5 else 0
 android = int(sys.argv[8]) if len(sys.argv) > 6 else 0
+openmp = int(sys.argv[9]) if len(sys.argv) > 7 else 0
 
 if android != 0:
     blacklist.append('execinfo.h')
@@ -138,6 +139,9 @@ print >>f, '''
 
 if minimum != 0 and android != 0 and 'complex.h' not in sysheaders:
     sysheaders.append('complex.h')
+
+if openmp != 0:
+    sysheaders.append('omp.h')
 
 for k in sorted(sysheaders):
     print >>f, "#include <%s>" % k
