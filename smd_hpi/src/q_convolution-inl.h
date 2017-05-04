@@ -134,7 +134,7 @@ class QConvolutionOp : public Operator {
                param_.num_filter / param_.num_group,
                data.shape_[1] / param_.num_group * param_.kernel[0] * param_.kernel[1]);
     Tensor<xpu, 3, DType> wmat;
-    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized;
+    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized = NULL;
     if (param_.binarized_weights_only) {
       wmat_binarized = (mxnet::op::xnor_cpu::BINARY_WORD*) in_data[q_conv::kWeight].dptr_;
     } else {

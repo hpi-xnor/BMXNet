@@ -271,7 +271,7 @@ namespace xnor_cpu {
   * compared with get_binary_col() method.
   */
   inline void get_binary_col_unrolled(float* col, BINARY_WORD * b_col, int n, int k){        
-    #pragma omp parallel for
+
     for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
       BINARY_WORD * y_col_pt = &b_col[y*k];
       #pragma omp parallel for

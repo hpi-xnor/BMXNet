@@ -76,7 +76,9 @@ def get_binary_lenet():
 
 	#tanh1 = mx.sym.QActivation(data=pool1,  act_bit=BITA)
 	# second conv layer
+
 	conv2 = mx.sym.QConvolution(data=bn1, kernel=(5,5), num_filter=64, act_bit=BITW)
+	
 	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
 	bn2 = mx.sym.BatchNorm(data=conv2)
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')	

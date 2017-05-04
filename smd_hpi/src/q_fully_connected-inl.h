@@ -87,7 +87,7 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> data = in_data[q_fullc::kData].get_with_shape<xpu, 2, DType>(
         Shape2(ishape[0], ishape.ProdShape(1, ishape.ndim())), s);
     Tensor<xpu, 2, DType> wmat;
-    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized;
+    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized = NULL;
     if (param_.binarized_weights_only) {
       wmat_binarized = (mxnet::op::xnor_cpu::BINARY_WORD*) in_data[q_fullc::kWeight].dptr_;
     } else {
