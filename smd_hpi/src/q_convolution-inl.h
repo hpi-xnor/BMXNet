@@ -134,7 +134,7 @@ class QConvolutionOp : public Operator {
                param_.num_filter / param_.num_group,
                data.shape_[1] / param_.num_group * param_.kernel[0] * param_.kernel[1]);
     Tensor<xpu, 3, DType> wmat;
-    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized;
+    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized = NULL;
     if (param_.binarized_weights_only) {
       wmat_binarized = (mxnet::op::xnor_cpu::BINARY_WORD*) in_data[q_conv::kWeight].dptr_;
     } else {
@@ -146,8 +146,8 @@ class QConvolutionOp : public Operator {
         << "Must init CuBLAS handle in stream";
 #endif
     // xnor related check
-    CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
-      << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
+    //CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
+    //  << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
 
     //============================================//
     //            WEIGHTS quantization            //            
@@ -199,7 +199,7 @@ class QConvolutionOp : public Operator {
       //             INPUT quantization             //            
       // for training or prediction in gpu mode,    //
       // we apply quantization function on input    //
-      // This process should be after padding stuff //
+      // This process should be after padding elemt //
       // since the padding elements are all "0"     //
       //============================================//
       if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
@@ -230,7 +230,7 @@ class QConvolutionOp : public Operator {
         //==================================================================//
         if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
           CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
-
+          
           int m = wmat_shape[1];
           int n = wmat_shape[2];
           int k = tmpc.size(1);
@@ -251,7 +251,7 @@ class QConvolutionOp : public Operator {
                                 binary_inputs_workspace,
                                 tmpc,
                                 temp_dst_gid);
-          }     
+          }
         }else{ // for training phase...
           temp_dst[gid] = dot(wmat[gid], tmpc);      
                     
@@ -260,7 +260,7 @@ class QConvolutionOp : public Operator {
             temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
           
           //============================//
-          // here my testing codes
+          // here my testing codes, will be removed later!!!
           //============================//
           /*
           //get matrix dims
@@ -422,15 +422,6 @@ class QConvolutionOp : public Operator {
       Tensor<xpu, 1, DType> gbias = in_grad[q_conv::kBias].get<xpu, 1, DType>(s);
       Assign(gbias, req[q_conv::kBias], sumall_except_dim<1>(grad));
     }
-
-    //========================================//
-    //         Quantized Activation           //
-    //========================================//
-//    if(this->param_.act_bit == 1){
-//      Assign(gdata, req[q_conv::kData], F<mshadow_op::det_sign_grad>(data) * gdata);
-//    }else{
-//      Assign(gdata, req[q_conv::kData], F<mshadow_op::quantize_grad>(data) * gdata);
-//    }
   }
 
  private:

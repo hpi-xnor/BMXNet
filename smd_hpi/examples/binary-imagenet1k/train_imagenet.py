@@ -36,10 +36,10 @@ if __name__ == '__main__':
         # train
         num_epochs       = 40,
         lr_step_epochs   = '10,20,30',
-        lr               = 0.01,
+        lr               = 0.1,
 	lr_factor        = 0.1,
         batch_size     = 32,
-        optimizer        = 'Adam',
+        optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',

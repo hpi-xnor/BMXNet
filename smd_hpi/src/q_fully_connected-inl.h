@@ -87,7 +87,7 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> data = in_data[q_fullc::kData].get_with_shape<xpu, 2, DType>(
         Shape2(ishape[0], ishape.ProdShape(1, ishape.ndim())), s);
     Tensor<xpu, 2, DType> wmat;
-    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized;
+    mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized = NULL;
     if (param_.binarized_weights_only) {
       wmat_binarized = (mxnet::op::xnor_cpu::BINARY_WORD*) in_data[q_fullc::kWeight].dptr_;
     } else {
@@ -193,17 +193,6 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> gdata = in_grad[q_fullc::kData].get_with_shape<xpu, 2, DType>(
         Shape2(ishape[0], ishape.ProdShape(1, ishape.ndim())), s);
     Assign(gdata, req[q_fullc::kData], dot(grad, wmat));
-
-    //========================================//
-    //         Quantized Activation           //
-    //========================================//
-    Tensor<xpu, 2, DType> m_in_data = in_data[q_fullc::kData].FlatTo2D<xpu, DType>(s);
-    Tensor<xpu, 2, DType> m_in_grad = in_grad[q_fullc::kData].FlatTo2D<xpu, DType>(s);
-    if(this->param_.act_bit == 1){
-      Assign(m_in_grad, req[q_fullc::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_in_grad);
-    }else{
-      Assign(m_in_grad, req[q_fullc::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_in_grad);
-    } 
   }
 
  private:

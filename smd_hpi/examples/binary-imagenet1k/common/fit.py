@@ -161,7 +161,7 @@ def fit(args, network, data_loader, **kwargs):
     initializer   = mx.init.Xavier(
        rnd_type='gaussian', factor_type="in", magnitude=2)
     if args.pretrained:
-	initializer = mx.initializer.Load(args.pretrained, default_init=initializer, verbose=True)
+        initializer = mx.initializer.Load(args.pretrained, default_init=initializer, verbose=True)
     # initializer   = mx.init.Xavier(factor_type="in", magnitude=2.34),
 
     # evaluation metrices

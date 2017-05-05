@@ -229,7 +229,6 @@ namespace xnor_cpu {
    * @brief binarize matrix
    *
    */
-  __attribute__((optimize("unroll-loops")))
   inline void get_binary_row(float* row, BINARY_WORD * b_row, int size){
 
     #pragma omp parallel for
@@ -248,7 +247,6 @@ namespace xnor_cpu {
   * @brief binarize matrix column wise
   *
   */
-  __attribute__((optimize("unroll-loops")))
   inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){        
     
     for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
@@ -272,9 +270,8 @@ namespace xnor_cpu {
   * ~30% performance improvement without openmp
   * compared with get_binary_col() method.
   */
-  __attribute__((optimize("unroll-loops")))
   inline void get_binary_col_unrolled(float* col, BINARY_WORD * b_col, int n, int k){        
-    #pragma omp parallel for
+
     for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
       BINARY_WORD * y_col_pt = &b_col[y*k];
       #pragma omp parallel for
@@ -359,12 +356,10 @@ namespace xnor_cpu {
                             float *A, int lda,
                             float *B, int ldb,
                             float *C, int ldc){
-    int i,n,k;
-    #pragma omp parallel for collapse(2) 
+    int i,n,k;    
     for(i = 0; i < M; ++i){
       for(n = 0; n < N; ++n){
         float A_PART = A[i*lda+n];
-        #pragma omp parallel for
         for(k = 0; k < K; ++k){
           C[i*ldc+k] += A_PART * B[n*ldb+k];
         }
