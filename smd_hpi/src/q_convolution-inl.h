@@ -426,13 +426,11 @@ class QConvolutionOp : public Operator {
     //========================================//
     //         Quantized Activation           //
     //========================================//
-    Tensor<xpu, 2, DType> m_in_data = in_data[q_conv::kData].FlatTo2D<xpu, DType>(s);
-    Tensor<xpu, 2, DType> m_in_grad = in_grad[q_conv::kData].FlatTo2D<xpu, DType>(s);
-    if(this->param_.act_bit == 1){
-      Assign(m_in_grad, req[q_conv::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_in_grad);
-    }else{
-      Assign(m_in_grad, req[q_conv::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_in_grad);
-    } 
+//    if(this->param_.act_bit == 1){
+//      Assign(gdata, req[q_conv::kData], F<mshadow_op::det_sign_grad>(data) * gdata);
+//    }else{
+//      Assign(gdata, req[q_conv::kData], F<mshadow_op::quantize_grad>(data) * gdata);
+//    }
   }
 
  private:

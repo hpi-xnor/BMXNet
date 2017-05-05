@@ -96,38 +96,35 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
     if bottle_neck:
         # the same as https://github.com/facebook/fb.resnet.torch#notes, a bit difference with origin paper
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
-        act1 = mx.sym.QActivation(data=bn1, act_bit=BIT)
-        conv1 = mx.sym.QConvolution(data=act1, num_filter=int(num_filter*0.25), kernel=(1,1), stride=(1,1), pad=(0,0),
+        conv1 = mx.sym.QConvolution(data=bn1, num_filter=int(num_filter*0.25), kernel=(1,1), stride=(1,1), pad=(0,0),
                                    no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT)
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn2')
-        act2 = mx.sym.QActivation(data=bn2,  act_bit=BIT)
-        conv2 = mx.sym.QConvolution(data=act2, num_filter=int(num_filter*0.25), kernel=(3,3), stride=stride, pad=(1,1),
+        conv2 = mx.sym.QConvolution(data=bn2, num_filter=int(num_filter*0.25), kernel=(3,3), stride=stride, pad=(1,1),
                                    no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT)
         bn3 = mx.sym.BatchNorm(data=conv2, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn3')
-        act3 = mx.sym.QActivation(data=bn3, act_bit=BIT)
-        conv3 = mx.sym.QConvolution(data=act3, num_filter=num_filter, kernel=(1,1), stride=(1,1), pad=(0,0), no_bias=True,
+        conv3 = mx.sym.QConvolution(data=bn3, num_filter=num_filter, kernel=(1,1), stride=(1,1), pad=(0,0), no_bias=True,
                                    workspace=workspace, name=name + '_conv3', act_bit=BIT)
         if dim_match:
             shortcut = data
         else:
-            shortcut = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
+            shortcut = mx.sym.QConvolution(data=bn1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc', act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
         return conv3 + shortcut
     else:
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn1')
-        #act1 = mx.sym.QActivation(data=data, act_bit=BIT)
-        conv1 = mx.sym.QConvolution(data=bn1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
+	aq1 = mx.sym.QActivation(data=bn1,  act_bit=BIT)
+        conv1 = mx.sym.QConvolution(data=aq1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT)
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2')
-        #act2 = mx.sym.QActivation(data=bn2, act_bit=BIT)
-        conv2 = mx.sym.QConvolution(data=bn2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
+	aq2=mx.sym.QActivation(data=bn2,  act_bit=BIT)
+        conv2 = mx.sym.QConvolution(data=aq2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT)
         if dim_match:
             shortcut = data
         else:
-            shortcut = mx.sym.QConvolution(data=bn1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
+            shortcut = mx.sym.QConvolution(data=aq1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc', act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
@@ -166,7 +163,7 @@ def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck
         body = mx.symbol.Pooling(data=body, kernel=(3, 3), stride=(2,2), pad=(1,1), pool_type='max')
 
     for i in range(num_stages):
-	if i==-1:
+	if False:#i==-1:
 		body = residual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
                              name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, workspace=workspace,
                              memonger=memonger)

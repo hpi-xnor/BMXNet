@@ -39,7 +39,7 @@ if __name__ == '__main__':
         lr               = 0.01,
 	lr_factor        = 0.1,
         batch_size     = 32,
-        optimizer        = 'adam',
+        optimizer        = 'Adam',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',
@@ -66,10 +66,6 @@ if __name__ == '__main__':
     #load pretrained
     args_params=None
     auxs_params=None
-    if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 37)
-        logger.info("Start training with {} from pretrained model {}"
-                .format(str(devs), args.pretrained))
 
     # train
     if args_params and auxs_params:

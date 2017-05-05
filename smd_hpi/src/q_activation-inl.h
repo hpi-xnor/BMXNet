@@ -88,7 +88,7 @@ class QActivationOp : public Operator {
       Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
     }else{
       Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
-    }    
+    }
   }
   private:
     int act_bit_;
