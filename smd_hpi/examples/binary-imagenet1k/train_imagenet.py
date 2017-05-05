@@ -66,10 +66,6 @@ if __name__ == '__main__':
     #load pretrained
     args_params=None
     auxs_params=None
-    if args.pretrained:
-        new_sym, args_params, auxs_params = mx.model.load_checkpoint(args.pretrained, 50)
-        logger.info("Start training with {} from pretrained model {}"
-                .format(str(devs), args.pretrained))
 
     # train
     if args_params and auxs_params:

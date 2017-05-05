@@ -96,7 +96,7 @@ void xnor_gemm_convert_to_int(int M, int N, int K,
                       BINARY_WORD *A, int lda,
                       BINARY_WORD *B, int ldb,
                       float *C, int ldc){
-/*  int m,k,n;
+  int m,k,n;
   int popc[M*N];
   #pragma omp parallel for collapse(2)    
   for (m = 0; m < M; ++m) {
@@ -111,7 +111,7 @@ void xnor_gemm_convert_to_int(int M, int N, int K,
 
   for (int i=0; i < M*N; i++) {
     C[i] = popc[i];
-  }*/
+  }
 }
 
 // write popc in int array, in the end convert back
@@ -119,7 +119,7 @@ void xnor_gemm_convert_to_int_no_omp(int M, int N, int K,
                       BINARY_WORD *A, int lda,
                       BINARY_WORD *B, int ldb,
                       float *C, int ldc){
-/*  int m,k,n;
+  int m,k,n;
   int popc[M*N];
 
   for (m = 0; m < M; ++m) {
@@ -133,7 +133,7 @@ void xnor_gemm_convert_to_int_no_omp(int M, int N, int K,
 
   for (int i=0; i < M*N; i++) {
     C[i] = popc[i];
-  }*/
+  }
 }
 
 // our baseline xnor

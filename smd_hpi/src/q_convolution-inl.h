@@ -199,7 +199,7 @@ class QConvolutionOp : public Operator {
       //             INPUT quantization             //            
       // for training or prediction in gpu mode,    //
       // we apply quantization function on input    //
-      // This process should be after padding stuff //
+      // This process should be after padding elemt //
       // since the padding elements are all "0"     //
       //============================================//
       if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
@@ -260,7 +260,7 @@ class QConvolutionOp : public Operator {
             temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
           
           //============================//
-          // here my testing codes
+          // here my testing codes, will be removed later!!!
           //============================//
           /*
           //get matrix dims
@@ -422,17 +422,6 @@ class QConvolutionOp : public Operator {
       Tensor<xpu, 1, DType> gbias = in_grad[q_conv::kBias].get<xpu, 1, DType>(s);
       Assign(gbias, req[q_conv::kBias], sumall_except_dim<1>(grad));
     }
-
-    //========================================//
-    //         Quantized Activation           //
-    //========================================//
-    Tensor<xpu, 2, DType> m_in_data = in_data[q_conv::kData].FlatTo2D<xpu, DType>(s);
-    Tensor<xpu, 2, DType> m_in_grad = in_grad[q_conv::kData].FlatTo2D<xpu, DType>(s);
-    if(this->param_.act_bit == 1){
-      Assign(m_in_grad, req[q_conv::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_in_grad);
-    }else{
-      Assign(m_in_grad, req[q_conv::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_in_grad);
-    } 
   }
 
  private:

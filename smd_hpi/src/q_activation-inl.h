@@ -30,9 +30,16 @@ namespace q_activation {
 
 struct QActivationParam : public dmlc::Parameter<QActivationParam> {
   unsigned int act_bit;
+  bool backward_only;
   DMLC_DECLARE_PARAMETER(QActivationParam) {
     DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
     .describe("Quantized activation function.");
+    DMLC_DECLARE_FIELD(backward_only).set_default(false)
+        .describe("If set 'backward_only' to true, then the quantized activation process"
+          "in forward pass will not be performed in this layer, the input data will" 
+          "be just copied to output. This setting is created for the combi-use with" 
+          "QConv-and QFully-layers, since the quantized activation for input data will" 
+          "be done in the forward pass of those two layers.");
   }
 };
 
@@ -45,6 +52,7 @@ class QActivationOp : public Operator {
  public:
   explicit QActivationOp(QActivationParam param) {
     this->act_bit_ = param.act_bit;
+    this->backward_only = param.backward_only;
   }
   virtual void Forward(const OpContext &ctx,
                        const std::vector<TBlob> &in_data,
@@ -58,14 +66,16 @@ class QActivationOp : public Operator {
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 2, DType> data = in_data[q_activation::kData].FlatTo2D<xpu, DType>(s);
     Tensor<xpu, 2, DType> out = out_data[q_activation::kOut].FlatTo2D<xpu, DType>(s);
-
-    if(act_bit_ == 1){
-      Assign(out, req[q_activation::kOut], F<mshadow_op::det_sign>(data));
-    }else{
-      Assign(out, req[q_activation::kOut], F<mshadow_op::quantize>(
-                                              F<mshadow_op::maximum>(F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
-                                              scalar(DType(act_bit_))));
-    }
+    if(!backward_only){
+      if(act_bit_ == 1){
+        Assign(out, req[q_activation::kOut], F<mshadow_op::det_sign>(data));
+      }else{
+        Assign(out, req[q_activation::kOut], F<mshadow_op::quantize>(
+              F<mshadow_op::maximum>(F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
+              scalar(DType(act_bit_))));
+      }
+    }else
+      Assign(out, req[q_activation::kOut],  F<mshadow_op::identity>(data));
   }
 
   virtual void Backward(const OpContext &ctx,
@@ -92,6 +102,7 @@ class QActivationOp : public Operator {
   }
   private:
     int act_bit_;
+    bool backward_only;
 };  // class QActivationOp
 
 // Decalre Factory function, used for dispatch specialization
