@@ -81,7 +81,7 @@ static void * ExposureTargetBiasContext = &ExposureTargetBiasContext;
     MXPredGetOutput(predictor, 0, outputs.data(), tt_size);
     
     NSTimeInterval executionTime = [methodFinish timeIntervalSinceDate:methodStart];
-    NSLog(@"forward pass took %f", executionTime);
+    //NSLog(@"forward pass took %f", executionTime);
     
     size_t max_idx = std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
     return [NSString stringWithFormat: @"%zu (%f)", max_idx, outputs.at(max_idx)];}
@@ -93,8 +93,8 @@ static void * ExposureTargetBiasContext = &ExposureTargetBiasContext;
     [self.indicatorView setActivityIndicatorViewStyle:UIActivityIndicatorViewStyleGray];
     
     if (!predictor) {
-        NSString *jsonPath = [[NSBundle mainBundle] pathForResource:@"binary-mnist-qall-symbol.json" ofType:nil];
-        NSString *paramsPath = [[NSBundle mainBundle] pathForResource:@"binary-mnist-qall-0001.params" ofType:nil];
+        NSString *jsonPath = [[NSBundle mainBundle] pathForResource:SYMBOL_FILE ofType:nil];
+        NSString *paramsPath = [[NSBundle mainBundle] pathForResource:PARAMS_FILE ofType:nil];
         model_symbol = [[NSString alloc] initWithData:[[NSFileManager defaultManager] contentsAtPath:jsonPath] encoding:NSUTF8StringEncoding];
         model_params = [[NSFileManager defaultManager] contentsAtPath:paramsPath];
         
@@ -321,7 +321,7 @@ static void * ExposureTargetBiasContext = &ExposureTargetBiasContext;
     
     // crop and threshold image
     UIImage *thresholded = [self doThresholding: [self cropCenterRect:augmentedImage toSize: cropRectSize] ];
-    
+
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){
         if (![predictionRunningLock tryLock]) {
