@@ -283,11 +283,11 @@ void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY_WORD *
                                        float *c, int ldc, int first_time )
 {
   int i, j;
+  BINARY_WORD* packedB = new BINARY_WORD[ n * k ];
   #pragma omp parallel for 
   for ( j=0; j<n; j+=4 ){          /* Loop over the columns of C, unrolled by 4 */  
-    BINARY_WORD* packedB = new BINARY_WORD[ n * k ];
-
-    if(first_time)
+    
+    //if(first_time)
       pack_matrixB( k, &B( j, 0 ), ldb, &packedB[ j*k ] ); 
     #pragma omp parallel for
     for ( i=0; i<m; i+=4 ){        /* Loop over the rows of C */
@@ -296,8 +296,9 @@ void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY_WORD *
       //add_dot_4x4( k, &A( 0,i ), lda, &B( j,0 ), ldb, &C( j,i ), ldc );
       add_dot_4x4( k, &A( 0,i ), lda, &packedB[ j*k ], 4, &C( j,i ), ldc );
     }
-    delete packedB;  
-  }  
+    
+  } 
+  delete packedB;   
 }
 
 void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY_WORD *a, int lda, 
@@ -365,10 +366,15 @@ void xnor_gemm_combined(int M, int N, int K,
                float *C, int ldc){
   if(K < 4 || M < 4)
     xnor_gemm_baseline(M, N, K, A, lda, B, ldb, C, ldc);
-  else if(M <= 64 && K <= 100)
-    xnor_gemm_unrolled(M, N, K, A, lda, B, ldb, C, ldc);
   else
-    xnor_gemm_blocking_packing(M, N, K, A, lda, B, ldb, C, ldc);
+    xnor_gemm_unrolled(M, N, K, A, lda, B, ldb, C, ldc);
+
+  // if(K < 4 || M < 4)
+  //   xnor_gemm_baseline(M, N, K, A, lda, B, ldb, C, ldc);
+  // else if(M <= 64 && K <= 100)
+  //   xnor_gemm_unrolled(M, N, K, A, lda, B, ldb, C, ldc);
+  // else
+  //   xnor_gemm_blocking_packing(M, N, K, A, lda, B, ldb, C, ldc);
 }
 
 void xnor_gemm_benchmarking(int M, int N, int K,
