@@ -119,6 +119,8 @@ if minimum != 0:
     print >>f, "#define MSHADOW_USE_CBLAS 0"
 elif android != 0:
     print >>f, "#define MSHADOW_USE_SSE 0"
+    print >>f, "#include <cstdio>"
+    print >>f, "#define fopen64 std::fopen"
 
 print >>f, '''
 #if defined(__MACH__)
