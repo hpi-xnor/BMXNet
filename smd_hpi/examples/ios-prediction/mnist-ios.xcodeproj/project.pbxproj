@@ -15,19 +15,18 @@
 		472E1CD11C545B31005E3FE0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CCF1C545B31005E3FE0 /* LaunchScreen.storyboard */; };
 		472E1CDB1C545B53005E3FE0 /* mxnet_predict-all.cc in Sources */ = {isa = PBXBuildFile; fileRef = 472E1CD91C545B53005E3FE0 /* mxnet_predict-all.cc */; };
 		472E1CDD1C545B9A005E3FE0 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 472E1CDC1C545B9A005E3FE0 /* Accelerate.framework */; };
-		472E1CE31C546859005E3FE0 /* Inception_BN-0039.params in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CDF1C546859005E3FE0 /* Inception_BN-0039.params */; };
-		472E1CE41C546859005E3FE0 /* Inception_BN-symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */; };
-		472E1CE61C546859005E3FE0 /* synset.txt in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CE21C546859005E3FE0 /* synset.txt */; };
-		472E1CEB1C5478A5005E3FE0 /* mean_224.bin in Resources */ = {isa = PBXBuildFile; fileRef = 472E1CEA1C5478A5005E3FE0 /* mean_224.bin */; };
 		C86E50AA1E7839D6009137C8 /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50A91E7839D6009137C8 /* opencv2.framework */; };
 		C86E50AC1E784DF1009137C8 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50AB1E784DF1009137C8 /* UIKit.framework */; };
 		C86E50AE1E784EF8009137C8 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50AD1E784EF8009137C8 /* CoreVideo.framework */; };
 		C86E50B01E784FC8009137C8 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C86E50AF1E784FC8009137C8 /* CoreGraphics.framework */; };
 		C8D9F5621E718E27005DD292 /* LICENSE_MXNet in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5611E718E27005DD292 /* LICENSE_MXNet */; };
-		C8D9F5641E718E35005DD292 /* LICENSE_Inception_BN in Resources */ = {isa = PBXBuildFile; fileRef = C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */; };
 		C8D9F5671E719578005DD292 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8D9F5661E719578005DD292 /* AVFoundation.framework */; };
 		C8D9F5691E7197BF005DD292 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8D9F5681E7197BF005DD292 /* CoreMedia.framework */; };
 		C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */ = {isa = PBXBuildFile; fileRef = C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */; };
+		C8FD90481EC0B48D00862215 /* binarized_binary-mnist_32-0001.params in Resources */ = {isa = PBXBuildFile; fileRef = C8FD90441EC0B48D00862215 /* binarized_binary-mnist_32-0001.params */; };
+		C8FD90491EC0B48D00862215 /* binarized_binary-mnist_32-symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = C8FD90451EC0B48D00862215 /* binarized_binary-mnist_32-symbol.json */; };
+		C8FD904A1EC0B48D00862215 /* binarized_binary-mnist_64-0001.params in Resources */ = {isa = PBXBuildFile; fileRef = C8FD90461EC0B48D00862215 /* binarized_binary-mnist_64-0001.params */; };
+		C8FD904B1EC0B48D00862215 /* binarized_binary-mnist_64-symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = C8FD90471EC0B48D00862215 /* binarized_binary-mnist_64-symbol.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -43,7 +42,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		472E1CBE1C545B31005E3FE0 /* predict-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "predict-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		472E1CBE1C545B31005E3FE0 /* mnist-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "mnist-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		472E1CC21C545B31005E3FE0 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		472E1CC41C545B31005E3FE0 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		472E1CC51C545B31005E3FE0 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -56,19 +55,18 @@
 		472E1CD91C545B53005E3FE0 /* mxnet_predict-all.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mxnet_predict-all.cc"; sourceTree = "<group>"; };
 		472E1CDA1C545B53005E3FE0 /* c_predict_api.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = c_predict_api.h; sourceTree = "<group>"; };
 		472E1CDC1C545B9A005E3FE0 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
-		472E1CDF1C546859005E3FE0 /* Inception_BN-0039.params */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inception_BN-0039.params"; sourceTree = "<group>"; };
-		472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "Inception_BN-symbol.json"; sourceTree = "<group>"; };
-		472E1CE21C546859005E3FE0 /* synset.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = synset.txt; sourceTree = "<group>"; };
-		472E1CEA1C5478A5005E3FE0 /* mean_224.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = mean_224.bin; sourceTree = "<group>"; };
 		C86E50A91E7839D6009137C8 /* opencv2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = opencv2.framework; sourceTree = "<group>"; };
 		C86E50AB1E784DF1009137C8 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		C86E50AD1E784EF8009137C8 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		C86E50AF1E784FC8009137C8 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		C8D9F5611E718E27005DD292 /* LICENSE_MXNet */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_MXNet; sourceTree = "<group>"; };
-		C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE_Inception_BN; sourceTree = "<group>"; };
 		C8D9F5661E719578005DD292 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		C8D9F5681E7197BF005DD292 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		C8FA00311E7024500063DD50 /* amalgamate_mxnet.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = amalgamate_mxnet.sh; sourceTree = "<group>"; };
+		C8FD90441EC0B48D00862215 /* binarized_binary-mnist_32-0001.params */ = {isa = PBXFileReference; lastKnownFileType = file; name = "binarized_binary-mnist_32-0001.params"; path = "BinaryMNIST/binarized_binary-mnist_32-0001.params"; sourceTree = "<group>"; };
+		C8FD90451EC0B48D00862215 /* binarized_binary-mnist_32-symbol.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = "binarized_binary-mnist_32-symbol.json"; path = "BinaryMNIST/binarized_binary-mnist_32-symbol.json"; sourceTree = "<group>"; };
+		C8FD90461EC0B48D00862215 /* binarized_binary-mnist_64-0001.params */ = {isa = PBXFileReference; lastKnownFileType = file; name = "binarized_binary-mnist_64-0001.params"; path = "BinaryMNIST/binarized_binary-mnist_64-0001.params"; sourceTree = "<group>"; };
+		C8FD90471EC0B48D00862215 /* binarized_binary-mnist_64-symbol.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = "binarized_binary-mnist_64-symbol.json"; path = "BinaryMNIST/binarized_binary-mnist_64-symbol.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,7 +91,7 @@
 			isa = PBXGroup;
 			children = (
 				472E1CDC1C545B9A005E3FE0 /* Accelerate.framework */,
-				472E1CC01C545B31005E3FE0 /* predict-ios */,
+				472E1CC01C545B31005E3FE0 /* mnist-ios */,
 				472E1CBF1C545B31005E3FE0 /* Products */,
 				C8D9F5651E719578005DD292 /* Frameworks */,
 			);
@@ -102,15 +100,15 @@
 		472E1CBF1C545B31005E3FE0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				472E1CBE1C545B31005E3FE0 /* predict-ios.app */,
+				472E1CBE1C545B31005E3FE0 /* mnist-ios.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		472E1CC01C545B31005E3FE0 /* predict-ios */ = {
+		472E1CC01C545B31005E3FE0 /* mnist-ios */ = {
 			isa = PBXGroup;
 			children = (
-				472E1CDE1C546859005E3FE0 /* Inception */,
+				C86014561E76D454002DFC3B /* BinaryMNIST */,
 				472E1CD81C545B4E005E3FE0 /* MXNet */,
 				472E1CC41C545B31005E3FE0 /* AppDelegate.h */,
 				472E1CC51C545B31005E3FE0 /* AppDelegate.m */,
@@ -122,7 +120,7 @@
 				472E1CD21C545B31005E3FE0 /* Info.plist */,
 				472E1CC11C545B31005E3FE0 /* Supporting Files */,
 			);
-			path = "predict-ios";
+			path = "mnist-ios";
 			sourceTree = "<group>";
 		};
 		472E1CC11C545B31005E3FE0 /* Supporting Files */ = {
@@ -144,16 +142,15 @@
 			path = MXNet;
 			sourceTree = "<group>";
 		};
-		472E1CDE1C546859005E3FE0 /* Inception */ = {
+		C86014561E76D454002DFC3B /* BinaryMNIST */ = {
 			isa = PBXGroup;
 			children = (
-				C8D9F5631E718E35005DD292 /* LICENSE_Inception_BN */,
-				472E1CDF1C546859005E3FE0 /* Inception_BN-0039.params */,
-				472E1CE01C546859005E3FE0 /* Inception_BN-symbol.json */,
-				472E1CEA1C5478A5005E3FE0 /* mean_224.bin */,
-				472E1CE21C546859005E3FE0 /* synset.txt */,
+				C8FD90441EC0B48D00862215 /* binarized_binary-mnist_32-0001.params */,
+				C8FD90451EC0B48D00862215 /* binarized_binary-mnist_32-symbol.json */,
+				C8FD90461EC0B48D00862215 /* binarized_binary-mnist_64-0001.params */,
+				C8FD90471EC0B48D00862215 /* binarized_binary-mnist_64-symbol.json */,
 			);
-			path = Inception;
+			name = BinaryMNIST;
 			sourceTree = "<group>";
 		};
 		C8D9F5651E719578005DD292 /* Frameworks */ = {
@@ -172,9 +169,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		472E1CBD1C545B31005E3FE0 /* predict-ios */ = {
+		472E1CBD1C545B31005E3FE0 /* mnist-ios */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 472E1CD51C545B31005E3FE0 /* Build configuration list for PBXNativeTarget "predict-ios" */;
+			buildConfigurationList = 472E1CD51C545B31005E3FE0 /* Build configuration list for PBXNativeTarget "mnist-ios" */;
 			buildPhases = (
 				472E1CBA1C545B31005E3FE0 /* Sources */,
 				472E1CBB1C545B31005E3FE0 /* Frameworks */,
@@ -185,9 +182,9 @@
 			);
 			dependencies = (
 			);
-			name = "predict-ios";
-			productName = "predict-ios";
-			productReference = 472E1CBE1C545B31005E3FE0 /* predict-ios.app */;
+			name = "mnist-ios";
+			productName = "mnist-ios";
+			productReference = 472E1CBE1C545B31005E3FE0 /* mnist-ios.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -205,7 +202,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 472E1CB91C545B31005E3FE0 /* Build configuration list for PBXProject "predict-ios" */;
+			buildConfigurationList = 472E1CB91C545B31005E3FE0 /* Build configuration list for PBXProject "mnist-ios" */;
 			compatibilityVersion = "Xcode 6.3";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -218,7 +215,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				472E1CBD1C545B31005E3FE0 /* predict-ios */,
+				472E1CBD1C545B31005E3FE0 /* mnist-ios */,
 			);
 		};
 /* End PBXProject section */
@@ -229,14 +226,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				472E1CD11C545B31005E3FE0 /* LaunchScreen.storyboard in Resources */,
+				C8FD90481EC0B48D00862215 /* binarized_binary-mnist_32-0001.params in Resources */,
+				C8FD904A1EC0B48D00862215 /* binarized_binary-mnist_64-0001.params in Resources */,
 				C8D9F5621E718E27005DD292 /* LICENSE_MXNet in Resources */,
-				C8D9F5641E718E35005DD292 /* LICENSE_Inception_BN in Resources */,
-				472E1CE41C546859005E3FE0 /* Inception_BN-symbol.json in Resources */,
-				472E1CEB1C5478A5005E3FE0 /* mean_224.bin in Resources */,
+				C8FD90491EC0B48D00862215 /* binarized_binary-mnist_32-symbol.json in Resources */,
 				472E1CCE1C545B31005E3FE0 /* Assets.xcassets in Resources */,
-				472E1CE61C546859005E3FE0 /* synset.txt in Resources */,
+				C8FD904B1EC0B48D00862215 /* binarized_binary-mnist_64-symbol.json in Resources */,
 				472E1CCC1C545B31005E3FE0 /* Main.storyboard in Resources */,
-				472E1CE31C546859005E3FE0 /* Inception_BN-0039.params in Resources */,
 				C8FA00321E7024500063DD50 /* amalgamate_mxnet.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -388,7 +384,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				INFOPLIST_FILE = "predict-ios/Info.plist";
+				INFOPLIST_FILE = "mnist-ios/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.hpi.smd.object-detection";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -408,7 +404,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				INFOPLIST_FILE = "predict-ios/Info.plist";
+				INFOPLIST_FILE = "mnist-ios/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.hpi.smd.object-detection";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -420,7 +416,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		472E1CB91C545B31005E3FE0 /* Build configuration list for PBXProject "predict-ios" */ = {
+		472E1CB91C545B31005E3FE0 /* Build configuration list for PBXProject "mnist-ios" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				472E1CD31C545B31005E3FE0 /* Debug */,
@@ -429,7 +425,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		472E1CD51C545B31005E3FE0 /* Build configuration list for PBXNativeTarget "predict-ios" */ = {
+		472E1CD51C545B31005E3FE0 /* Build configuration list for PBXNativeTarget "mnist-ios" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				472E1CD61C545B31005E3FE0 /* Debug */,

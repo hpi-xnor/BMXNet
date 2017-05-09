@@ -1,24 +1,28 @@
 # MXNet on the iPhone
 
-This is an example project for running mxnet prediction on the iPhone.
+These are example projects running mxnet prediction on the iPhone.
+- ``mnist-ios`` runs a example app which can detect single handwritten digits
+- ``predict-ios`` contains an imagenet/cifar10 trained model to classify images
 
 ## Usage
 
-The xcode project is self contained. Just ``build`` away!
+The xcode projects need a modified, amalgamated mxnet library. Each project contains an ``MXNet/amalgamate_mxnet.sh`` script. These need to be run once (and after each change in the mxnet library). Then use xcode to ``build`` away!
 
 ## What it does
 
 Under the hood, we need the amalgamated MXNet source, the c predict headers, a trained and saved model from mxnet and set some additional environment variables in xcode.
 
-The script ``MXNet/amalgamate_mxnet.sh`` will be run as pre build script and amalgamate mxnet and perform the changes necessary for ios as described in the amalgamation readme file.
+The script ``MXNet/amalgamate_mxnet.sh`` will amalgamate mxnet and perform the changes necessary for ios as described in the amalgamation readme file.
 
 The xcode project already contains the preprocessor settings required to build mxnet for ios:
 - ``"MXNET_PREDICT_ONLY=1"``
 - ``"MXNET_USE_OPENCV=0"``
 - ``"MSHADOW_USE_CUDA=0"``
 - ``"MSHADOW_USE_SSE=0"``
+- ``"BINARY_WORD_32=1"`` (set to 32bit for ARM7 devices)
+- ``"BINARY_WORD_64=0"``
 
-There is a pre-trained Inception-BN model included in this repo (``predict-ios/Inception``)
+There are pre-trained models included in the projects.
 
 # \<original readme\> WhatsThis-iOS
 
