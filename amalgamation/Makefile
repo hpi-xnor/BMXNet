@@ -47,8 +47,9 @@ ifeq ($(OPENMP), 1)
 endif
 
 ifeq ($(ANDROID), 1)
-    CFLAGS += -mfpu=neon -march=armv7-a -mtune=generic-armv7-a
+    CFLAGS += -mfpu=neon -march=armv7-a -mthumb -mfloat-abi=softfp
     CFLAGS += -I${NDK_TOOLCHAIN_ROOT}/include/c++/4.9.x
+    LDFLAGS += -march=armv7-a
 
     ifeq ($(CC), arm-linux-androideabi-clang)
         LDFLAGS += -L${NDK_TOOLCHAIN_ROOT}/arm-linux-androideabi/lib/armv7-a

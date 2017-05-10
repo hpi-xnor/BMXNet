@@ -26,7 +26,7 @@ This module is created by [Jack Deng](https://github.com/jdeng).
 
 Android
 ---------------
-Setup NDK and build your standalone toolchain. [Instructions](http://developer.android.com/ndk/guides/standalone_toolchain.html#itc) Use the Advanced Method!!! In particular set PATH, CC and CXX (on macOS, be sure to also set AR). The minimum API level required is 16. Make sure to copy `{TOOLCHAIN_ROOT}/arm-linux-androideabi/lib/armv7-a/libc++_shared.so` to `{TOOLCHAIN_ROOT}/arm-linux-androideabi/lib/armv7-a/libc++.so`
+Setup NDK and build your standalone toolchain. [Instructions](http://developer.android.com/ndk/guides/standalone_toolchain.html#itc) Set PATH, CC and CXX (on macOS, be sure to also set AR). The minimum API level required is 16.
 
 Compilation should work with `gcc` and `clang`.
 Example:
@@ -41,7 +41,7 @@ Build OpenBLAS for Android: [Build OpenBLAS](https://github.com/xianyi/OpenBLAS/
 Modify OPENBLAS_ROOT in Makefile.
 Also set NDK_TOOLCHAIN_ROOT to the root dir of the android toolchain you just created
 
-Type ```make ANDROID=1``` to build amalgamate MXNet with android support. Type `make ANDROID=1 OPENMP=1` to amalgamate MXNet for Android with OpenMP. You can only amalgamate the library with OpenMP if you use `gcc` as compiler. It does not work with `clang` yet.
+Type `make ANDROID=1` to amalgamate MXNet with android support. Type `make ANDROID=1 OPENMP=1` to amalgamate MXNet for Android with OpenMP. You can only amalgamate the library with OpenMP if you use `gcc` as compiler. It does not work with `clang` yet.
 
 In most cases you will want to use jni_libmxnet_predict.so. It contains the JNIs. In case you want to build your own JNI, link with libmxnet_predict.o
 
