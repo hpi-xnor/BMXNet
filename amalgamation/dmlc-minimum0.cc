@@ -3,6 +3,7 @@
  * \brief Mininum DMLC library Amalgamation, used for easy plugin of dmlc lib.
  *  Normally this is not needed.
  */
+
 #include "../dmlc-core/src/io/line_split.cc"
 #include "../dmlc-core/src/io/recordio_split.cc"
 #include "../dmlc-core/src/io/input_split_base.cc"

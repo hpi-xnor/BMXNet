@@ -12,6 +12,11 @@ blacklist = [
 ]
 minimum = int(sys.argv[7]) if len(sys.argv) > 5 else 0
 android = int(sys.argv[8]) if len(sys.argv) > 6 else 0
+openmp = int(sys.argv[9]) if len(sys.argv) > 7 else 0
+
+if android != 0:
+    blacklist.append('execinfo.h')
+    blacklist.append('packet/sse-inl.h')
 
 def pprint(lst):
     for item in lst:
@@ -112,6 +117,10 @@ if minimum != 0:
     print >>f, "#define MSHADOW_STAND_ALONE 1"
     print >>f, "#define MSHADOW_USE_SSE 0"
     print >>f, "#define MSHADOW_USE_CBLAS 0"
+elif android != 0:
+    print >>f, "#define MSHADOW_USE_SSE 0"
+    print >>f, "#include <cstdio>"
+    print >>f, "#define fopen64 std::fopen"
 
 print >>f, '''
 #if defined(__MACH__)
@@ -132,6 +141,9 @@ print >>f, '''
 
 if minimum != 0 and android != 0 and 'complex.h' not in sysheaders:
     sysheaders.append('complex.h')
+
+if openmp != 0:
+    sysheaders.append('omp.h')
 
 for k in sorted(sysheaders):
     print >>f, "#include <%s>" % k
