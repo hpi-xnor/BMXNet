@@ -21,11 +21,12 @@ void xnor_gemm_unrolled(int M, int N, int K,
                         BINARY_WORD *B, int ldb,
                         float *C, int ldc){
   int m,k,n;
+  BINARY_WORD A_PART[UNROLLN];
+  int popc[UNROLLN];
   #pragma omp parallel for    
   for (m = 0; m < M; ++m) {
     #pragma omp parallel for
     for (k = 0; k < ((K / UNROLLN) * UNROLLN); k+=UNROLLN) {
-      BINARY_WORD A_PART[UNROLLN];
       A_PART[0] = A[m*lda+k];
       A_PART[1] = A[m*lda+k+1];
       A_PART[2] = A[m*lda+k+2];
@@ -34,7 +35,6 @@ void xnor_gemm_unrolled(int M, int N, int K,
       A_PART[5] = A[m*lda+k+5];
       #pragma omp parallel for
       for (n = 0; n < N; ++n) {
-        int popc[UNROLLN];
         popc[0] = __builtin_popcountl(~(A_PART[0] ^ B[(k+0)*ldb+n]));
         popc[1] = __builtin_popcountl(~(A_PART[1] ^ B[(k+1)*ldb+n]));
         popc[2] = __builtin_popcountl(~(A_PART[2] ^ B[(k+2)*ldb+n]));
@@ -47,10 +47,10 @@ void xnor_gemm_unrolled(int M, int N, int K,
 
     #pragma omp parallel for 
     for (k=(K / UNROLLN) * UNROLLN; k < K; ++k) {
-      BINARY_WORD A_PART = A[m*lda+k];
+      A_PART[0] = A[m*lda+k];
       #pragma omp parallel for
       for (n = 0; n < N; ++n) {
-        C[m * ldc + n] += __builtin_popcountl(~(A_PART ^ B[k * ldb + n]));
+        C[m * ldc + n] += __builtin_popcountl(~(A_PART[0] ^ B[k * ldb + n]));
       }
     }
   }
@@ -60,10 +60,11 @@ void xnor_gemm_unrolled_no_omp(int M, int N, int K,
                         BINARY_WORD *A, int lda,
                         BINARY_WORD *B, int ldb,
                         float *C, int ldc){
-  int m,k,n;   
+  int m,k,n;
+  BINARY_WORD A_PART[UNROLLN];
+  int popc[UNROLLN];
   for (m = 0; m < M; ++m) {
     for (k = 0; k < ((K / UNROLLN) * UNROLLN); k+=UNROLLN) {
-      BINARY_WORD A_PART[UNROLLN];
       A_PART[0] = A[m*lda+k];
       A_PART[1] = A[m*lda+k+1];
       A_PART[2] = A[m*lda+k+2];
@@ -71,7 +72,6 @@ void xnor_gemm_unrolled_no_omp(int M, int N, int K,
       A_PART[4] = A[m*lda+k+4];
       A_PART[5] = A[m*lda+k+5];
       for (n = 0; n < N; ++n) {
-        int popc[UNROLLN];
         popc[0] = __builtin_popcountl(~(A_PART[0] ^ B[(k+0)*ldb+n]));
         popc[1] = __builtin_popcountl(~(A_PART[1] ^ B[(k+1)*ldb+n]));
         popc[2] = __builtin_popcountl(~(A_PART[2] ^ B[(k+2)*ldb+n]));
@@ -83,9 +83,9 @@ void xnor_gemm_unrolled_no_omp(int M, int N, int K,
     }
 
     for (k=(K / UNROLLN) * UNROLLN; k < K; ++k) {
-      BINARY_WORD A_PART = A[m*lda+k];
+      A_PART[0] = A[m*lda+k];
       for (n = 0; n < N; ++n) {
-        C[m * ldc + n] += __builtin_popcountl(~(A_PART ^ B[k * ldb + n]));
+        C[m * ldc + n] += __builtin_popcountl(~(A_PART[0] ^ B[k * ldb + n]));
       }
     }
   }
@@ -298,7 +298,7 @@ void xnor_gemm_blocking_packing_inner_kernel( int m, int n, int k, BINARY_WORD *
     }
     
   } 
-  delete packedB;   
+  delete[] packedB;
 }
 
 void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY_WORD *a, int lda, 
@@ -319,7 +319,7 @@ void xnor_gemm_blocking_packing_inner_kernel_no_omp( int m, int n, int k, BINARY
     }
   }
 
-  delete packedB;
+  delete[] packedB;
 }
 
 /**
