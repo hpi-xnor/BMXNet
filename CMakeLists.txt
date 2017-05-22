@@ -388,4 +388,4 @@ add_custom_target(mxnet_lint COMMAND ${CMAKE_COMMAND} -DMSVC=${MSVC} -DPYTHON_EX
 
 add_subdirectory(tests/cpp)
 add_subdirectory(example/image-classification/predict-cpp)
-add_subdirectory(smd_hpi/model-converter) # added by hpi smd
+add_subdirectory(smd_hpi/tools/model-converter) # added by hpi smd
