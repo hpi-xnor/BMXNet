@@ -1,109 +1,56 @@
 # HPI-DeepLearning fork of mxnet 
 
-A fork of the deep learning framework mxnet to study and implement quantization and binarization in neural networks.
+A fork of the deep learning framework [mxnet](http://mxnet.io) to study and implement quantization and binarization in neural networks.
 
 Our current efforts are focused on binarizing the inputs and weights of convolutional layers, enabling the use of performant bit operations instead of expensive matrix multiplications as described in:
 
 [XNOR-Net: ImageNet Classification Using Binary Convolutional Neural Networks](https://arxiv.org/abs/1603.05279)
 
-# usage
+# Setup
 
-We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](http://mxnet.io/get_started/setup.html#prerequisites)
+We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](http://mxnet.io/get_started/install.html) in the ``install from source`` section. Adjust settings in cmake (build-type ``Release`` or ``Debug``, enable CUDA, OpenMP etc.)  
 
 ```shell
-$ mkdir build-debug && cd build-debug
-$ ccmake ..
-$ make
+$ git clone --recursive https://github.com/hpi-xnor/mxnet.git # remember to include the --recursive
+$ mkdir build && cd build
+$ ccmake .. # or cmake, or GUI cmake
+$ make -j `nproc`
 ```
-Adjust settings in cmake (build-type ``Release`` or ``Debug``, enable CUDA, OpenMP etc.)  
-This will generate the mxnet library. To be able to use it from python, be sure to add the location of the libray to your ``LD_LIBRARY_PATH``:
+
+This will generate the mxnet library. To be able to use it from python, be sure to add the location of the libray to your ``LD_LIBRARY_PATH`` as well as the mxnet python folder to your ``PYTHONPATH``:
 ```shell
-$ export LD_LIBRARY_PATH=<mxnet-root>/build-debug
+$ export LD_LIBRARY_PATH=<mxnet-root>/build
+$ export PYTHONPATH=<mxnet-root>/python
 ```
-Have a look at our [source and examples](smd_hpi)
+# Usage
 
-----------
-``<default mxnet readme appended for reference>``
+Our main contribution are drop-in replacements for the Convolution and Activation layers of mxnet called **QConvoluion** and **QActivation**.
 
-<img src=https://raw.githubusercontent.com/dmlc/dmlc.github.io/master/img/logo-m/mxnet2.png width=135/> *for Deep Learning*
-=====
+These can be used when specifying a model. They extend the parameters of the original Convolution layer of mxnet.
 
-[![Build Status](https://travis-ci.org/dmlc/mxnet.svg?branch=master)](https://travis-ci.org/dmlc/mxnet)
-[![Documentation Status](https://readthedocs.org/projects/mxnet/badge/?version=latest)](http://mxnet.io/)
-[![GitHub license](http://dmlc.github.io/img/apache2.svg)](./LICENSE)
+## Quantization
 
-![banner](https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/image/banner.png)
+Set the QConvolution parameter ``act_bit`` to a value between 1 and 32 to quantize the weights and activation to that bitwidth.
 
-MXNet is a deep learning framework designed for both *efficiency* and *flexibility*.
-It allows you to ***mix*** the [flavours](http://mxnet.io/architecture/index.html#deep-learning-system-design-concepts) of symbolic
-programming and imperative programming to ***maximize*** efficiency and productivity.
-In its core, a dynamic dependency scheduler that automatically parallelizes both symbolic and imperative operations on the fly.
-A graph optimization layer on top of that makes symbolic execution fast and memory efficient.
-The library is portable and lightweight, and it scales to multiple GPUs and multiple machines.
+The quantization on bitwidths ranging from 2 to 31 bit is mainly for scientific purpose. There is no speed or memory gain as the quantized values are still stored in full precision ``float`` variables.
 
-MXNet is also more than a deep learning project. It is also a collection of
-[blue prints and guidelines](http://mxnet.io/architecture/index.html#deep-learning-system-design-concepts) for building
-deep learning system, and interesting insights of DL systems for hackers.
+### Binarization
 
-[![Join the chat at https://gitter.im/dmlc/mxnet](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dmlc/mxnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+To binarize the weights first set ``act_bit=1``. Then train your network (you can use CUDA). The resulting .params file will still contain binarized weights, but still store a single weight in one float. 
 
-What's New
-----------
-* [Version 0.9.3 Release](./docs/architecture/release_note_0_9.md) - First 0.9 official release.
-* [Version 0.9.1 Release (NNVM refactor)](./docs/architecture/release_note_0_9.md) - NNVM branch is merged into master now. An official release will be made soon.
-* [Version 0.8.0 Release](https://github.com/dmlc/mxnet/releases/tag/v0.8.0)
-* [Updated Image Classification with new Pre-trained Models](./example/image-classification)
-* [Python Notebooks for How to Use MXNet](https://github.com/dmlc/mxnet-notebooks)
-* [MKLDNN for Faster CPU Performance](./MKL_README.md)
-* [MXNet Memory Monger, Training Deeper Nets with Sublinear Memory Cost](https://github.com/dmlc/mxnet-memonger)
-* [Tutorial for NVidia GTC 2016](https://github.com/dmlc/mxnet-gtc-tutorial)
-* [Embedding Torch layers and functions in MXNet](http://mxnet.io/how_to/torch.html)
-* [MXNet.js: Javascript Package for Deep Learning in Browser (without server)
-](https://github.com/dmlc/mxnet.js/)
-* [Design Note: Design Efficient Deep Learning Data Loading Module](http://mxnet.io/architecture/note_data_loading.html)
-* [MXNet on Mobile Device](http://mxnet.io/how_to/smart_device.html)
-* [Distributed Training](http://mxnet.io/how_to/multi_devices.html)
-* [Guide to Creating New Operators (Layers)](http://mxnet.io/how_to/new_op.html)
-* [Go binding for inference](https://github.com/songtianyi/go-mxnet-predictor)
-* [Amalgamation and Go Binding for Predictors](https://github.com/jdeng/gomxnet/) - Outdated
-* [Training Deep Net on 14 Million Images on A Single Machine](http://mxnet.io/tutorials/computer_vision/imagenet_full.html)
+To convert your trained and saved network, call the model converter with your ``.params`` file: 
+```shell
+$ <mxnet-root>smd_hpi/tools/model_converter mnist-0001.params
+```
 
-Contents
---------
-* [Documentation and Tutorials](http://mxnet.io/)
-* [Design Notes](http://mxnet.io/architecture/index.html)
-* [Code Examples](example)
-* [Installation](http://mxnet.io/get_started/setup.html)
-* [Pretrained Models](https://github.com/dmlc/mxnet-model-gallery)
-* [Contribute to MXNet](http://mxnet.io/community/contribute.html)
-* [Frequent Asked Questions](http://mxnet.io/how_to/faq.html)
+This will generate a ``.params`` and ``.json`` file with prepended ``binarized_``. This model file will use only 1 bit of runtime memory and storage for every weight in the convolutional layers.
 
-Features
---------
-* Design notes providing useful insights that can re-used by other DL projects
-* Flexible configuration for arbitrary computation graph
-* Mix and match good flavours of programming to maximize flexibility and efficiency
-* Lightweight, memory efficient and portable to smart devices
-* Scales up to multi GPUs and distributed setting with auto parallelism
-* Support for python, R, C++ and Julia
-* Cloud-friendly and directly compatible with S3, HDFS, and Azure
+We have example python scripts to train and validate [resnet18](smd_hpi/examples/binary-imagenet1k) (cifar10, imagenet) and [lenet](md_hpi/examples/binary_mnist) (mnist) neural networks with binarized layers.
 
-Ask Questions
--------------
-* Please use [mxnet/issues](https://github.com/dmlc/mxnet/issues) for how to use mxnet and reporting bugs 
+There are example applications running on iOS and Android that can utilize binarized networks. Find them in the following repos:
+- [Android image classification](https://github.com/hpi-xnor/android-image-classification)
+- [iOS image classification](https://github.com/hpi-xnor/ios-image-classification)
+- [iOS handwritten digit detection](https://github.com/hpi-xnor/ios-mnist)
 
-License
--------
-© Contributors, 2015-2017. Licensed under an [Apache-2.0](https://github.com/dmlc/mxnet/blob/master/LICENSE) license.
+Have a look at our [source, tools and examples](smd_hpi) to find out more.
 
-Reference Paper
----------------
-
-Tianqi Chen, Mu Li, Yutian Li, Min Lin, Naiyan Wang, Minjie Wang, Tianjun Xiao,
-Bing Xu, Chiyuan Zhang, and Zheng Zhang.
-[MXNet: A Flexible and Efficient Machine Learning Library for Heterogeneous Distributed Systems](https://github.com/dmlc/web-data/raw/master/mxnet/paper/mxnet-learningsys.pdf).
-In Neural Information Processing Systems, Workshop on Machine Learning Systems, 2015
-
-History
--------
-MXNet is initiated and designed in collaboration by the authors of [cxxnet](https://github.com/dmlc/cxxnet), [minerva](https://github.com/dmlc/minerva) and [purine2](https://github.com/purine/purine2). The project reflects what we have learnt from the past projects. It combines important flavours of the existing projects for efficiency, flexibility and memory efficiency.
