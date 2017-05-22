@@ -9,4 +9,4 @@
 	url = https://github.com/dmlc/ps-lite
 [submodule "nnvm"]
 	path = nnvm
-	url = git@gitlab.hpi.de:christian.bartz/nnvm.git
+	url = https://github.com/hpi-xnor/nnvm.git
