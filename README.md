@@ -22,6 +22,18 @@ This will generate the mxnet library. To be able to use it from python, be sure 
 $ export LD_LIBRARY_PATH=<mxnet-root>/build
 $ export PYTHONPATH=<mxnet-root>/python
 ```
+### Docker
+
+There is a simple Dockerfile that you can use to ease the setup process. (Be *warned* though, CUDA will not work inside the container so training process can be quite tedious)
+
+```shell
+$ cd <mxnet-root>/smd_hpi/tools/docker
+$ docker build -t mxnet
+$ docker run -t -i mxnet
+```
+
+You probably also want to map a folder to share files (trained models) inside docker (``-v <absolute local path>:/shared``).
+
 # Usage
 
 Our main contribution are drop-in replacements for the Convolution and Activation layers of mxnet called **QConvoluion** and **QActivation**.
