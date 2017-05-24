@@ -8,7 +8,7 @@ Our current efforts are focused on binarizing the inputs and weights of convolut
 
 # Setup
 
-We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](http://mxnet.io/get_started/install.html) in the ``install from source`` section. 
+We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](docs/get_started/setup.md#prerequisites). 
 
 Adjust settings in cmake (build-type ``Release`` or ``Debug``, configure CUDA, OpenBLAS, OpenCV, OpenMP etc.)  
 
