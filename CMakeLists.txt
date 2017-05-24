@@ -213,7 +213,7 @@ else()
 ENDIF(SSE4_2_FOUND)
 
 # set type of Binary_Word
-set(BINARY_WORD_TYPE "uint32" CACHE STRING "Selected BINARY_WORD_TYPE")
+set(BINARY_WORD_TYPE "uint64" CACHE STRING "Selected BINARY_WORD_TYPE")
 set_property(CACHE BINARY_WORD_TYPE PROPERTY STRINGS "uint32;uint64")
 if(BINARY_WORD_TYPE STREQUAL "uint32")
   message(STATUS "using uint32_t as container for binarized values")
@@ -337,11 +337,8 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" AND USE_MXNET_LIB_NAMING)
-  add_library(mxnet MODULE ${SOURCE})
-else()
   add_library(mxnet SHARED ${SOURCE})
-endif()
+
 target_link_libraries(mxnet ${mxnet_LINKER_LIBS})
 
 if(USE_PLUGINS_WARPCTC)
