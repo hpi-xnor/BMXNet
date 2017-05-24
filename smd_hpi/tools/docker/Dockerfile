@@ -24,7 +24,7 @@ RUN mkdir /mxnet/release && \
     cmake /mxnet
 
 RUN cd /mxnet/release && \
-    make
+    make -j `nproc`
 
 ENV LD_LIBRARY_PATH=/mxnet/release
 ENV PYTHONPATH=/mxnet/python

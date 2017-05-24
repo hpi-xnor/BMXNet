@@ -50,7 +50,7 @@ The quantization on bit widths ranging from 2 to 31 bit is available mainly for 
 
 ### Binarization
 
-To binarize the weights first set ``act_bit=1``. Then train your network (you can use CUDA). The resulting .params file will still contain binarized weights, but still store a single weight in one float. 
+To binarize the weights first set ``act_bit=1``. Then train your network (you can use CUDA). The resulting .params file will contain binary weights, but still store a single weight in one float. 
 
 To convert your trained and saved network, call the model converter with your ``.params`` file: 
 ```shell
