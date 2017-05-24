@@ -27,6 +27,12 @@ Both python and R training programs are provided. Use `train_*.py` or
   ```bash
   python train_mnist.py --network mlp
   ```
+  
+- train a binary resnet on the cifar10 dataset
+
+  ```bash
+  python train_cifar10.py --network resnet-binary
+  ```
 
 - train a 110-layer resnet on the cifar10 dataset with batch size 128 and GPU 0 and 1
 

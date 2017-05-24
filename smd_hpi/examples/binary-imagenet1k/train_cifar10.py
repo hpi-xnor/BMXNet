@@ -16,7 +16,7 @@ def download_cifar10():
 
 if __name__ == '__main__':
     # download data
-#    (train_fname, val_fname) = download_cifar10()
+    (train_fname, val_fname) = download_cifar10()
 
     # parse args
     parser = argparse.ArgumentParser(description="train cifar10",
@@ -32,8 +32,8 @@ if __name__ == '__main__':
         network        = 'cifar10',
         num_layers     = 18,
         # data
-        data_train     = '/data/haojin/cifar/cifar10/cifar10_train.rec',
-        data_val       = '/data/haojin/cifar/cifar10/cifar10_val.rec',
+        data_train     = train_fname,
+        data_val       = val_fname,
         num_classes    = 10,
         num_examples   = 50000,
         image_shape    = '3,32,32',
