@@ -1,4 +1,4 @@
-# HPI-DeepLearning fork of mxnet 
+# xnor enhanced neural nets // Hasso Plattner Institute
 
 A fork of the deep learning framework [mxnet](http://mxnet.io) to study and implement quantization and binarization in neural networks.
 
@@ -24,7 +24,7 @@ $ export PYTHONPATH=<mxnet-root>/python
 ```
 ### Docker
 
-There is a simple Dockerfile that you can use to ease the setup process. (Be *warned* though, CUDA will not work inside the container so training process can be quite tedious)
+There is a simple Dockerfile that you can use to ease the setup process. Once running, find mxnet at ``/mxnet`` and the build folder at ``/mxnet/release``. (Be *warned* though, CUDA will not work inside the container so training process can be quite tedious)
 
 ```shell
 $ cd <mxnet-root>/smd_hpi/tools/docker
@@ -36,15 +36,15 @@ You probably also want to map a folder to share files (trained models) inside do
 
 # Usage
 
-Our main contribution are drop-in replacements for the Convolution and Activation layers of mxnet called **QConvoluion** and **QActivation**.
+Our main contribution are drop-in replacements for the Convolution, FullyConnected and Activation layers of mxnet called **QConvoluion**, **QFullyConnected** and **QActivation**.
 
-These can be used when specifying a model. They extend the parameters of the original Convolution layer of mxnet.
+These can be used when specifying a model. They extend the parameters of their corresponding original layer of mxnet with ``act_bit``.
 
 ## Quantization
 
-Set the QConvolution parameter ``act_bit`` to a value between 1 and 32 to quantize the weights and activation to that bitwidth.
+Set the parameter ``act_bit`` to a value between 1 and 32 to quantize the weights and activation to that bit width.
 
-The quantization on bitwidths ranging from 2 to 31 bit is mainly for scientific purpose. There is no speed or memory gain as the quantized values are still stored in full precision ``float`` variables.
+The quantization on bit widths ranging from 2 to 31 bit is available mainly for scientific purpose. There is no speed or memory gain (rather the opposite since there are conversion steps) as the quantized values are still stored in full precision ``float`` variables.
 
 ### Binarization
 
@@ -57,7 +57,7 @@ $ <mxnet-root>smd_hpi/tools/model_converter mnist-0001.params
 
 This will generate a ``.params`` and ``.json`` file with prepended ``binarized_``. This model file will use only 1 bit of runtime memory and storage for every weight in the convolutional layers.
 
-We have example python scripts to train and validate [resnet18](smd_hpi/examples/binary-imagenet1k) (cifar10, imagenet) and [lenet](md_hpi/examples/binary_mnist) (mnist) neural networks with binarized layers.
+We have example python scripts to train and validate [resnet18](smd_hpi/examples/binary-imagenet1k) (cifar10, imagenet) and [lenet](smd_hpi/examples/binary_mnist) (mnist) neural networks with binarized layers.
 
 There are example applications running on iOS and Android that can utilize binarized networks. Find them in the following repos:
 - [Android image classification](https://github.com/hpi-xnor/android-image-classification)
