@@ -1,7 +1,7 @@
 #! /bin/bash
 cd ../nnvm/amalgamation
 make clean
-make nnvm.d
+make nnvm.d ANDROID=$1 OPENMP=$2
 cp nnvm.d ../../amalgamation/
 echo '
 #include "mshadow/tensor.h"
