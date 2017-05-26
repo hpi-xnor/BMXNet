@@ -162,7 +162,7 @@ def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, ba
 	print 'Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
-	lenet = get_binary_lenet()
+	lenet = get_lenet()
 	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
 	device = mx.cpu()
 	if gpu_id >= 0:

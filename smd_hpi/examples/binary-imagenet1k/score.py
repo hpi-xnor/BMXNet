@@ -49,10 +49,10 @@ def score(model_prefix, epoch, data_val, metrics, gpus, batch_size, rgb_mean,
     tic = time.time()
     for batch in data:        
         mod.forward(batch, is_train=False)
-        #for m in metrics:
-        #    mod.update_metric(m, batch.label)
+        for m in metrics:
+            mod.update_metric(m, batch.label)
         num += batch_size
-        if num >= 100:
+        if num >= 1000:
             total_bat = time.time() - tic
             logging.info('%f second per image, total time: %f', total_bat/num, total_bat)
             break
@@ -82,6 +82,6 @@ if __name__ == '__main__':
 
     (speed,) = score(metrics = metrics, **vars(args))
     logging.info('Finished with %f images per second', speed)
-    sys.exit(0)
-    #for m in metrics:
-    #    logging.info(m.get())
+    #sys.exit(0)
+    for m in metrics:
+        logging.info(m.get())
