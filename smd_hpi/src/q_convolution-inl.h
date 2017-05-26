@@ -146,8 +146,8 @@ class QConvolutionOp : public Operator {
         << "Must init CuBLAS handle in stream";
 #endif 
     // xnor related check
-    //CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
-    //  << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
+    CHECK_EQ(data.shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
+      << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << data.shape_[1];
 
     //============================================//
     //            WEIGHTS quantization            //            
@@ -258,41 +258,6 @@ class QConvolutionOp : public Operator {
           //this converting is just for mimicing 1-bit xnor-popc operations
           if(this->param_.act_bit == 1)
             temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
-          
-          //============================//
-          // here my testing codes, will be removed later!!!
-          //============================//
-          /*
-          //get matrix dims
-          std::cout << "m: " ;
-          std::cout << wmat[gid].size(0) << std::endl;
-          std::cout << "n: ";
-          std::cout << wmat[gid].size(1) << std::endl;
-          std::cout << tmpc.size(0) << std::endl;
-          std::cout << "k: ";
-          std::cout << tmpc.size(1) << std::endl;
-          std::cout << "dot output:" << std::endl;
-          for (int x = 0; x < 100; ++x) {
-            std::cout << round(temp_dst.dptr_[x]); 
-            std::cout << " ";
-          }
-          std::cout << std::endl;
-
-          //============================//
-          // here my testing codes
-          //============================//
-          Tensor<xpu, 1, DType> binary_inputs_workspace =
-                  ctx.requested[q_conv::kTempSpace].get_space_typed<xpu, 1, DType>(
-                          Shape1(wmat[gid].size(1) * tmpc.size(1) / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD), s);
-          QConvolutionForward(wmat[gid].size(0), tmpc.size(0), tmpc.size(1), wmat[gid], binary_inputs_workspace,tmpc,temp_dst[gid]);          
-          std::cout << "xnor output:" << std::endl;
-          for (int x = 0; x < 100; ++x) {
-            std::cout << temp_dst.dptr_[x]; 
-            std::cout << " ";
-          }
-          std::cout << std::endl;
-                          
-        */
         }
       }
 

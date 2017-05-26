@@ -30,8 +30,8 @@ if __name__ == '__main__':
         network        = 'cifar10',
         num_layers     = 8,
         # data
-        data_train     = '/data/haojin/cifar/cifar100/train.rec',
-        data_val       = '/data/haojin/cifar/cifar100/test.rec',
+        data_train     = '/data/cifar/cifar100/train.rec',
+        data_val       = '/data/cifar/cifar100/test.rec',
         num_classes    = 100,
         num_examples   = 50000,
         image_shape    = '3,32,32',

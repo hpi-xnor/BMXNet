@@ -166,6 +166,7 @@ def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck
         body = mx.symbol.Pooling(data=body, kernel=(3, 3), stride=(2,2), pad=(1,1), pool_type='max')
 
     for i in range(num_stages):
+    # we can select specific stage in full precision 
 	if i==False:
 		body = residual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
                              name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, workspace=workspace,

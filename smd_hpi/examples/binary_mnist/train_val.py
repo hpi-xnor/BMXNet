@@ -36,7 +36,6 @@ def get_lenet():
 	bn1 = mx.sym.BatchNorm(data=pool1)
 
 	# second conv layer
-	#conv2 = mx.sym.QConvolution(data=pool1, kernel=(5,5), num_filter=50, act_bit=BITW)	
 	conv2 = mx.sym.Convolution(data=bn1, kernel=(5,5), num_filter=64)	
 	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')
 	bn2 = mx.sym.BatchNorm(data=conv2)
@@ -76,28 +75,17 @@ def get_binary_lenet():
 
 	# second conv layer
 	ba1 = mx.sym.QActivation(data=bn1, act_bit=BITA, backward_only=True)
-	#ba1 = mx.sym.Custom(data=ba1, op_type='debug')
 	conv2 = mx.sym.QConvolution(data=ba1, kernel=(5,5), num_filter=64, act_bit=BITW)
-	
-	#conv2 = mx.sym.Convolution(data=pool1, kernel=(5,5), num_filter=64)
 	bn2 = mx.sym.BatchNorm(data=conv2)
-	#conv2 = mx.sym.Custom(data=conv2, op_type='debug')	
-	#bn2 = mx.sym.Custom(data=bn2, op_type='debug')
 	pool2 = mx.sym.Pooling(data=bn2, pool_type="max", kernel=(2,2), stride=(2,2))
 	
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)	
 	ba2 = mx.sym.QActivation(data=flatten,  act_bit=BITA, backward_only=True)	
 	fc1 = mx.symbol.QFullyConnected(data=ba2, num_hidden=1000, act_bit=BITW)
-	#tanh2 = mx.sym.Activation(data=flatten, act_type="tanh")
-	#fc1 = mx.symbol.FullyConnected(data=tanh2, num_hidden=500)
-	
 	#fc1 = mx.sym.Custom(data=fc1, op_type='debug')
-
 	bn3 = mx.sym.BatchNorm(data=fc1)
-
 	tanh3 = mx.sym.Activation(data=bn3, act_type="tanh")
-#	tanh3 = mx.sym.QActivation(data=bn3,  act_bit=BITA)
 
 	# second fullc
 	fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
@@ -162,7 +150,7 @@ def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, ba
 	print 'Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
-	lenet = get_lenet()
+	lenet = get_binary_lenet()
 	train_iter, val_iter = prepair_data(train_img, val_img, train_lbl, val_lbl, batch_size)
 	device = mx.cpu()
 	if gpu_id >= 0:
@@ -178,5 +166,4 @@ def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu
 		initializer = mx.initializer.Xavier(),
 		batch_end_callback = mx.callback.Speedometer(batch_size, 5) # output progress for each 200 data batches
 	)
-
 	return model

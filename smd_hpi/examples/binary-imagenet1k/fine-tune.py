@@ -79,8 +79,8 @@ if __name__ == "__main__":
         optimizer        = 'sgd',
         disp_batches     = 10,
         top_k            = 5,
-        data_train       = '/data/haojin/imagenet1k/imagenet1k-train',
-        data_val         = '/data/haojin/imagenet1k/imagenet1k-val'
+        data_train       = '/data/imagenet1k/imagenet1k-train',
+        data_val         = '/data/imagenet1k/imagenet1k-val'
     )
     args = parser.parse_args()
 
