@@ -11,3 +11,4 @@ The structure should be fairly self explanatory.
 - ``examples`` several projects demonstrating the binarized/quantized operators
     - [binary_mnist](examples/binary_mnist) train and predict with a LeNet on the MNIST dataset
     - [binary-imagenet1k](examples/binary-imagenet1k) train and predict with a ResNet18 on the imagenet or cifar10 dataset
+- ``binary_models`` a collection of pre-trained binarized models over MNIST, CIFAR-10 and ImageNet dataset. The model accuracy has been described in our paper.
