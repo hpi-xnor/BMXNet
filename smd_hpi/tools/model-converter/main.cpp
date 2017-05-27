@@ -218,7 +218,7 @@ int main(int argc, char ** argv){
   if (argc != 2) {
     std::cout << "usage: " + std::string(argv[0]) + " <mxnet *.params file>" << std::endl;
     std::cout << "  will binarize the weights of the Convolutional Layers of your model," << std::endl;
-    std::cout << "  pack 32 values into one and save the result with the prefix 'binarized_'" << std::endl;
+    std::cout << "  pack 32(x86 and ARMv7) or 64(x64) values into one and save the result with the prefix 'binarized_'" << std::endl;
     return -1;
   }
 
