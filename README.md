@@ -4,7 +4,7 @@ A fork of the deep learning framework [mxnet](http://mxnet.io) to study and impl
 
 Our current efforts are focused on binarizing the inputs and weights of convolutional layers, enabling the use of performant bit operations instead of expensive matrix multiplications as described in:
 
-[XNOR-Net: ImageNet Classification Using Binary Convolutional Neural Networks](https://arxiv.org/abs/1603.05279)
+[BMXNet: An Open-Source Binary Neural Network Implementation Based on MXNet](https://www.dropbox.com/s/hpbznuizy2blmuj/hpi-xnor_paper.pdf?dl=0)
 
 # Setup
 
@@ -68,3 +68,8 @@ There are example applications running on iOS and Android that can utilize binar
 
 Have a look at our [source, tools and examples](smd_hpi) to find out more.
 
+### Reference
+
+[XNOR-Net: ImageNet Classification Using Binary Convolutional Neural Networks](https://arxiv.org/abs/1603.05279)
+[Binarized Neural Networks: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1](https://arxiv.org/abs/1602.02830)
+[DoReFa-Net: Training Low Bitwidth Convolutional Neural Networks with Low Bitwidth Gradients](https://arxiv.org/abs/1606.06160)
