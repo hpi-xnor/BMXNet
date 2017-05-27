@@ -4,7 +4,7 @@ A fork of the deep learning framework [mxnet](http://mxnet.io) to study and impl
 
 Our current efforts are focused on binarizing the inputs and weights of convolutional layers, enabling the use of performant bit operations instead of expensive matrix multiplications as described in:
 
-[BMXNet: An Open-Source Binary Neural Network Implementation Based on MXNet](https://www.dropbox.com/s/hpbznuizy2blmuj/hpi-xnor_paper.pdf?dl=0)
+- [BMXNet: An Open-Source Binary Neural Network Implementation Based on MXNet](https://www.dropbox.com/s/hpbznuizy2blmuj/hpi-xnor_paper.pdf?dl=0)
 
 # Setup
 
