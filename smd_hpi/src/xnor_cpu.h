@@ -250,7 +250,6 @@ namespace xnor_cpu {
   inline void get_binary_col(float* col, BINARY_WORD * b_col, int n, int k){        
     
     for(int y=0; y<(n/BITS_PER_BINARY_WORD); y++){
-      #pragma omp parallel for
       for(int x=0; x < k; ++x){          
         BINARY_WORD rvalue=0;
         BINARY_WORD sign;    

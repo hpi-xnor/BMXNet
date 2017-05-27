@@ -73,7 +73,7 @@ void transpose_and_convert_to_binary_col(mxnet::NDArray& array) {
   size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
   mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, mxnet::op::xnor_cpu::corresponding_dtype());
-  mxnet::op::xnor_cpu::get_binary_col((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, array.shape()[0], array.shape()[1]);
+  mxnet::op::xnor_cpu::get_binary_col_unrolled((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, array.shape()[0], array.shape()[1]);
   array = temp;
 }
 
