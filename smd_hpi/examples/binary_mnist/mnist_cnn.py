@@ -65,7 +65,7 @@ def main(args):
 	if not args.predict:
 		print 'starting training...'
 		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.epochs, args.gpu_id)
-		model.save_checkpoint(args.out_file, 1)
+		model.save(args.out_file, 1)
 	else:
 		mnist_val(args.model_prefix, args.epochs, train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
 		#mnist_classify(val_img, args.model_prefix, args.epochs, train_img, train_lbl, val_lbl, batch_size, args.gpu_id)
