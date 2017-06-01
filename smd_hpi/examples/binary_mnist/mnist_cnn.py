@@ -3,10 +3,7 @@ import os
 import urllib
 import gzip
 import struct
-import sys
-import cv2
 import argparse
-import mxnet as mx
 import matplotlib.pyplot as plt
 
 from train_val import train as mnist_train
