@@ -42,8 +42,8 @@ if __name__ == '__main__':
         optimizer        = 'adam',
         disp_batches     = 10,
         top_k            = 5,
-        data_train       = '/data/haojin/imagenet1k/imagenet1k-train.rec',
-        data_val         = '/data/haojin/imagenet1k/imagenet1k-val.rec'
+        data_train       = '/data/imagenet1k/imagenet1k-train.rec',
+        data_val         = '/data/imagenet1k/imagenet1k-val.rec'
     )
     args = parser.parse_args()
 

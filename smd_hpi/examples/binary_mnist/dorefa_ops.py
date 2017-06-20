@@ -65,22 +65,5 @@ def get_dorefa(nbit_w, nbit_a, nbit_g):
 		#if nbit_g == 32:
 		return x
 	return qua_w, qua_a, qua_g
-"""
-	global GRAD_DEFINED
-	if not GRAD_DEFINED:
-		@tf.RegisterGradient("FGGrad")
-		def grad_fg(op, x):
-			rank = x.get_shape().ndims
-			assert rank is not None
-			maxx = tf.reduce_max(tf.abs(x), list(range(1,rank)), keep_dims=True)
-			x = x / maxx
-			n = float(2**bitG-1)
-			x = x * 0.5 + 0.5 + tf.random_uniform(
-					tf.shape(x), minval=-0.5/n, maxval=0.5/n)
-			x = tf.clip_by_value(x, 0.0, 1.0)
-			x = quantize(x, bitG) - 0.5
-			return x * maxx * 2
-	GRAD_DEFINED = True
-"""
 
 	
