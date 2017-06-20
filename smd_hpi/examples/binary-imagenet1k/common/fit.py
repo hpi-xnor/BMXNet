@@ -122,8 +122,8 @@ def fit(args, network, data_loader, **kwargs):
         aux_params = kwargs['aux_params']
     else:
         sym, arg_params, aux_params = _load_model(args, kv.rank)
-        if sym is not None:
-            assert sym.tojson() == network.tojson()
+#        if sym is not None:
+#            assert sym.tojson() == network.tojson()
 
     fixed_param_names = [name for name in network.list_arguments() \
         if name.startswith('nothing')]
@@ -150,7 +150,7 @@ def fit(args, network, data_loader, **kwargs):
 
     lr_scheduler  = lr_scheduler
     optimizer_params = {
-            'learning_rate': lr,        
+            'learning_rate': lr,
             'wd' : args.wd,
             'lr_scheduler': lr_scheduler}
     if args.optimizer == 'sgd':
