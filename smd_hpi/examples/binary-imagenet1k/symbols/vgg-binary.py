@@ -125,9 +125,14 @@ def get_symbol(num_classes, **kwargs):
     relu6 = mx.symbol.Activation(data=fc6, act_type="relu", name="relu6")
     drop6 = mx.symbol.Dropout(data=relu6, p=0.5, name="drop6")
     # group 7
+    '''
     bn7 = mx.sym.BatchNorm(data=drop6, fix_gamma=False, eps=2e-5)
     act7 = mx.sym.QActivation(data=bn7, act_bit=BIT, backward_only=True)
     fc7 = mx.symbol.QFullyConnected(data=act7, num_hidden=4096, name="fc7")
+    relu7 = mx.symbol.Activation(data=fc7, act_type="relu", name="relu7")
+    drop7 = mx.symbol.Dropout(data=relu7, p=0.5, name="drop7")
+    '''
+    fc7 = mx.symbol.FullyConnected(data=drop6, num_hidden=4096, name="fc7")
     relu7 = mx.symbol.Activation(data=fc7, act_type="relu", name="relu7")
     drop7 = mx.symbol.Dropout(data=relu7, p=0.5, name="drop7")
     # output
