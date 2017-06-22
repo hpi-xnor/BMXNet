@@ -124,6 +124,7 @@ def get_symbol(num_classes, **kwargs):
     pool4 = mx.symbol.Pooling(
         data=relu4_3, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool4")
     # group 5
+    '''
     conv5_1 = mx.symbol.Convolution(
         data=pool4, kernel=(3, 3), pad=(1, 1), num_filter=512, name="conv5_1")
     relu5_1 = mx.symbol.Activation(data=conv5_1, act_type="relu", name="relu5_1")
@@ -137,6 +138,23 @@ def get_symbol(num_classes, **kwargs):
 
     pool5 = mx.symbol.Pooling(
         data=relu5_3, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool5")
+    '''
+
+    #binary style
+    act5_1 = mx.sym.QActivation(data=pool4, act_bit=BIT, backward_only=True)
+    conv5_1 = mx.symbol.QConvolution(
+        data=act5_1, kernel=(3, 3), pad=(1, 1), num_filter=512, name="conv5_1")
+
+    bn5_2 = mx.sym.BatchNorm(data=conv5_1, fix_gamma=False, eps=2e-5)
+    act5_2 = mx.sym.QActivation(data=bn5_2, act_bit=BIT, backward_only=True)  
+    conv5_2 = mx.symbol.QConvolution(
+        data=act5_2, kernel=(3, 3), pad=(1, 1), num_filter=512, name="conv5_2")
+
+    bn5 = mx.sym.BatchNorm(data=conv5_2, fix_gamma=False, eps=2e-5)
+    pool5 = mx.symbol.Pooling(
+        data=bn5, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool5")
+    #end binary style
+
     # group 6
     flatten = mx.symbol.Flatten(data=pool5, name="flatten")
     fc6 = mx.symbol.FullyConnected(data=flatten, num_hidden=4096, name="fc6")
