@@ -153,6 +153,7 @@ def get_symbol(num_classes, **kwargs):
     fc7 = mx.symbol.FullyConnected(data=drop6, num_hidden=4096, name="fc7")
     relu7 = mx.symbol.Activation(data=fc7, act_type="relu", name="relu7")
     drop7 = mx.symbol.Dropout(data=relu7, p=0.5, name="drop7")
+
     # output
     fc8 = mx.symbol.FullyConnected(data=drop7, num_hidden=num_classes, name="fc8")
     softmax = mx.symbol.SoftmaxOutput(data=fc8, name='softmax')
