@@ -10,10 +10,10 @@ endif
 
 # Whether use minimum build without blas and SSE, this will make the library super slow
 ifndef MIN
-    export MIN=0
-    DEFS=-DMSHADOW_USE_CBLAS=1
+	export MIN=0
+	DEFS=-DMSHADOW_USE_CBLAS=1
 else
-    DEFS=-DMSHADOW_USE_CBLAS=0
+	DEFS=-DMSHADOW_USE_CBLAS=0
 endif
 
 ifndef ANDROID
@@ -111,11 +111,11 @@ jni_libmxnet_predict.so: jni_libmxnet_predict.o
 	${CXX} ${CFLAGS} -shared -o $@ $(filter %.o %.a, $^) $(LDFLAGS)
 
 ifneq ($(ANDROID), 1)
-    android:
+        android:
 else
-    CFLAGS+=  -mhard-float -D_NDK_MATH_NO_SOFTFP=1 -O3
-    LDFLAGS+=  -Wl,--no-warn-mismatch -lm_hard
-    android: jni_libmxnet_predict.so
+        CFLAGS+=  -mhard-float -D_NDK_MATH_NO_SOFTFP=1 -O3
+        LDFLAGS+=  -Wl,--no-warn-mismatch -lm_hard
+        android: jni_libmxnet_predict.so
 endif
 
 libmxnet_predict.js: mxnet_predict-all.cc

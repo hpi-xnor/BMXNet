@@ -23,10 +23,6 @@
 #include "./operator_common.h"
 #include "./nn/im2col.h"
 
-#include <chrono>
-using  ns = std::chrono::nanoseconds;
-using get_time = std::chrono::steady_clock ;
-
 
 namespace mxnet {
 namespace op {

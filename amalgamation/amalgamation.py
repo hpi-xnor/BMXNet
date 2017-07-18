@@ -10,9 +10,9 @@ blacklist = [
     'nvml.h', 'opencv2/opencv.hpp', 'sys/stat.h', 'sys/types.h', 'cuda.h', 'cuda_fp16.h',
     'omp.h', 'execinfo.h', 'packet/sse-inl.h', 'emmintrin.h', 'thrust/device_vector.h'
     ]
-minimum = int(sys.argv[7]) if len(sys.argv) > 5 else 0
-android = int(sys.argv[8]) if len(sys.argv) > 6 else 0
-openmp = int(sys.argv[9]) if len(sys.argv) > 7 else 0
+minimum = int(sys.argv[7]) if len(sys.argv) > 6 else 0
+android = int(sys.argv[8]) if len(sys.argv) > 7 else 0
+openmp = int(sys.argv[9]) if len(sys.argv) > 8 else 0
 
 if android != 0:
     blacklist.append('execinfo.h')

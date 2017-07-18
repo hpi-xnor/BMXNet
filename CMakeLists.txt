@@ -277,9 +277,6 @@ assign_source_group("CUDA" ${GROUP_CUDA})
 
 # add smd_hpi
 ##========== add smd_hpi to source ============##
-mxnet_source_group("SMD_HPI\\Include"   GLOB "smd_hpi/src/*.h")
-mxnet_source_group("SMD_HPI\\Source"   GLOB "smd_hpi/src/*.cc")
-mxnet_source_group("SMD_HPI\\Cuda"   GLOB "smd_hpi/src/*.cu")
 FILE(GLOB_RECURSE SMD_HPI_SOURCE "smd_hpi/src/*.cc" "smd_hpi/src/*.h")
 FILE(GLOB_RECURSE SMD_HPI_CUDA "smd_hpi/src/*.cu")
 list(APPEND SOURCE ${SMD_HPI_SOURCE})
@@ -365,8 +362,7 @@ if (NOT (EXTRA_OPERATORS STREQUAL ""))
 	mxnet_source_group("Extra\\Cuda"   GLOB_RECURSE "${EXTRA_OPERATORS}/*.cu")
 	FILE(GLOB_RECURSE EXTRA_SRC "${EXTRA_OPERATORS}/*.cc")
 	FILE(GLOB_RECURSE EXTRA_CUSRC "${EXTRA_OPERATORS}/*.cu")
-	list(APPEND SOURCE ${EXTRA_SRC})
-	list(APPEND CUDA ${EXTRA_CUSRC})
+	list(APPEND SOURCE ${EXTRA_SRC} ${EXTRA_CUSRC})
 endif()
 
 if(MSVC)
