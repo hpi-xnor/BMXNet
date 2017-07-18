@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ml.dmlc.mxnet
 
 import java.nio.{ByteOrder, ByteBuffer}
@@ -12,9 +29,8 @@ import scala.ref.WeakReference
 
 /**
  * NDArray API of mxnet
- * @author Yizhi Liu, Yuan Tang
  */
-@AddNDArrayFunctions
+@AddNDArrayFunctions(false)
 object NDArray {
   implicit def getFirstResult(ret: NDArrayFuncReturn): NDArray = ret(0)
   private val logger = LoggerFactory.getLogger(classOf[NDArray])
@@ -154,7 +170,8 @@ object NDArray {
     checkCall(_LIB.mxSymbolGetAtomicSymbolInfo(
       handle, name, desc, numArgs, argNames, argTypes, argDescs, keyVarNumArgs))
     val arguments = (argTypes zip argNames).filter { case (dtype, _) =>
-      !(dtype.startsWith("NDArray") || dtype.startsWith("Symbol"))
+      !(dtype.startsWith("NDArray") || dtype.startsWith("Symbol")
+        || dtype.startsWith("NDArray-or-Symbol"))
     }.map { case (_, argName) =>
       argName
     }
@@ -275,6 +292,89 @@ object NDArray {
   }
 
   /**
+   * Returns the result of element-wise **equal to** (==) comparison operation with broadcasting.
+   * For each element in input arrays, return 1(true) if corresponding elements are same,
+   * otherwise return 0(false).
+   */
+  def equal(lhs: NDArray, rhs: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("broadcast_equal", Seq(lhs, rhs))
+  }
+
+  def equal(lhs: NDArray, rhs: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_equal_scalar", Seq(lhs, rhs))
+  }
+
+  /**
+   * Returns the result of element-wise **not equal to** (!=) comparison operation
+   * with broadcasting.
+   * For each element in input arrays, return 1(true) if corresponding elements are different,
+   * otherwise return 0(false).
+   */
+  def notEqual(lhs: NDArray, rhs: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("broadcast_not_equal", Seq(lhs, rhs))
+  }
+
+  def notEqual(lhs: NDArray, rhs: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_not_equal_scalar", Seq(lhs, rhs))
+  }
+
+  /**
+   * Returns the result of element-wise **greater than** (>) comparison operation
+   * with broadcasting.
+   * For each element in input arrays, return 1(true) if lhs elements are greater than rhs,
+   * otherwise return 0(false).
+   */
+  def greater(lhs: NDArray, rhs: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("broadcast_greater", Seq(lhs, rhs))
+  }
+
+  def greater(lhs: NDArray, rhs: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_greater_scalar", Seq(lhs, rhs))
+  }
+
+  /**
+   * Returns the result of element-wise **greater than or equal to** (>=) comparison
+   * operation with broadcasting.
+   * For each element in input arrays, return 1(true) if lhs elements are greater than equal to rhs,
+   * otherwise return 0(false).
+   */
+  def greaterEqual(lhs: NDArray, rhs: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("broadcast_greater_equal", Seq(lhs, rhs))
+  }
+
+  def greaterEqual(lhs: NDArray, rhs: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_greater_equal_scalar", Seq(lhs, rhs))
+  }
+
+  /**
+   * Returns the result of element-wise **lesser than** (<) comparison operation
+   * with broadcasting.
+   * For each element in input arrays, return 1(true) if lhs elements are less than rhs,
+   * otherwise return 0(false).
+   */
+  def lesser(lhs: NDArray, rhs: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("broadcast_lesser", Seq(lhs, rhs))
+  }
+
+  def lesser(lhs: NDArray, rhs: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_lesser_scalar", Seq(lhs, rhs))
+  }
+
+  /**
+   * Returns the result of element-wise **lesser than or equal to** (<=) comparison
+   * operation with broadcasting.
+   * For each element in input arrays, return 1(true) if lhs elements are
+   * lesser than equal to rhs, otherwise return 0(false).
+   */
+  def lesserEqual(lhs: NDArray, rhs: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("broadcast_lesser_equal", Seq(lhs, rhs))
+  }
+
+  def lesserEqual(lhs: NDArray, rhs: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_lesser_equal_scalar", Seq(lhs, rhs))
+  }
+
+  /**
    * Create a new NDArray that copies content from source_array.
    * @param sourceArr Source data to create NDArray from.
    * @param shape shape of the NDArray
@@ -288,29 +388,75 @@ object NDArray {
   }
 
   /**
-   * Join a sequence of arrays at the first dimension
-   * TODO: shall we make it native?
-   * @param arrays
+   * Returns evenly spaced values within a given interval.
+   * Values are generated within the half-open interval [`start`, `stop`). In other
+   * words, the interval includes `start` but excludes `stop`.
+   * @param start Start of interval. The default start value is 0.
+   * @param stop End of interval.
+   * @param step Spacing between values. The default step size is 1.
+   * @param repeat Number of times to repeat each element. The default repeat count is 1.
+   * @param ctx Device context. Default context is the current default context.
+   * @param dType The data type of the `NDArray`. The default datatype is `DType.Float32`.
+   * @return NDArray of evenly spaced values in the specified range.
    */
-  def concatenate(arrays: Seq[NDArray], ctx: Context = null): NDArray = {
-    require(arrays != null && arrays.size > 0, "arrays empty")
-    val array0 = arrays.head
-    val shape = array0.shape.drop(1)
-    var axis0 = array0.shape(0)
-    arrays.drop(1).foreach { array =>
-      require(shape == array.shape.drop(1),
-        s"shape mismatch between ${array.shape} and $shape")
-      axis0 += array.shape(0)
-    }
+  def arange(start: Float, stop: Option[Float] = None, step: Float = 1.0f,
+    repeat: Int = 1, ctx: Context = Context.defaultCtx,
+    dType: DType = Base.MX_REAL_TYPE): NDArray = {
+    val params = Map("start" -> start, "step" -> step,
+      "repeat" -> repeat, "ctx" -> ctx.toString, "dtype" -> dType.toString())
+    val fParams = if (stop == None) params else params ++ Map("stop" -> stop.get)
+    NDArray.genericNDArrayFunctionInvoke("_arange", Seq(), fParams)(0)
+  }
 
-    val output = NDArray.empty(Shape(axis0) ++ shape, ctx)
-    axis0 = 0
-    arrays.foreach { array =>
-      output.slice(axis0, axis0 + array.shape(0)).set(array)
-      axis0 += array.shape(0)
-    }
+  /**
+   * Concatenate a list of NDArrays along the specified dimension.
+   * @param arrays Arrays to be concatenate.
+   *               They must have identical shape except the first dimension.
+   *               They also must have the same data type.
+   * @param axis The axis along which to concatenate.
+   * @param alwaysCopy Default `True`. When not `True`,
+   *                   if the arrays only contain one `NDArray`,
+   *                   that element will be returned directly, avoid copying.
+   * @return An `NDArray` that lives on the same context as `arrays[0].context`.
+   */
+  def concatenate(arrays: Seq[NDArray], axis: Int = 0, alwaysCopy: Boolean = true): NDArray = {
+    require(arrays.size > 0)
 
-    output
+    val array0 = arrays(0)
+    if (!alwaysCopy && arrays.size == 1) {
+      array0
+    } else {
+      val shapeRest1 = array0.shape.slice(0, axis)
+      val shapeRest2 = array0.shape.slice(axis + 1, array0.shape.length)
+      val dtype = array0.dtype
+
+      val shapeAxis =
+        arrays.map(arr => {
+          require(shapeRest1 == arr.shape.slice(0, axis))
+          require(shapeRest2 == arr.shape.slice(axis + 1, arr.shape.length))
+          require(dtype == arr.dtype)
+          arr.shape(axis)
+        }).sum
+      val retShape = shapeRest1 ++ Shape(shapeAxis) ++ shapeRest2
+      val ret = NDArray.empty(retShape, ctx = array0.context, dtype = dtype)
+
+      var idx = 0
+      val begin = Array.fill(retShape.length)(0)
+      val end = retShape.toArray
+      for (arr <- arrays) {
+        if (axis == 0) {
+          ret.slice(idx, idx + arr.shape(0)).set(arr)
+        } else {
+          begin(axis) = idx
+          end(axis) = idx + arr.shape(axis)
+          NDArray._crop_assign(Map("out" -> ret,
+            "begin" -> Shape(begin),
+            "end" -> Shape(end)))(ret, arr)
+        }
+        idx += arr.shape(axis)
+      }
+      ret
+    }
   }
 
   def concatenate(arrays: NDArray *): NDArray = {
@@ -458,10 +604,7 @@ class NDArray private[mxnet](private[mxnet] val handle: NDArrayHandle,
         if (excepts.contains(addr)) {
           true
         } else {
-          weak.get match {
-            case Some(arr) => arr.dispose()
-            case None =>
-          }
+          weak.get.foreach(_.dispose())
           false
         }
       }
@@ -710,6 +853,78 @@ class NDArray private[mxnet](private[mxnet] val handle: NDArrayHandle,
     this
   }
 
+  def **(other: NDArray): NDArray = {
+    NDArray.power(this, other)
+  }
+
+  def **(other: Float): NDArray = {
+    NDArray.power(this, other)
+  }
+
+  def **=(other: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_power", Seq(this, other), Map("out" -> this))
+  }
+
+  def **=(other: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_power_scalar", Seq(this, other), Map("out" -> this))
+  }
+
+  def >(other: NDArray): NDArray = {
+    NDArray.greater(this, other)
+  }
+
+  def >(other: Float): NDArray = {
+    NDArray.greater(this, other)
+  }
+
+  def >=(other: NDArray): NDArray = {
+    NDArray.greaterEqual(this, other)
+  }
+
+  def >=(other: Float): NDArray = {
+    NDArray.greaterEqual(this, other)
+  }
+
+  def <(other: NDArray): NDArray = {
+    NDArray.lesser(this, other)
+  }
+
+  def <(other: Float): NDArray = {
+    NDArray.lesser(this, other)
+  }
+
+  def <=(other: NDArray): NDArray = {
+    NDArray.lesserEqual(this, other)
+  }
+
+  def <=(other: Float): NDArray = {
+    NDArray.lesserEqual(this, other)
+  }
+
+  def %(other: NDArray): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_mod", Seq(this, other))
+  }
+
+  def %(other: Float): NDArray = {
+    NDArray.genericNDArrayFunctionInvoke("_mod_scalar", Seq(this, other))
+  }
+
+  def %=(other: NDArray): NDArray = {
+    if (!writable) {
+      throw new IllegalArgumentException("trying to take modulo from a readonly NDArray")
+    }
+    NDArray.genericNDArrayFunctionInvoke("_mod", Seq(this, other), Map("out" -> this))
+    this
+  }
+
+  def %=(other: Float): NDArray = {
+    if (!writable) {
+      throw new IllegalArgumentException("trying to take modulo from a readonly NDArray")
+    }
+    NDArray.genericNDArrayFunctionInvoke("_mod_scalar", Seq(this, other), Map("out" -> this))
+    this
+  }
+
   /**
    * Return a copied flat java array of current array (row-major).
    * @return  A copy of array content.
@@ -770,20 +985,6 @@ class NDArray private[mxnet](private[mxnet] val handle: NDArrayHandle,
   def copy(): NDArray = copyTo(this.context)
 
   /**
-   * Return an `NDArray` that lives in the target context. If the array
-   * is already in that context, the same object is returned. Otherwise, a copy is made.
-   * @param context The target context we want the return value to live in.
-   * @return A copy or `self` as an `NDArray` that lives in the target context.
-   */
-  def asInContext(context: Context): NDArray = {
-    if (this.context == context) {
-      this
-    } else {
-      this.copyTo(context)
-    }
-  }
-
-  /**
    * Get shape of current NDArray.
    * @return an array representing shape of current ndarray
    */
@@ -798,6 +999,16 @@ class NDArray private[mxnet](private[mxnet] val handle: NDArrayHandle,
   // Get size of current NDArray.
   def size: Int = shape.product
 
+  /**
+   * Return an `NDArray` that lives in the target context. If the array
+   * is already in that context, `self` is returned. Otherwise, a copy is made.
+   * @param context The target context we want the return value to live in.
+   * @return A copy or `self` as an `NDArray` that lives in the target context.
+   */
+  def asInContext(context: Context): NDArray = {
+    if (this.context == context) this else this.copyTo(context)
+  }
+
   override def equals(o: Any): Boolean = o match {
     case that: NDArray =>
       that != null && that.shape == this.shape && that.toArray.sameElements(this.toArray)
@@ -811,13 +1022,13 @@ class NDArray private[mxnet](private[mxnet] val handle: NDArrayHandle,
 }
 // scalastyle:on finalize
 
-object NDArrayConversions {
+private[mxnet] object NDArrayConversions {
   implicit def int2Scalar(x: Int): NDArrayConversions = new NDArrayConversions(x.toFloat)
   implicit def double2Scalar(x: Double): NDArrayConversions = new NDArrayConversions(x.toFloat)
   implicit def float2Scalar(x: Float): NDArrayConversions = new NDArrayConversions(x)
 }
 
-class NDArrayConversions(val value: Float) {
+private[mxnet] class NDArrayConversions(val value: Float) {
   def +(other: NDArray): NDArray = {
     other + value
   }
@@ -845,11 +1056,46 @@ class NDArrayConversions(val value: Float) {
   def /(other: NDArrayFuncReturn): NDArray = {
     NDArray.genericNDArrayFunctionInvoke("_rdiv_scalar", Seq(other.head, value))
   }
+
+  def **(other: NDArray): NDArray = {
+    NDArray.power(value, other)
+  }
+  def **(other: NDArrayFuncReturn): NDArray = {
+    NDArray.power(value, other.head)
+  }
+
+  def >(other: NDArray): NDArray = {
+    NDArray.lesser(other, value)
+  }
+  def >(other: NDArrayFuncReturn): NDArray = {
+    NDArray.lesser(other.head, value)
+  }
+
+  def >=(other: NDArray): NDArray = {
+    NDArray.lesserEqual(other, value)
+  }
+  def >=(other: NDArrayFuncReturn): NDArray = {
+    NDArray.lesserEqual(other.head, value)
+  }
+
+  def <(other: NDArray): NDArray = {
+    NDArray.greater(other, value)
+  }
+  def <(other: NDArrayFuncReturn): NDArray = {
+    NDArray.greater(other.head, value)
+  }
+
+  def <=(other: NDArray): NDArray = {
+    NDArray.greaterEqual(other, value)
+  }
+  def <=(other: NDArrayFuncReturn): NDArray = {
+    NDArray.greaterEqual(other.head, value)
+  }
 }
 
-case class NDArrayFunction(handle: NDArrayHandle, arguments: List[String])
+private case class NDArrayFunction(handle: NDArrayHandle, arguments: List[String])
 
-class NDArrayFuncReturn(private[mxnet] val arr: Array[NDArray]) {
+private[mxnet] class NDArrayFuncReturn(private[mxnet] val arr: Array[NDArray]) {
   def head: NDArray = apply(0)
   def get: NDArray = {
     require(arr.length == 1, s"return array length = ${arr.length}")
@@ -892,6 +1138,16 @@ class NDArrayFuncReturn(private[mxnet] val arr: Array[NDArray]) {
   def *=(other: NDArray): NDArray = head *= other
   def *=(other: Float): NDArray = head *= other
   def /(other: NDArray): NDArray = head / other
+  def **(other: NDArray): NDArray = head ** other
+  def **(other: Float): NDArray = head ** other
+  def >(other: NDArray): NDArray = head > other
+  def >(other: Float): NDArray = head > other
+  def >=(other: NDArray): NDArray = head >= other
+  def >=(other: Float): NDArray = head >= other
+  def <(other: NDArray): NDArray = head < other
+  def <(other: Float): NDArray = head < other
+  def <=(other: NDArray): NDArray = head <= other
+  def <=(other: Float): NDArray = head <= other
   def toArray: Array[Float] = head.toArray
   def toScalar: Float = head.toScalar
   def copyTo(other: NDArray): NDArray = head.copyTo(other)
@@ -899,9 +1155,10 @@ class NDArrayFuncReturn(private[mxnet] val arr: Array[NDArray]) {
   def copy(): NDArray = head.copy()
   def shape: Shape = head.shape
   def size: Int = head.size
+  def asInContext(context: Context): NDArray = head.asInContext(context)
 }
 
-class NDArrayInternal private[mxnet](private val internal: Array[Byte], private val dtype: DType) {
+private[mxnet] class NDArrayInternal (private val internal: Array[Byte], private val dtype: DType) {
   private val unitSize = DType.numOfBytes(dtype)
   require(internal.length > 0 && internal.length % unitSize == 0,
     s"$dtype size $unitSize cannot divide byte array size ${internal.length}")

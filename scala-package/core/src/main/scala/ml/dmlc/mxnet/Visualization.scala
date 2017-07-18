@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ml.dmlc.mxnet
 
 import scala.util.parsing.json._
@@ -5,9 +22,6 @@ import java.io.File
 import java.io.PrintWriter
 import scala.collection.mutable.ArrayBuffer
 
-/**
- * @author Depeng Liang
- */
 object Visualization {
 
   /**
@@ -158,7 +172,7 @@ object Visualization {
    * @param shape Map of shapes, str -> shape, given input shapes
    * @param nodeAttrs Map of node's attributes
    *               for example:
-   *                      nodeAttrs = Map("shape" -> "oval", "fixedsize" -> "fasle")
+   *                      nodeAttrs = Map("shape" -> "oval", "fixedsize" -> "false")
    *                      means to plot the network in "oval"
    * @param hideWeights
    *               if true (default) then inputs with names like `*_weight`
@@ -175,7 +189,7 @@ object Visualization {
       else {
         val internals = symbol.getInternals()
         val (_, outShapes, _) = internals.inferShape(shape)
-        require(outShapes != null, "Input shape is incompete")
+        require(outShapes != null, "Input shape is incomplete")
         val shapeDict = internals.listOutputs().zip(outShapes).toMap
         (true, shapeDict)
       }
@@ -202,8 +216,9 @@ object Visualization {
 
     // Internal helper to figure out if node should be hidden with hide_weights
     def looksLikeWeight(name: String): Boolean = {
-      if (name.endsWith("_weight") || name.endsWith("_bias")) true
-      else false
+      if (name.endsWith("_weight") || name.endsWith("_bias")
+          || name.endsWith("_beta") || name.endsWith("_gamma")
+          || name.endsWith("_moving_var") || name.endsWith("_moving_mean")) { true } else { false }
     }
 
     // make nodes
@@ -218,7 +233,7 @@ object Visualization {
       }
       // input data
       val attr = nodeAttr.clone()
-      var label = op
+      var label = name
       var continue = false
       op match {
         case "null" => {
@@ -234,32 +249,38 @@ object Visualization {
           val kernel = str2Tuple(attrs("kernel"))
           val stride = if (attrs.contains("stride")) str2Tuple(attrs("stride")) else List(1)
           label =
-            s""""Convolution\\n${kernel(0)}x${kernel(1)}/${stride(0)}, ${attrs("num_filter")}""""
+            """"Convolution\n%s/%s, %s"""".format(
+              kernel.mkString("x"), stride.mkString("x"), attrs("num_filter"))
           attr("fillcolor") = cm(1)
         }
         case "FullyConnected" => {
-          label = s""""FullyConnected\\n${attrs("num_hidden")}""""
+          label = s""""FullyConnected\n${attrs("num_hidden")}""""
           attr("fillcolor") = cm(1)
         }
         case "BatchNorm" => attr("fillcolor") = cm(3)
         case "Activation" | "LeakyReLU" => {
-          label = s""""${op}\\n${attrs("act_type")}""""
+          label = s""""${op}\n${attrs("act_type")}""""
           attr("fillcolor") = cm(2)
         }
         case "Pooling" => {
           val kernel = str2Tuple(attrs("kernel"))
           val stride = if (attrs.contains("stride")) str2Tuple(attrs("stride")) else List(1)
           label =
-            s""""Pooling\\n${attrs("pool_type")}, ${kernel(0)}x${kernel(1)}/${stride(0)}""""
+            s""""Pooling\n%s, %s/%s"""".format(
+              attrs("pool_type"), kernel.mkString("x"), stride.mkString("x"))
           attr("fillcolor") = cm(4)
         }
         case "Concat" | "Flatten" | "Reshape" => attr("fillcolor") = cm(5)
         case "Softmax" => attr("fillcolor") = cm(6)
-        case _ => attr("fillcolor") = cm(7)
+        case _ => {
+          attr("fillcolor") = cm(7)
+          if (op == "Custom") label = attrs("op_type")
+        }
       }
       if (!continue) dot.node(name = name , label, attr.toMap)
     }
 
+    val outIdx = scala.collection.mutable.Map[String, Int]()
     // add edges
     nodes.foreach { node =>
       val params = node.asInstanceOf[Map[String, Any]]
@@ -275,8 +296,18 @@ object Visualization {
             // add shapes
             if (drawShape) {
               val key = {
-                if (inputNode("op").asInstanceOf[String] != "null") s"${inputName}_output"
-                else inputName
+                if (inputNode("op").asInstanceOf[String] != "null") {
+                  var key = s"${inputName}_output"
+                  if (inputNode.contains("attr")) {
+                    val params = inputNode("attr").asInstanceOf[Map[String, String]]
+                    if (params.contains("num_outputs")) {
+                      if (!outIdx.contains(name)) outIdx(name) = params("num_outputs").toInt - 1
+                      key += outIdx(name)
+                      outIdx(name) = outIdx(name) - 1
+                    }
+                  }
+                  key
+                } else inputName
               }
               val shape = shapeDict(key).toArray.drop(1)
               val label = s""""${shape.mkString("x")}""""

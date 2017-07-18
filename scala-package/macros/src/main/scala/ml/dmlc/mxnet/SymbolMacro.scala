@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ml.dmlc.mxnet
 
 import scala.annotation.StaticAnnotation
@@ -8,7 +25,7 @@ import scala.reflect.macros.blackbox
 import ml.dmlc.mxnet.init.Base._
 import ml.dmlc.mxnet.utils.OperatorBuildUtils
 
-private[mxnet] class AddSymbolFunctions extends StaticAnnotation {
+private[mxnet] class AddSymbolFunctions(isContrib: Boolean) extends StaticAnnotation {
   private[mxnet] def macroTransform(annottees: Any*) = macro SymbolImplMacros.addDefs
 }
 
@@ -26,6 +43,15 @@ private[mxnet] object SymbolImplMacros {
   private def impl(c: blackbox.Context)(addSuper: Boolean, annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
 
+    val isContrib: Boolean = c.prefix.tree match {
+      case q"new AddSymbolFunctions($b)" => c.eval[Boolean](c.Expr(b))
+    }
+
+    val newSymbolFunctions = {
+      if (isContrib) symbolFunctions.filter(_._1.startsWith("_contrib_"))
+      else symbolFunctions.filter(!_._1.startsWith("_contrib_"))
+    }
+
     val AST_TYPE_MAP_STRING_ANY = AppliedTypeTree(Ident(TypeName("Map")),
       List(Ident(TypeName("String")), Ident(TypeName("Any"))))
     val AST_TYPE_MAP_STRING_STRING = AppliedTypeTree(Ident(TypeName("Map")),
@@ -39,12 +65,22 @@ private[mxnet] object SymbolImplMacros {
         Ident(TermName("ml")), TermName("dmlc")), TermName("mxnet")), TypeName("Symbol")))
     )
 
-    val functionDefs = symbolFunctions map { case (funcName, funcProp) =>
-      val functionScope = if (funcName.startsWith("_")) Modifiers(Flag.PRIVATE) else Modifiers()
+    val functionDefs = newSymbolFunctions map { case (funcName, funcProp) =>
+      val functionScope = {
+        if (isContrib) Modifiers()
+        else {
+          if (funcName.startsWith("_")) Modifiers(Flag.PRIVATE) else Modifiers()
+        }
+      }
+      val newName = {
+        if (isContrib) funcName.substring(funcName.indexOf("_contrib_") + "_contrib_".length())
+        else funcName
+      }
+
       // It will generate definition something like,
       // def Concat(name: String = null, attr: Map[String, String] = null)
       //           (args: Symbol*)(kwargs: Map[String, Any] = null)
-      DefDef(functionScope, TermName(funcName), List(),
+      DefDef(functionScope, TermName(newName), List(),
         List(
           List(
             ValDef(Modifiers(Flag.PARAM | Flag.DEFAULTPARAM), TermName("name"),

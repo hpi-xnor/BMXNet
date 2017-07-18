@@ -29,9 +29,9 @@ def check_with_uniform(uf, arg_shapes, dim=None, npuf=None, rmin=-10, type_list=
         if isinstance(out1, mx.nd.NDArray):
             out1 = out1.asnumpy()
         if dtype == np.float16:
-            assert reldiff(out1, out2) < 2e-3
+            assert_almost_equal(out1, out2, rtol=2e-3)
         else:
-            assert reldiff(out1, out2) < 1e-6
+            assert_almost_equal(out1, out2)
 
 
 def random_ndarray(dim):
@@ -108,13 +108,28 @@ def test_ndarray_elementwisesum():
 def test_ndarray_negate():
     npy = np.random.uniform(-10, 10, (2,3,4))
     arr = mx.nd.array(npy)
-    assert reldiff(npy, arr.asnumpy()) < 1e-6
-    assert reldiff(-npy, (-arr).asnumpy()) < 1e-6
+    assert_almost_equal(npy, arr.asnumpy())
+    assert_almost_equal(-npy, (-arr).asnumpy())
 
     # a final check to make sure the negation (-) is not implemented
     # as inplace operation, so the contents of arr does not change after
     # we compute (-arr)
-    assert reldiff(npy, arr.asnumpy()) < 1e-6
+    assert_almost_equal(npy, arr.asnumpy())
+
+def test_ndarray_reshape():
+    tensor  = mx.nd.array([[[1, 2], [3, 4]],
+                           [[5, 6], [7, 8]]])
+    true_res = mx.nd.arange(8) + 1
+    assert same(tensor.reshape((-1, )).asnumpy(), true_res.asnumpy())
+    true_res  = mx.nd.array([[1, 2, 3, 4],
+                             [5, 6, 7, 8]])
+    assert same(tensor.reshape((2, -1)).asnumpy(), true_res.asnumpy())
+    assert same(tensor.reshape((0, -1)).asnumpy(), true_res.asnumpy())
+    true_res  = mx.nd.array([[1, 2],
+                             [3, 4],
+                             [5, 6],
+                             [7, 8]])
+    assert same(tensor.reshape((-1, 2)).asnumpy(), true_res.asnumpy())
 
 
 def test_ndarray_choose():
@@ -215,6 +230,15 @@ def test_ndarray_saveload():
             assert np.sum(x.asnumpy() != y.asnumpy()) == 0
     os.remove(fname)
 
+def test_ndarray_legacy_load():
+    data = []
+    for i in range(6):
+        data.append(mx.nd.arange(128))
+    path = os.path.dirname(os.path.realpath(__file__))
+    legacy_data = mx.nd.load(os.path.join(path, 'legacy_ndarray.v0'))
+    assert len(data) == len(legacy_data)
+    for i in range(len(data)):
+        assert same(data[i].asnumpy(), legacy_data[i].asnumpy())
 
 def test_ndarray_slice():
     shape = (10,)
@@ -224,6 +248,14 @@ def test_ndarray_slice():
     A2[3:8] *= 10;
     A[3:8] = A2[3:8]
     assert same(A[3:8].asnumpy(), A2[3:8])
+
+    shape = (3,4,5,6,7)
+    A = mx.nd.random_uniform(shape=shape)
+    A2 = A.asnumpy()
+
+    assert same(A[1,3:4,:,1:5].asnumpy(), A2[1,3:4,:,1:5])
+
+    assert A[1,2,3,4,5].asscalar() == A2[1,2,3,4,5]
 
 
 def test_ndarray_crop():
@@ -279,7 +311,7 @@ def test_dot():
     A = mx.nd.array(a)
     B = mx.nd.array(b)
     C = mx.nd.dot(A, B)
-    assert reldiff(c, C.asnumpy()) < 1e-5
+    assert_almost_equal(c, C.asnumpy())
     # Test dot with transpose kargs
     a = np.random.uniform(-3, 3, (3, 4))
     b = np.random.uniform(-3, 3, (3, 5))
@@ -287,7 +319,7 @@ def test_dot():
     A = mx.nd.array(a)
     B = mx.nd.array(b)
     C = mx.nd.dot(A, B, transpose_a=True)
-    assert reldiff(c, C.asnumpy()) < 1e-5
+    assert_almost_equal(c, C.asnumpy())
     # Test dot with transpose kargs
     a = np.random.uniform(-3, 3, (3, 4))
     b = np.random.uniform(-3, 3, (5, 4))
@@ -295,7 +327,7 @@ def test_dot():
     A = mx.nd.array(a)
     B = mx.nd.array(b)
     C = mx.nd.dot(A, B, transpose_b=True)
-    assert reldiff(c, C.asnumpy()) < 1e-5
+    assert_almost_equal(c, C.asnumpy())
     # Test dot with transpose kargs
     a = np.random.uniform(-3, 3, (4, 3))
     b = np.random.uniform(-3, 3, (5, 4))
@@ -303,7 +335,7 @@ def test_dot():
     A = mx.nd.array(a)
     B = mx.nd.array(b)
     C = mx.nd.dot(A, B, transpose_a=True, transpose_b=True)
-    assert reldiff(c, C.asnumpy()) < 1e-5
+    assert_almost_equal(c, C.asnumpy())
 
 
 def test_reduce():
@@ -400,6 +432,19 @@ def test_broadcast_binary():
     check_broadcast_binary(lambda x, y: x <= y)
     check_broadcast_binary(lambda x, y: x == y)
 
+def test_moveaxis():
+    X = mx.nd.array([[[1, 2, 3], [4, 5, 6]],
+                     [[7, 8, 9], [10, 11, 12]]])
+    res = mx.nd.moveaxis(X, 0, 3).asnumpy()
+    true_res = mx.nd.array([[[  1.,   7.],
+                             [  2.,   8.],
+                             [  3.,   9.]],
+                            [[  4.,  10.],
+                             [  5.,  11.],
+                             [  6.,  12.]]])
+    assert same(res, true_res.asnumpy())
+    assert mx.nd.moveaxis(X, 2, 0).shape == (3, 2, 2)
+
 def test_arange():
     for i in range(5):
         start = np.random.rand() * 10
@@ -409,7 +454,7 @@ def test_arange():
         gt = np.arange(start=start, stop=stop, step=step)
         gt = np.broadcast_to(gt.reshape((gt.shape[0], 1)), shape=(gt.shape[0], repeat)).ravel()
         pred = mx.nd.arange(start=start, stop=stop, step=step, repeat=repeat).asnumpy()
-        assert_almost_equal(pred, gt, default_numerical_threshold())
+        assert_almost_equal(pred, gt)
 
 def test_order(ctx=default_context()):
     def gt_topk(dat, axis, ret_typ, k, is_ascend):
@@ -577,29 +622,46 @@ def test_take():
             data_real_mx = mx.nd.array(data_real)
             idx_real_mx = mx.nd.array(idx_real)
             result = mx.nd.take(data_real_mx, idx_real_mx)
-            assert reldiff(result.asnumpy(), data_real[idx_real]) < 1e-6
+            assert_almost_equal(result.asnumpy(), data_real[idx_real])
+
+
+def test_iter():
+    x = mx.nd.array([1, 2, 3])
+    y = []
+    for a in x:
+        y.append(a)
+
+    for i in range(x.size):
+        assert same(y[i].asnumpy(), x[i].asnumpy())
+
+
+def test_cached():
+    sym = mx.sym.Convolution(kernel=(3, 3), num_filter=10) + 2
+    op = mx.nd.CachedOp(sym)
+    data = mx.nd.ones((3, 4, 10, 10))
+    weight = mx.nd.ones((10, 4, 3, 3))
+    bias = mx.nd.ones((10,))
+    o1 = op(data, weight, bias)
+    bias[:] = 2
+    o2 = op(data, weight, bias)
+    assert_almost_equal(o2.asnumpy(), o1.asnumpy()+1)
+    o2[:] = 0
+    op(data, weight, bias, out=o2)
+    assert_almost_equal(o2.asnumpy(), o1.asnumpy()+1)
+
+def test_output():
+    shape = (2,2)
+    ones = mx.nd.ones(shape)
+    zeros = mx.nd.zeros(shape)
+    out = mx.nd.zeros(shape)
+    mx.nd.ones(shape, out=out)
+    assert_almost_equal(out.asnumpy(), ones.asnumpy())
+    mx.nd.zeros(shape, out=out)
+    assert_almost_equal(out.asnumpy(), zeros.asnumpy())
+    mx.nd.full(shape, 2, out=out)
+    assert_almost_equal(out.asnumpy(), ones.asnumpy() * 2)
+
 
 if __name__ == '__main__':
-    test_broadcast_binary()
-    test_ndarray_setitem()
-    test_ndarray_crop()
-    test_ndarray_concatenate()
-    test_broadcast()
-    test_ndarray_elementwise()
-    test_ndarray_elementwisesum()
-    test_ndarray_slice()
-    test_ndarray_pickle()
-    test_ndarray_saveload()
-    test_ndarray_copy()
-    test_ndarray_negate()
-    test_ndarray_scalar()
-    test_clip()
-    test_dot()
-    test_ndarray_choose()
-    test_ndarray_onehot()
-    test_ndarray_fill()
-    test_reduce()
-    test_arange()
-    test_order()
-    test_ndarray_equal()
-    test_take()
+    import nose
+    nose.runmodule()

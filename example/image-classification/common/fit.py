@@ -146,12 +146,17 @@ def fit(args, network, data_loader, **kwargs):
             'learning_rate': lr,
             'momentum' : args.mom,
             'wd' : args.wd,
-            'lr_scheduler': lr_scheduler}
+            'lr_scheduler': lr_scheduler,
+            'multi_precision': True}
 
     monitor = mx.mon.Monitor(args.monitor, pattern=".*") if args.monitor > 0 else None
 
-    initializer   = mx.init.Xavier(
-       rnd_type='gaussian', factor_type="in", magnitude=2)
+    if args.network == 'alexnet':
+        # AlexNet will not converge using Xavier
+        initializer = mx.init.Normal()
+    else:
+        initializer = mx.init.Xavier(
+            rnd_type='gaussian', factor_type="in", magnitude=2)
     # initializer   = mx.init.Xavier(factor_type="in", magnitude=2.34),
 
     # evaluation metrices

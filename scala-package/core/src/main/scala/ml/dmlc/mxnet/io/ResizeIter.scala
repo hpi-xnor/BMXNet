@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ml.dmlc.mxnet.io
 
 import java.util.NoSuchElementException
@@ -10,18 +27,17 @@ import scala.collection.immutable.ListMap
 
 /**
  * Resize a DataIter to given number of batches per epoch.
- *  May produce incomplete batch in the middle of an epoch due
- *  to padding from internal iterator.
- *
- * @author Zixuan Huang
+ * May produce incomplete batch in the middle of an epoch due
+ * to padding from internal iterator.
  *
  * @param dataIter Internal data iterator.
  * @param reSize number of batches per epoch to resize to.
  * @param resetInternal whether to reset internal iterator on ResizeIter.reset
  */
-class ResizeIter(val dataIter: DataIter,
-                 val reSize: Int,
-                 val resetInternal: Boolean = true) extends DataIter {
+class ResizeIter(
+    dataIter: DataIter,
+    reSize: Int,
+    resetInternal: Boolean = true) extends DataIter {
 
   private val logger = LoggerFactory.getLogger(classOf[ResizeIter])
 

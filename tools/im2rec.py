@@ -12,6 +12,9 @@ import cv2
 import time
 import traceback
 
+if sys.version_info[0] == 3:
+    xrange = range
+
 try:
     import multiprocessing
 except ImportError:
@@ -83,7 +86,15 @@ def read_list(path_in):
             if not line:
                 break
             line = [i.strip() for i in line.strip().split('\t')]
-            item = [int(line[0])] + [line[-1]] + [float(i) for i in line[1:-1]]
+            line_len = len(line)
+            if line_len < 3:
+                print('lst should at least has three parts, but only has %s parts for %s' %(line_len, line))
+                continue
+            try:
+                item = [int(line[0])] + [line[-1]] + [float(i) for i in line[1:-1]]
+            except Exception as e:
+                print('Parsing lst met error for %s, detail: %s' %(line, e))
+                continue
             yield item
 
 def image_encode(args, i, item, q_out):
@@ -96,11 +107,11 @@ def image_encode(args, i, item, q_out):
 
     if args.pass_through:
         try:
-            with open(fullpath) as fin:
+            with open(fullpath, 'rb') as fin:
                 img = fin.read()
             s = mx.recordio.pack(header, img)
             q_out.put((i, s, item))
-        except Exception, e:
+        except Exception as e:
             traceback.print_exc()
             print('pack_img error:', item[1], e)
             q_out.put((i, None, item))
@@ -134,7 +145,7 @@ def image_encode(args, i, item, q_out):
     try:
         s = mx.recordio.pack_img(header, img, quality=args.quality, img_fmt=args.encoding)
         q_out.put((i, s, item))
-    except Exception, e:
+    except Exception as e:
         traceback.print_exc()
         print('pack_img error on file: %s' % fullpath, e)
         q_out.put((i, None, item))
@@ -190,7 +201,7 @@ def parse_args():
                         help='If this is set im2rec will create image list(s) by traversing root folder\
         and output to <prefix>.lst.\
         Otherwise im2rec will read <prefix>.lst and create a database at <prefix>.rec')
-    cgroup.add_argument('--exts', type=list, default=['.jpeg', '.jpg'],
+    cgroup.add_argument('--exts', nargs='+', default=['.jpeg', '.jpg'],
                         help='list of acceptable image extensions.')
     cgroup.add_argument('--chunks', type=int, default=1, help='number of chunks.')
     cgroup.add_argument('--train-ratio', type=float, default=1.0,
@@ -271,8 +282,11 @@ if __name__ == '__main__':
                     write_process.join()
                 else:
                     print('multiprocessing not available, fall back to single threaded encoding')
-                    import Queue
-                    q_out = Queue.Queue()
+                    try:
+                        import Queue as queue
+                    except ImportError:
+                        import queue
+                    q_out = queue.Queue()
                     fname = os.path.basename(fname)
                     fname_rec = os.path.splitext(fname)[0] + '.rec'
                     fname_idx = os.path.splitext(fname)[0] + '.idx'

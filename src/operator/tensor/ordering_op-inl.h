@@ -1,16 +1,20 @@
 /*!
  *  Copyright (c) 2016 by Contributors
  * \file ordering_op-inl.h
- * \brief Function defintion of matrix related operators
+ * \brief Function definition of matrix related operators
  */
 #ifndef MXNET_OPERATOR_TENSOR_ORDERING_OP_INL_H_
 #define MXNET_OPERATOR_TENSOR_ORDERING_OP_INL_H_
 
 #include <mxnet/operator_util.h>
 #include <dmlc/optional.h>
+#include <mshadow/tensor.h>
 #include <vector>
+#include <type_traits>
 #include "../mshadow_op.h"
 #include "../elemwise_op_common.h"
+#include "./sort_op.h"
+#include "./indexing_op.h"
 
 namespace mshadow {
 template<typename xpu, int src_dim, typename DType, int dst_dim>
@@ -47,13 +51,13 @@ struct TopKParam : public dmlc::Parameter<TopKParam> {
     .add_enum("indices", topk_enum::kReturnIndices)
     .add_enum("mask", topk_enum::kReturnMask)
     .add_enum("both", topk_enum::kReturnBoth)
-    .describe("The return type."
-        " \"value\" means returning the top k values,"
-        " \"indices\" means returning the indices of the top k values,"
+    .describe("The return type.\n"
+        " \"value\" means to return the top k values,"
+        " \"indices\" means to return the indices of the top k values,"
         " \"mask\" means to return a mask array containing 0 and 1. 1 means the top k values."
-        " \"both\" means to return both value and indices.");
+        " \"both\" means to return a list of both values and indices of top k elements.");
     DMLC_DECLARE_FIELD(is_ascend).set_default(false)
-      .describe("Whether to choose k largest or k smallest."
+      .describe("Whether to choose k largest or k smallest elements."
                 " Top K largest elements will be chosen if set to false.");
   }
 };
@@ -66,7 +70,7 @@ struct SortParam : public dmlc::Parameter<SortParam> {
     .describe("Axis along which to choose sort the input tensor."
               " If not given, the flattened array is used. Default is -1.");
     DMLC_DECLARE_FIELD(is_ascend).set_default(true)
-      .describe("Whether sort in ascending or descending order.");
+      .describe("Whether to sort in ascending or descending order.");
   }
 };
 
@@ -78,7 +82,7 @@ struct ArgSortParam : public dmlc::Parameter<ArgSortParam> {
     .describe("Axis along which to sort the input tensor."
               " If not given, the flattened array is used. Default is -1.");
     DMLC_DECLARE_FIELD(is_ascend).set_default(true)
-      .describe("Whether sort in ascending or descending order.");
+      .describe("Whether to sort in ascending or descending order.");
   }
 };
 
@@ -199,15 +203,15 @@ void TopKImpl(RunContext ctx,
   // After sorting, each batch in `sorted_dat` will be sorted in the corresponding order
   //   and the `indices` will contain the corresponding index in `sorted_dat`
   // Sort the data and keep record of the correspondence to global indices.
-  SortByKey(sorted_dat, indices, is_ascend);
+  mxnet::op::SortByKey(sorted_dat, indices, is_ascend);
   // Calculate the corresponding batch indices of the elements
   batch_id = F<mshadow_op::floor>(indices / static_cast<real_t>(element_num));
   // Since the SortByKey performs stable sort, the second SortByKey will reorder
   //   the sorted_dat based on the order of the batch_id
-  SortByKey(batch_id, sorted_dat, true);
+  mxnet::op::SortByKey(batch_id, sorted_dat, true);
   // Reorder the indices
   batch_id = F<mshadow_op::floor>(indices / static_cast<real_t>(element_num));
-  SortByKey(batch_id, indices, true);
+  mxnet::op::SortByKey(batch_id, indices, true);
 
   // 3. Assign results to the ret blob
   if (param.ret_typ == topk_enum::kReturnMask) {
@@ -376,7 +380,7 @@ void TopKBackward_(const nnvm::NodeAttrs& attrs,
     // TODO(sxjscience) We can use AddTakeGrad in the future.
     // However, the current implementation of AddTakeGrad is not so efficient.
     dummy_index = range<real_t>(0, sel_indices.shape_.Size());
-    AddTakeGradLargeBatch(in_grad, sel_indices, dummy_index, out_grad);
+    mxnet::op::AddTakeGradLargeBatch(in_grad, sel_indices, dummy_index, out_grad);
   } else if (kNullOp == req[0]) {
     return;
   } else {
@@ -406,18 +410,19 @@ inline uint32_t TopKNumVisibleOutputs(const NodeAttrs& attrs) {
 inline bool TopKType(const nnvm::NodeAttrs& attrs,
                      std::vector<int> *in_attrs,
                      std::vector<int> *out_attrs) {
-  return ElemwiseAttr<int, type_is_none, true>(attrs, in_attrs, out_attrs);
+  return ElemwiseAttr<int, type_is_none, type_assign, true, type_string>(
+    attrs, in_attrs, out_attrs, -1);
 }
 
 inline bool TopKShapeImpl(const TopKParam& param,
                           std::vector<TShape> *in_attrs,
                           std::vector<TShape> *out_attrs) {
-  CHECK_EQ(in_attrs->size(), 1);
+  CHECK_EQ(in_attrs->size(), 1U);
   if (param.ret_typ == topk_enum::kReturnIndices ||
     param.ret_typ == topk_enum::kReturnMask) {
-    CHECK_EQ(out_attrs->size(), 1);
+    CHECK_EQ(out_attrs->size(), 1U);
   } else {
-    CHECK_EQ(out_attrs->size(), 2);
+    CHECK_EQ(out_attrs->size(), 2U);
   }
   TShape& in_shape = (*in_attrs)[0];
   int batch_size, element_num;  // number of batches + the size of each batch
@@ -470,5 +475,4 @@ inline bool ArgSortShape(const nnvm::NodeAttrs& attrs,
 }
 }  // namespace op
 }  // namespace mxnet
-
 #endif  // MXNET_OPERATOR_TENSOR_ORDERING_OP_INL_H_

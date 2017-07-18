@@ -1,4 +1,5 @@
 # pylint: skip-file
+from __future__ import print_function
 import sys
 import os
 # code to automatically download dataset
@@ -20,7 +21,7 @@ def cluster_acc(Y_pred, Y):
   D = max(Y_pred.max(), Y.max())+1
   w = np.zeros((D,D), dtype=np.int64)
   for i in range(Y_pred.size):
-    w[Y_pred[i], Y[i]] += 1
+    w[Y_pred[i], int(Y[i])] += 1
   ind = linear_assignment(w.max() - w)
   return sum([w[i,j] for i,j in ind])*1.0/Y_pred.size, w
 
@@ -97,7 +98,7 @@ class DECModel(model.MXModel):
         test_iter = mx.io.NDArrayIter({'data': X}, batch_size=batch_size, shuffle=False,
                                       last_batch_handle='pad')
         args = {k: mx.nd.array(v.asnumpy(), ctx=self.xpu) for k, v in self.args.items()}
-        z = model.extract_feature(self.feature, args, None, test_iter, N, self.xpu).values()[0]
+        z = list(model.extract_feature(self.feature, args, None, test_iter, N, self.xpu).values())[0]
         kmeans = KMeans(self.num_centers, n_init=20)
         kmeans.fit(z)
         args['dec_mu'][:] = kmeans.cluster_centers_
@@ -112,19 +113,19 @@ class DECModel(model.MXModel):
         self.y_pred = np.zeros((X.shape[0]))
         def refresh(i):
             if i%update_interval == 0:
-                z = model.extract_feature(self.feature, args, None, test_iter, N, self.xpu).values()[0]
+                z = list(model.extract_feature(self.feature, args, None, test_iter, N, self.xpu).values())[0]
                 p = np.zeros((z.shape[0], self.num_centers))
                 self.dec_op.forward([z, args['dec_mu'].asnumpy()], [p])
                 y_pred = p.argmax(axis=1)
-                print np.std(np.bincount(y_pred)), np.bincount(y_pred)
-                print np.std(np.bincount(y.astype(np.int))), np.bincount(y.astype(np.int))
+                print(np.std(np.bincount(y_pred)), np.bincount(y_pred))
+                print(np.std(np.bincount(y.astype(np.int))), np.bincount(y.astype(np.int)))
                 if y is not None:
                     print(cluster_acc(y_pred, y)[0])
                 weight = 1.0/p.sum(axis=0)
                 weight *= self.num_centers/weight.sum()
                 p = (p**2)*weight
                 train_iter.data_list[1][:] = (p.T/p.sum(axis=1)).T
-                print np.sum(y_pred != self.y_pred), 0.001*y_pred.shape[0]
+                print(np.sum(y_pred != self.y_pred), 0.001*y_pred.shape[0])
                 if np.sum(y_pred != self.y_pred) < 0.001*y_pred.shape[0]:
                     self.y_pred = y_pred
                     return True

@@ -109,9 +109,9 @@ class MKLLRNOp : public Operator {
                        const std::vector<TBlob> &aux_states) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(in_data.size(), 1);
-    CHECK_EQ(out_data.size(), 2);
-    CHECK_EQ(param_.nsize % 2, 1) << "LRN only supports odd values for local_size";
+    CHECK_EQ(in_data.size(), 1U);
+    CHECK_EQ(out_data.size(), 2U);
+    CHECK_EQ(param_.nsize % 2, 1U) << "LRN only supports odd values for local_size";
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 4, DType> data = mkl_experimental_direct_get<xpu, 4, DType>(
       in_data[lrn_enum::kData], s);
@@ -195,19 +195,9 @@ class MKLLRNOp : public Operator {
     dnnError_t e;
     void* lrn_res[dnnResourceNumber];
     lrn_res[dnnResourceSrc] = const_cast<void*>(bottom_data);
-#if MKL_EXPERIMENTAL == 1
-    if (fwd_top_data_->conversion_needed()) {
-      std::shared_ptr<MKLMemHolder> top_mem = out_data[lrn_enum::kOut].Mkl_mem_;
-      lrn_res[dnnResourceDst] =
-        reinterpret_cast<void *>(fwd_top_data_->prv_ptr());
-      top_mem->set_prv_descriptor(fwd_top_data_);
-    } else {
-#endif
-    lrn_res[dnnResourceDst] =
-      reinterpret_cast<void *>(out.dptr_);
-#if MKL_EXPERIMENTAL == 1
-    }
-#endif
+
+    lrn_res[dnnResourceDst] = fwd_top_data_->get_output_ptr(
+      out.dptr_, fwd_top_data_, out_data[lrn_enum::kOut]);
     lrn_res[dnnResourceWorkspace] = lrn_buffer_;
     e = dnnExecute<DType>(lrnFwd, lrn_res);
     CHECK_EQ(e, E_SUCCESS);
@@ -234,35 +224,14 @@ class MKLLRNOp : public Operator {
       in_grad[lrn_enum::kData], s);
     dnnError_t e;
     void* lrn_res[dnnResourceNumber];
-    std::shared_ptr<MKLMemHolder> top_diff_mem =
-#if MKL_EXPERIMENTAL == 1
-      out_grad[lrn_enum::kOut].Mkl_mem_;
-#else
-      NULL;
-#endif
     lrn_res[dnnResourceDiffDst] =
-      bwd_top_diff_->get_converted_prv(grad.dptr_, true, top_diff_mem);
-
+      bwd_top_diff_->get_converted_prv(grad.dptr_, true, out_grad[lrn_enum::kOut]);
     lrn_res[dnnResourceWorkspace] = lrn_buffer_;
-
     lrn_res[dnnResourceSrc] =
-      fwd_bottom_data_->get_converted_prv(data.dptr_, false);
-    std::shared_ptr<MKLMemHolder> bottom_diff_mem =
-#if MKL_EXPERIMENTAL == 1
-      in_grad[lrn_enum::kData].Mkl_mem_;
-#else
-      NULL;
-#endif
-#if MKL_EXPERIMENTAL == 1
-    if (bwd_bottom_diff_->conversion_needed()) {
-      lrn_res[dnnResourceDiffSrc] = bwd_bottom_diff_->prv_ptr();
-      bottom_diff_mem->set_prv_descriptor(bwd_bottom_diff_);
-    } else {
-#endif
-    lrn_res[dnnResourceDiffSrc] = grad_in.dptr_;
-#if MKL_EXPERIMENTAL == 1
-    }
-#endif
+      fwd_bottom_data_->get_converted_prv(data.dptr_, false, in_data[lrn_enum::kData]);
+
+    lrn_res[dnnResourceDiffSrc] = bwd_bottom_diff_->get_output_ptr(
+      grad_in.dptr_, bwd_bottom_diff_, in_grad[lrn_enum::kData]);
     e = dnnExecute<DType>(lrnBwd, lrn_res);
     CHECK_EQ(e, E_SUCCESS);
   }

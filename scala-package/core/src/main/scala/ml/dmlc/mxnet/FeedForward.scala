@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ml.dmlc.mxnet
 
 import ml.dmlc.mxnet.io.NDArrayIter
@@ -28,16 +45,18 @@ import scala.collection.mutable.ListBuffer
  * @param beginEpoch The beginning training epoch.
  */
 class FeedForward private(
-    private var symbol: Symbol, private val symGen: SymbolGenerator,
-    val ctx: Array[Context],
-    val numEpoch: Int, val epochSize: Int,
-    val optimizer: Optimizer,
-    val initializer: Initializer,
-    val batchSize: Int,
+    private var symbol: Symbol,
+    symGen: SymbolGenerator,
+    ctx: Array[Context],
+    numEpoch: Int, val epochSize: Int,
+    optimizer: Optimizer,
+    initializer: Initializer,
+    batchSize: Int,
     argParams: Map[String, NDArray],
     auxParams: Map[String, NDArray],
     private val allowExtraParams: Boolean,
     val beginEpoch: Int) {
+
   val logger: Logger = LoggerFactory.getLogger(classOf[FeedForward])
   private var argumentChecked = false
   private var _argParams = argParams

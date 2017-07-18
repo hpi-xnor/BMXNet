@@ -31,11 +31,11 @@ struct LRNParam : public dmlc::Parameter<LRNParam> {
   uint32_t nsize;
   DMLC_DECLARE_PARAMETER(LRNParam) {
     DMLC_DECLARE_FIELD(alpha).set_default(1e-4f)
-    .describe("value of the alpha variance scaling parameter in the normalization formula");
+    .describe("The variance scaling parameter :math:`\alpha` in the LRN expression.");
     DMLC_DECLARE_FIELD(beta).set_default(0.75f)
-    .describe("value of the beta power parameter in the normalization formula");
+    .describe("The power parameter :math:`\beta` in the LRN expression.");
     DMLC_DECLARE_FIELD(knorm).set_default(2.0f)
-    .describe("value of the k parameter in normalization formula");
+    .describe("The parameter :math:`k` in the LRN expression.");
     DMLC_DECLARE_FIELD(nsize)
     .describe("normalization window width in elements.");
   }
@@ -55,10 +55,10 @@ class LocalResponseNormOp : public Operator {
     using namespace mshadow;
     using namespace mshadow::expr;
     // TODO(xxx): Test with gradient chceker
-    CHECK_EQ(in_data.size(), 1);
-    CHECK_EQ(out_data.size(), 2);
+    CHECK_EQ(in_data.size(), 1U);
+    CHECK_EQ(out_data.size(), 2U);
     // CHECK_EQ(req.size(), 2);
-    CHECK_EQ(param_.nsize % 2, 1) << "LRN only supports odd values for local_size";
+    CHECK_EQ(param_.nsize % 2, 1U) << "LRN only supports odd values for local_size";
     const real_t salpha = param_.alpha / param_.nsize;
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 4> data = in_data[lrn_enum::kData].get<xpu, 4, real_t>(s);
@@ -77,9 +77,9 @@ class LocalResponseNormOp : public Operator {
                         const std::vector<TBlob> &aux_states) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(out_grad.size(), 1);
-    CHECK_EQ(in_data.size(), 1);
-    CHECK_EQ(out_data.size(), 2);
+    CHECK_EQ(out_grad.size(), 1U);
+    CHECK_EQ(in_data.size(), 1U);
+    CHECK_EQ(out_data.size(), 2U);
     const real_t salpha = param_.alpha / param_.nsize;
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 4> grad = out_grad[lrn_enum::kOut].get<xpu, 4, real_t>(s);
@@ -115,12 +115,33 @@ class LocalResponseNormProp : public OperatorProperty {
                   std::vector<TShape> *out_shape,
                   std::vector<TShape> *aux_shape) const override {
     using namespace mshadow;
-    CHECK_EQ(in_shape->size(), 1) << "Input:[data]";
+    CHECK_EQ(in_shape->size(), 1U) << "Input:[data]";
     const TShape &dshape = in_shape->at(0);
     if (dshape.ndim() == 0) return false;
     out_shape->clear();
     out_shape->push_back(dshape);
     out_shape->push_back(dshape);
+    return true;
+  }
+
+  bool InferType(std::vector<int> *in_type,
+                 std::vector<int> *out_type,
+                 std::vector<int> *aux_type) const override {
+    CHECK_GE(in_type->size(), 1U);
+    int dtype = (*in_type)[0];
+    CHECK_NE(dtype, -1) << "First input must have specified type";
+    for (index_t i = 0; i < in_type->size(); ++i) {
+      if ((*in_type)[i] == -1) {
+        (*in_type)[i] = dtype;
+      } else {
+        CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "
+                                       << "Expected " << dtype << " v.s. given "
+                                       << (*in_type)[i] << " at " << ListArguments()[i];
+      }
+    }
+    int n_out = this->ListOutputs().size();
+    out_type->clear();
+    for (int i = 0; i < n_out; ++i ) out_type->push_back(dtype);
     return true;
   }
 
@@ -175,4 +196,3 @@ class LocalResponseNormProp : public OperatorProperty {
 }  // namespace op
 }  // namespace mxnet
 #endif  // MXNET_OPERATOR_LRN_INL_H_
-

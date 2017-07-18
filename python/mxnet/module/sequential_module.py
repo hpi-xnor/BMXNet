@@ -10,9 +10,12 @@ from .base_module import BaseModule
 
 class SequentialModule(BaseModule):
     """A SequentialModule is a container module that can chain multiple modules together.
-    Note building a computation graph with this kind of imperative container is less
-    flexible and less efficient than the symbolic graph. So this should be only used as a
-    handy utility.
+
+    .. note::
+
+        Building a computation graph with this kind of imperative container is less
+        flexible and less efficient than the symbolic graph. So, this should be only used as a
+        handy utility.
     """
 
     META_TAKE_LABELS = 'take_labels'
@@ -30,7 +33,7 @@ class SequentialModule(BaseModule):
                                if x.startswith('META_')])
 
     def add(self, module, **kwargs):
-        """Add a module to the chain.
+        """Adds a module to the chain.
 
         Parameters
         ----------
@@ -48,20 +51,21 @@ class SequentialModule(BaseModule):
 
         Returns
         -------
-        This function returns `self` to allow us to easily chain a
-        series of `add` calls.
+        self
+            This function returns `self` to allow us to easily chain a
+            series of `add` calls.
 
         Examples
         --------
-        An example of addinging two modules to a chain::
-            >>> seq_mod = mx.mod.SequentialModule()
-            >>> seq_mod.add(mod1)
-            >>> seq_mod.add(mod2)
+        >>> # An example of addinging two modules to a chain.
+        >>> seq_mod = mx.mod.SequentialModule()
+        >>> seq_mod.add(mod1)
+        >>> seq_mod.add(mod2)
         """
         self._modules.append(module)
 
         # a sanity check to avoid typo
-        for key in kwargs.iterkeys():
+        for key in kwargs:
             assert key in self._meta_keys, ('Unknown meta "%s", a typo?' % key)
 
         self._metas.append(kwargs)
@@ -90,45 +94,52 @@ class SequentialModule(BaseModule):
 
     @property
     def data_shapes(self):
-        """Get data shapes.
+        """Gets data shapes.
+
         Returns
         -------
-        A list of `(name, shape)` pairs. The data shapes of the
-        first module is the data shape of a `SequentialModule`.
+        list
+            A list of `(name, shape)` pairs. The data shapes of the first module
+            is the data shape of a `SequentialModule`.
         """
         assert self.binded
         return self._modules[0].data_shapes
 
     @property
     def label_shapes(self):
-        """Get label shapes.
+        """Gets label shapes.
+
         Returns
         -------
-        A list of `(name, shape)` pairs. The return value could be `None` if
-        the module does not need labels, or if the module is not binded for
-        training (in this case, label information is not available).
+        list
+            A list of `(name, shape)` pairs. The return value could be `None` if
+            the module does not need labels, or if the module is not bound for
+            training (in this case, label information is not available).
         """
         assert self.binded
         return self._label_shapes
 
     @property
     def output_shapes(self):
-        """Get output shapes.
+        """Gets output shapes.
+
         Returns
         -------
-        A list of `(name, shape)` pairs. The output shapes of the last
-        module is the output shape of a `SequentialModule`.
+        list
+            A list of `(name, shape)` pairs. The output shapes of the last
+            module is the output shape of a `SequentialModule`.
         """
         assert self.binded
         return self._modules[-1].output_shapes
 
     def get_params(self):
-        """Get current parameters.
+        """Gets current parameters.
+
         Returns
         -------
-        `(arg_params, aux_params)`, each a dictionary of name to parameters (in
-        `NDArray`) mapping. This is a merged dictionary of all the parameters
-        in the modules.
+        (arg_params, aux_params)
+            A pair of dictionaries each mapping parameter names to NDArray values. This
+            is a merged dictionary of all the parameters in the modules.
         """
         assert self.binded and self.params_initialized
 
@@ -143,21 +154,27 @@ class SequentialModule(BaseModule):
         return (arg_params, aux_params)
 
     def init_params(self, initializer=Uniform(0.01), arg_params=None, aux_params=None,
-                    allow_missing=False, force_init=False):
-        """Initialize parameters.
+                    allow_missing=False, force_init=False, allow_extra=False):
+        """Initializes parameters.
 
         Parameters
         ----------
         initializer : Initializer
         arg_params : dict
-            Default `None`. Existing parameters. This has higher priority than `initializer`.
+            Default ``None``. Existing parameters. This has higher priority
+            than `initializer`.
         aux_params : dict
-            Default `None`. Existing auxiliary states. This has higher priority than `initializer`.
+            Default ``None``. Existing auxiliary states. This has higher priority
+            than `initializer`.
         allow_missing : bool
-            Allow missing values in `arg_params` and `aux_params` (if not `None`). In this case,
-            missing values will be filled with `initializer`.
+            Allow missing values in `arg_params` and `aux_params` (if not ``None``).
+            In this case, missing values will be filled with `initializer`.
         force_init : bool
-            Default `False`.
+            Default ``False``.
+        allow_extra : boolean, optional
+            Whether allow extra parameters that are not needed by symbol.
+            If this is True, no error will be thrown when arg_params or aux_params
+            contain extra parameters that is not needed by the executor.
         """
         if self.params_initialized and not force_init:
             return
@@ -166,13 +183,13 @@ class SequentialModule(BaseModule):
         for module in self._modules:
             module.init_params(initializer=initializer, arg_params=arg_params,
                                aux_params=aux_params, allow_missing=allow_missing,
-                               force_init=force_init)
+                               force_init=force_init, allow_extra=allow_extra)
 
         # make sure we do not have duplicated parameter names
         def _check_name(known_names, new_names, modules, i):
             """Internal function to help checking duplicated names."""
             for name in new_names:
-                assert not known_names.has_key(name), "Duplicated parameter names: " + \
+                assert not name in known_names, "Duplicated parameter names: " + \
                     ('name "%s" in layer %d (%s) is already ' % (name, i, type(modules[i]))) + \
                     ('used in layer %d (%s).' % (known_names[name],
                                                  type(modules[known_names[name]])))
@@ -182,15 +199,15 @@ class SequentialModule(BaseModule):
         aux_names = dict()
         for i_layer, module in enumerate(self._modules):
             arg_params, aux_params = module.get_params()
-            _check_name(arg_names, arg_params.iterkeys(), self._modules, i_layer)
-            _check_name(aux_names, aux_params.iterkeys(), self._modules, i_layer)
+            _check_name(arg_names, arg_params.keys(), self._modules, i_layer)
+            _check_name(aux_names, aux_params.keys(), self._modules, i_layer)
 
         self.params_initialized = True
 
     def bind(self, data_shapes, label_shapes=None, for_training=True,
              inputs_need_grad=False, force_rebind=False, shared_module=None,
              grad_req='write'):
-        """Bind the symbols to construct executors. This is necessary before one
+        """Binds the symbols to construct executors. This is necessary before one
         can perform computation with the module.
 
         Parameters
@@ -200,23 +217,23 @@ class SequentialModule(BaseModule):
         label_shapes : list of (str, tuple)
             Typically is `data_iter.provide_label`.
         for_training : bool
-            Default is `True`. Whether the executors should be bind for training.
+            Default is ``True``. Whether the executors should be bind for training.
         inputs_need_grad : bool
-            Default is `False`. Whether the gradients to the input data need to be computed.
+            Default is ``False``. Whether the gradients to the input data need to be computed.
             Typically this is not needed. But this might be needed when implementing composition
             of modules.
         force_rebind : bool
-            Default is `False`. This function does nothing if the executors are already
-            binded. But with this `True`, the executors will be forced to rebind.
+            Default is ``False``. This function does nothing if the executors are already
+            bound. But with this ``True``, the executors will be forced to rebind.
         shared_module : Module
-            Default is `None`. Currently shared module is not supported for `SequentialModule`.
+            Default is ``None``. Currently shared module is not supported for `SequentialModule`.
         grad_req : str, list of str, dict of str to str
             Requirement for gradient accumulation. Can be 'write', 'add', or 'null'
             (default to 'write').
             Can be specified globally (str) or for each argument (list, dict).
         """
         if self.binded and not force_rebind:
-            self.logger.warning('Already binded, ignoring bind()')
+            self.logger.warning('Already bound, ignoring bind()')
             return
 
         if inputs_need_grad:
@@ -233,7 +250,7 @@ class SequentialModule(BaseModule):
         anybody_ever_needs_label = False
         for i_layer, module in enumerate(self._modules):
             meta = self._metas[i_layer]
-            if meta.has_key(SequentialModule.META_TAKE_LABELS) and \
+            if SequentialModule.META_TAKE_LABELS in meta and \
                     meta[SequentialModule.META_TAKE_LABELS]:
                 my_label_shapes = label_shapes
                 anybody_ever_needs_label = True
@@ -263,7 +280,7 @@ class SequentialModule(BaseModule):
     def init_optimizer(self, kvstore='local', optimizer='sgd',
                        optimizer_params=(('learning_rate', 0.01),),
                        force_init=False):
-        """Install and initialize optimizers.
+        """Installs and initializes optimizers.
 
         Parameters
         ----------
@@ -272,10 +289,10 @@ class SequentialModule(BaseModule):
         optimizer : str or Optimizer
             Default `'sgd'`
         optimizer_params : dict
-            Default `(('learning_rate', 0.01),)`. The default value is not a dictionary,
+            Default ``(('learning_rate', 0.01),)``. The default value is not a dictionary,
             just to avoid pylint warning of dangerous default values.
         force_init : bool
-            Default `False`, indicating whether we should force re-initializing the
+            Default ``False``, indicating whether we should force re-initializing the
             optimizer in the case an optimizer is already installed.
         """
         assert self.binded and self.params_initialized
@@ -296,7 +313,7 @@ class SequentialModule(BaseModule):
         ----------
         data_batch : DataBatch
         is_train : bool
-            Default is `None`, in which case `is_train` is take as `self.for_training`.
+            Default is ``None``, in which case `is_train` is take as ``self.for_training``.
         """
         assert self.binded and self.params_initialized
 
@@ -324,7 +341,7 @@ class SequentialModule(BaseModule):
         """Backward computation."""
         assert self.binded and self.params_initialized
 
-        for i_layer, module in reversed(zip(range(len(self._modules)), self._modules)):
+        for i_layer, module in reversed(list(zip(range(len(self._modules)), self._modules))):
             module.backward(out_grads=out_grads)
             if i_layer == 0:
                 break
@@ -332,7 +349,7 @@ class SequentialModule(BaseModule):
             out_grads = module.get_input_grads()
 
     def update(self):
-        """Update parameters according to installed optimizer and the gradient computed
+        """Updates parameters according to installed optimizer and the gradient computed
         in the previous forward-backward cycle.
         """
         assert self.binded and self.params_initialized and self.optimizer_initialized
@@ -341,63 +358,65 @@ class SequentialModule(BaseModule):
             module.update()
 
     def get_outputs(self, merge_multi_context=True):
-        """Get outputs from a previous forward computation.
+        """Gets outputs from a previous forward computation.
 
         Parameters
         ----------
         merge_multi_context : bool
-            Default is `True`. In the case when data-parallelism is used, the outputs
-            will be collected from multiple devices. A `True` value indicate that we
+            Default is ``True``. In the case when data-parallelism is used, the outputs
+            will be collected from multiple devices. A ``True`` value indicate that we
             should merge the collected results so that they look like from a single
             executor.
 
         Returns
         -------
-        If `merge_multi_context` is `True`, it is like `[out1, out2]`. Otherwise, it
-        is like `[[out1_dev1, out1_dev2], [out2_dev1, out2_dev2]]`. All the output
-        elements are numpy arrays.
+        list of NDArray or list of list of NDArray
+            If `merge_multi_context` is ``True``, it is like ``[out1,
+            out2]``. Otherwise, it is like ``[[out1_dev1, out1_dev2], [out2_dev1,
+            out2_dev2]]``. All the output elements are numpy arrays.
         """
         assert self.binded and self.params_initialized
         return self._modules[-1].get_outputs(merge_multi_context=merge_multi_context)
 
     def get_input_grads(self, merge_multi_context=True):
-        """Get the gradients with respect to the inputs of the module.
+        """Gets the gradients with respect to the inputs of the module.
 
         Parameters
         ----------
         merge_multi_context : bool
-            Default is `True`. In the case when data-parallelism is used, the outputs
-            will be collected from multiple devices. A `True` value indicate that we
+            Default is ``True``. In the case when data-parallelism is used, the outputs
+            will be collected from multiple devices. A ``True`` value indicate that we
             should merge the collected results so that they look like from a single
             executor.
 
         Returns
         -------
-        If `merge_multi_context` is `True`, it is like `[grad1, grad2]`. Otherwise, it
-        is like `[[grad1_dev1, grad1_dev2], [grad2_dev1, grad2_dev2]]`. All the output
-        elements are `NDArray`.
+        list of NDArrays or list of list of NDArrays
+            If `merge_multi_context` is ``True``, it is like ``[grad1, grad2]``. Otherwise, it
+            is like ``[[grad1_dev1, grad1_dev2], [grad2_dev1, grad2_dev2]]``. All the output
+            elements are `NDArray`.
         """
         assert self.binded and self.params_initialized and self.inputs_need_grad
         return self._modules[0].get_input_grads(merge_multi_context=merge_multi_context)
 
     def update_metric(self, eval_metric, labels):
-        """Evaluate and accumulate evaluation metric on outputs of the last forward computation.
+        """Evaluates and accumulates evaluation metric on outputs of the last forward computation.
 
         Parameters
         ----------
         eval_metric : EvalMetric
         labels : list of NDArray
-            Typically `data_batch.label`.
+            Typically ``data_batch.label``.
         """
         assert self.binded and self.params_initialized
 
         for meta, module in zip(self._metas, self._modules):
-            if meta.has_key(SequentialModule.META_TAKE_LABELS) and \
+            if SequentialModule.META_TAKE_LABELS in meta and \
                     meta[SequentialModule.META_TAKE_LABELS]:
                 module.update_metric(eval_metric, labels)
 
     def install_monitor(self, mon):
-        """ Install monitor on all executors """
+        """Installs monitor on all executors."""
         assert self.binded
         for module in self._modules:
             module.install_monitor(mon)

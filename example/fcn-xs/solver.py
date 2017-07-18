@@ -71,7 +71,7 @@ class Solver(object):
                                 aux_states=self.aux_params)
                 assert len(self.symbol.list_arguments()) == len(self.exector.grad_arrays)
                 update_dict = {name: nd for name, nd in zip(self.symbol.list_arguments(), \
-                    self.exector.grad_arrays) if nd}
+                    self.exector.grad_arrays) if nd is not None}
                 output_dict = {}
                 output_buff = {}
                 for key, arr in zip(self.symbol.list_outputs(), self.exector.outputs):
@@ -92,7 +92,7 @@ class Solver(object):
                 self.exector.outputs[0].wait_to_read()
                 batch_end_params = BatchEndParam(epoch=epoch, nbatch=nbatch, eval_metric=eval_metric)
                 batch_end_callback(batch_end_params)
-            if epoch_end_callback != None:
+            if epoch_end_callback is not None:
                 epoch_end_callback(epoch, self.symbol, self.arg_params, self.aux_params)
             name, value = eval_metric.get()
             logger.info("                     --->Epoch[%d] Train-%s=%f", epoch, name, value)

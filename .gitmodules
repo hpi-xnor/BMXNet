@@ -9,4 +9,10 @@
 	url = https://github.com/dmlc/ps-lite
 [submodule "nnvm"]
 	path = nnvm
-	url = https://github.com/hpi-xnor/nnvm.git
+	url = https://github.com/dmlc/nnvm
+[submodule "dlpack"]
+	path = dlpack
+	url = https://github.com/dmlc/dlpack
+[submodule "cub"]
+	path = cub
+	url = https://github.com/dmlc/cub

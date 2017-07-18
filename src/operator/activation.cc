@@ -15,10 +15,10 @@
 namespace mxnet {
 namespace op {
 template<>
-Operator *CreateOp<cpu>(ActivationParam param, int dtype) {
+Operator *CreateOp<cpu>(ActivationParam param, int dtype, const TShape& dshape) {
   Operator *op = NULL;
 #if MXNET_USE_MKL2017 == 1
-  if (param.act_type == activation::kReLU) {
+  if (param.act_type == activation::kReLU && dshape.ndim() <= 4) {
       switch (dtype) {
       case mshadow::kFloat32:
           return new MKLReluOp<cpu, float>();
@@ -54,32 +54,25 @@ Operator *CreateOp<cpu>(ActivationParam param, int dtype) {
 
 // DO_BIND_DISPATCH comes from operator_common.h
 Operator *ActivationProp::CreateOperatorEx(Context ctx, std::vector<TShape> *in_shape,
-                                     std::vector<int> *in_type) const {
-  std::vector<TShape> out_shape, aux_shape;
-  std::vector<int> out_type, aux_type;
-  CHECK(InferType(in_type, &out_type, &aux_type));
-  CHECK(InferShape(in_shape, &out_shape, &aux_shape));
-  DO_BIND_DISPATCH(CreateOp, param_, (*in_type)[0]);
+                                           std::vector<int> *in_type) const {
+  DO_BIND_DISPATCH(CreateOp, param_, (*in_type)[0], (*in_shape)[0]);
 }
 
 DMLC_REGISTER_PARAMETER(ActivationParam);
 
 MXNET_REGISTER_OP_PROPERTY(Activation, ActivationProp)
-.describe(R"(Elementwise activation function.
+.describe(R"code(Applies an activation function element-wise to the input.
 
-The following activation types are supported (operations are applied elementwisely to each
-scalar of the input tensor):
+The following activation functions are supported:
 
-- `relu`: Rectified Linear Unit, `y = max(x, 0)`
-- `sigmoid`: `y = 1 / (1 + exp(-x))`
-- `tanh`: Hyperbolic tangent, `y = (exp(x) - exp(-x)) / (exp(x) + exp(-x))`
-- `softrelu`: Soft ReLU, or SoftPlus, `y = log(1 + exp(x))`
+- `relu`: Rectified Linear Unit, :math:`y = max(x, 0)`
+- `sigmoid`: :math:`y = \frac{1}{1 + exp(-x)}`
+- `tanh`: Hyperbolic tangent, :math:`y = \frac{exp(x) - exp(-x)}{exp(x) + exp(-x)}`
+- `softrelu`: Soft ReLU, or SoftPlus, :math:`y = log(1 + exp(x))`
 
-See `LeakyReLU` for other activations with parameters.
-)")
-.add_argument("data", "Symbol", "Input data to activation function.")
+)code" ADD_FILELINE)
+.add_argument("data", "NDArray-or-Symbol", "Input array to activation function.")
 .add_arguments(ActivationParam::__FIELDS__());
 
 }  // namespace op
 }  // namespace mxnet
-

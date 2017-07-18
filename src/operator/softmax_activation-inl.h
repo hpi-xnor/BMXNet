@@ -36,11 +36,9 @@ struct SoftmaxActivationParam : public dmlc::Parameter<SoftmaxActivationParam> {
     .add_enum("instance", softmax_activation::kInstance)
     .add_enum("channel", softmax_activation::kChannel)
     .set_default(softmax_activation::kInstance)
-    .describe("Softmax Mode. If set to instance, this operator will compute a "
-    "softmax for each instance in the batch; this is the default mode. "
-    "If set to channel, this operator will compute a num_channel-class softmax at "
-    "each position of each instance; this can be used for fully convolutional network, "
-    "image segmentation, etc.");
+    .describe("Specifies how to compute the softmax. If set to ``instance``, "
+              "it computes softmax for each instance. If set to ``channel``, "
+              "It computes cross channel softmax for each position of each instance.");
   }
 };
 
@@ -62,8 +60,8 @@ class SoftmaxActivationOp : public Operator {
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(in_data.size(), 1);
-    CHECK_EQ(out_data.size(), 1);
+    CHECK_EQ(in_data.size(), 1U);
+    CHECK_EQ(out_data.size(), 1U);
     Stream<xpu> *s = ctx.get_stream<xpu>();
     if (param_.mode == softmax_activation::kInstance) {
       Tensor<xpu, 2> data = in_data[softmax_activation::kData].FlatTo2D<xpu, real_t>(s);
@@ -92,9 +90,9 @@ class SoftmaxActivationOp : public Operator {
                         const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(out_grad.size(), 1);
+    CHECK_EQ(out_grad.size(), 1U);
     CHECK(in_data.size() == 1 && in_grad.size() == 1);
-    CHECK_EQ(req.size(), 1);
+    CHECK_EQ(req.size(), 1U);
     // Use 3d tensor for both mode -> {instance, channel}. Get shapes
     int total_size = in_grad[softmax_activation::kData].Size();
     int batch_size = in_grad[softmax_activation::kData].shape_[0];
@@ -140,7 +138,7 @@ class SoftmaxActivationProp : public OperatorProperty {
                   std::vector<TShape> *out_shape,
                   std::vector<TShape> *aux_shape) const override {
     using namespace mshadow;
-    CHECK_EQ(in_shape->size(), 1) << "Input:[data]";
+    CHECK_EQ(in_shape->size(), 1U) << "Input:[data]";
     const TShape &dshape = in_shape->at(softmax_activation::kData);
     if (dshape.ndim() == 0) return false;
     out_shape->clear();
