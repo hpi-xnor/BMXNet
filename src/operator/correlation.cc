@@ -29,13 +29,13 @@ inline void CorrelationForward(const Tensor<cpu, 4, Dtype> &out,
                                int max_displacement_, int kernel_size_,
                                int neighborhood_grid_radius_, int neighborhood_grid_width_,
                                int  kernel_radius_, int stride1_, int stride2_) {
-  const int bnum = data1.size(0);
+  const index_t bnum = data1.size(0);
   const int bchannels = data1.size(1);
   const int sumelems = kernel_size_ * kernel_size_ * bchannels;
   AddPad<Dtype>(data1, tmp1, pad_size_);
   AddPad<Dtype>(data2, tmp2, pad_size_);
-  for (index_t i = 0 ; i < top_height_ ; i++)
-      for (index_t j = 0 ; j < top_width_; j++)
+  for (index_t i = 0 ; i < static_cast<index_t>(top_height_) ; i++)
+      for (index_t j = 0 ; j < static_cast<index_t>(top_width_); j++)
         for (index_t nbatch = 0 ; nbatch < bnum ; nbatch++) {
             int x1 = j*stride1_+max_displacement_;
             int y1 = i*stride1_+max_displacement_;
@@ -76,9 +76,9 @@ inline void CorrelationBackward(const Tensor<cpu, 4, Dtype> &out_grad,
                                 int channels, int height, int width
                             ) {
   const float sumelems = kernel_size_ * kernel_size_ * channels;
-  for (int i = 0 ; i < top_height_ ; i++)
-     for (int j = 0 ; j < top_width_; j++)
-        for (int nbatch = 0 ; nbatch < num ; nbatch++) {
+  for (int i = 0 ; i < static_cast<index_t>(top_height_) ; i++)
+     for (int j = 0 ; j < static_cast<index_t>(top_width_); j++)
+        for (int nbatch = 0 ; nbatch < static_cast<index_t>(num) ; nbatch++) {
             int x1 = j*stride1_+max_displacement_;
             int y1 = i*stride1_+max_displacement_;
             for (int top_channel = 0 ; top_channel < top_channels_ ; top_channel++) {
@@ -136,9 +136,39 @@ Operator* CorrelationProp::CreateOperator(Context ctx) const {
 }
 DMLC_REGISTER_PARAMETER(CorrelationParam);
 MXNET_REGISTER_OP_PROPERTY(Correlation, CorrelationProp)
-.describe("Apply correlation to inputs")
-.add_argument("data1", "Symbol", "Input data1 to the correlation.")
-.add_argument("data2", "Symbol", "Input data2 to the correlation.")
-.add_arguments(CorrelationParam::__FIELDS__());
+.add_argument("data1", "NDArray-or-Symbol", "Input data1 to the correlation.")
+.add_argument("data2", "NDArray-or-Symbol", "Input data2 to the correlation.")
+.add_arguments(CorrelationParam::__FIELDS__())
+.describe(R"code(Applies correlation to inputs.
+
+The correlation layer performs multiplicative patch comparisons between two feature maps.
+
+Given two multi-channel feature maps :math:`f_{1}, f_{2}`, with :math:`w`, :math:`h`, and :math:`c` being their width, height, and number of channels,
+the correlation layer lets the network compare each patch from :math:`f_{1}` with each patch from :math:`f_{2}`.
+
+For now we consider only a single comparison of two patches. The 'correlation' of two patches centered at :math:`x_{1}` in the first map and
+:math:`x_{2}` in the second map is then defined as:
+
+.. math::
+   c(x_{1}, x_{2}) = \sum_{o \in [-k,k] \times [-k,k]} <f_{1}(x_{1} + o), f_{2}(x_{2} + o)>
+
+for a square patch of size :math:`K:=2k+1`.
+
+Note that the equation above is identical to one step of a convolution in neural networks, but instead of convolving data with a filter, it convolves data with other
+data. For this reason, it has no training weights.
+
+Computing :math:`c(x_{1}, x_{2})` involves :math:`c * K^{2}` multiplications. Comparing all patch combinations involves :math:`w^{2}*h^{2}` such computations.
+
+Given a maximum displacement :math:`d`, for each location :math:`x_{1}` it computes correlations :math:`c(x_{1}, x_{2})` only in a neighborhood of size :math:`D:=2d+1`,
+by limiting the range of :math:`x_{2}`. We use strides :math:`s_{1}, s_{2}`, to quantize :math:`x_{1}` globally and to quantize :math:`x_{2}` within the neighborhood
+centered around :math:`x_{1}`.
+
+The final output is defined by the following expression:
+
+.. math::
+  out[n, q, i, j] = c(x_{i, j}, x_{q})
+
+where :math:`i` and :math:`j` enumerate spatial locations in :math:`f_{1}`, and :math:`q` denotes the :math:`q^{th}` neighborhood of :math:`x_{i,j}`.
+)code" ADD_FILELINE);
 }  // namespace op
 }  // namespace mxnet

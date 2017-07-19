@@ -223,9 +223,13 @@ int main(int argc, char ** argv){
   }
 
   const std::string params_file(argv[1]);
+  char *file_copy_basename = strdup(argv[1]); 
+  char *file_copy_dirname = strdup(argv[1]);
+  const std::string path(dirname(file_copy_dirname));
+  const std::string params_file_name(basename(file_copy_basename));
+  free(file_copy_basename);
+  free(file_copy_dirname);
 
-  const std::string path(dirname(argv[1]));
-  const std::string params_file_name(basename(argv[1]));
   std::string base_name = params_file_name;
   base_name.erase(base_name.rfind('-')); // watchout if no '-'
   const std::string output_name(path + "/" + "binarized_" + params_file_name);

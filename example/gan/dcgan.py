@@ -1,6 +1,8 @@
+from __future__ import print_function
 import mxnet as mx
 import numpy as np
 from sklearn.datasets import fetch_mldata
+from matplotlib import pyplot as plt
 import logging
 import cv2
 from datetime import datetime
@@ -120,12 +122,13 @@ def visual(title, X):
     X = X.transpose((0, 2, 3, 1))
     X = np.clip((X+1.0)*(255.0/2.0), 0, 255).astype(np.uint8)
     n = np.ceil(np.sqrt(X.shape[0]))
-    buff = np.zeros((n*X.shape[1], n*X.shape[2], X.shape[3]), dtype=np.uint8)
+    buff = np.zeros((int(n*X.shape[1]), int(n*X.shape[2]), int(X.shape[3])), dtype=np.uint8)
     for i, img in enumerate(X):
         fill_buf(buff, i, img, X.shape[1:3])
     buff = cv2.cvtColor(buff, cv2.COLOR_BGR2RGB)
-    cv2.imshow(title, buff)
-    cv2.waitKey(1)
+    plt.imshow(buff)
+    plt.title(title)
+    plt.show()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -208,7 +211,7 @@ if __name__ == '__main__':
     mD = mx.metric.CustomMetric(fentropy)
     mACC = mx.metric.CustomMetric(facc)
 
-    print 'Training...'
+    print('Training...')
     stamp =  datetime.now().strftime('%Y_%m_%d-%H_%M')
 
     # =============train===============
@@ -262,7 +265,7 @@ if __name__ == '__main__':
 
             t += 1
             if t % 10 == 0:
-                print 'epoch:', epoch, 'iter:', t, 'metric:', mACC.get(), mG.get(), mD.get()
+                print('epoch:', epoch, 'iter:', t, 'metric:', mACC.get(), mG.get(), mD.get())
                 mACC.reset()
                 mG.reset()
                 mD.reset()
@@ -274,9 +277,6 @@ if __name__ == '__main__':
                 visual('data', batch.data[0].asnumpy())
 
         if check_point:
-            print 'Saving...'
+            print('Saving...')
             modG.save_params('%s_G_%s-%04d.params'%(dataset, stamp, epoch))
             modD.save_params('%s_D_%s-%04d.params'%(dataset, stamp, epoch))
-
-
-

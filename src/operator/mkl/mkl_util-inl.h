@@ -21,6 +21,14 @@
 *******************************************************************************/
 #ifndef MXNET_OPERATOR_MKL_MKL_UTIL_INL_H_
 #define MXNET_OPERATOR_MKL_MKL_UTIL_INL_H_
+#include <vector>
+#define MKLDNN_CALL(func)                                                               \
+  {                                                                                     \
+    dnnError_t status = (func);                                                                \
+    CHECK_EQ(status, E_SUCCESS) << "MKL DNN call failed (status: " << status << ").";           \
+  }
+
+
 namespace mxnet {
 namespace op {
 
@@ -54,6 +62,21 @@ namespace op {
     }
 #endif
   }
+#if MKL_EXPERIMENTAL == 1
+  template<typename DType>
+  inline std::shared_ptr<MKLData<DType> > mkl_get_mem_desc(
+    const std::shared_ptr<MKLMemHolder> data_mem) {
+    std::shared_ptr<PrvMemDescr> prv_descriptor =
+      data_mem->get_prv_descriptor();
+    CHECK_EQ(prv_descriptor->get_descr_type(),
+      PrvMemDescr::PRV_DESCR_MKL2017);
+    std::shared_ptr<MKLData<DType> > mem_descr
+      = std::static_pointer_cast<MKLData<DType>>
+      (prv_descriptor);
+    CHECK(mem_descr != NULL);
+    return mem_descr;
+  }
+#endif
   template<typename xpu, int dim, typename DType>
   inline  mshadow::Tensor<xpu, dim, DType> mkl_experimental_direct_get(
     const TBlob &b, mshadow::Stream<xpu> *s) {
@@ -66,7 +89,22 @@ namespace op {
     mkl_set_priv_flag(b);
     return b.get_with_shape<xpu, dim, DType>(shape, s);
   }
-
 }  // namespace op
+#if MKL_EXPERIMENTAL == 1
+inline void mkl_tblobs_prv_to_cpu(const std::vector<TBlob> &data) {
+  for (size_t i = 0; i < data.size(); i++) {
+    std::shared_ptr<MKLMemHolder> mem_holder = data[i].Mkl_mem_;
+    if (mem_holder != nullptr && mem_holder->b_eager_mode) {
+      mem_holder->check_and_prv_to_cpu(data[i].dptr_);
+    }
+  }
+}
+inline void mkl_set_tblob_eager_mode(const TBlob &data) {
+  std::shared_ptr<MKLMemHolder> mem_holder = data.Mkl_mem_;
+  if (mem_holder != nullptr) {
+    mem_holder->set_eager_mode(true);
+  }
+}
+#endif
 }  // namespace mxnet
 #endif  // MXNET_OPERATOR_MKL_MKL_UTIL_INL_H_

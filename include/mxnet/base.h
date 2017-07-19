@@ -85,9 +85,9 @@
 /*! \brief major version */
 #define MXNET_MAJOR 0
 /*! \brief minor version */
-#define MXNET_MINOR 9
+#define MXNET_MINOR 10
 /*! \brief patch version */
-#define MXNET_PATCH 3
+#define MXNET_PATCH 1
 /*! \brief mxnet version */
 #define MXNET_VERSION (MXNET_MAJOR*10000 + MXNET_MINOR*100 + MXNET_PATCH)
 /*! \brief helper for making version number */
@@ -211,6 +211,8 @@ struct Context {
  *  The information needed in runtime for actual execution.
  */
 struct RunContext {
+  /*! \brief base Context */
+  Context ctx;
   /*!
    * \brief the stream of the device, can be NULL or Stream<gpu>* in GPU mode
    */
@@ -223,6 +225,10 @@ struct RunContext {
   template<typename xpu>
   inline mshadow::Stream<xpu>* get_stream() const {
     return static_cast<mshadow::Stream<xpu>*>(stream);
+  }
+  /*! \brief get the base Context from RunContext */
+  inline const Context& get_ctx() const {
+    return ctx;
   }
 };
 }  // namespace mxnet
@@ -242,11 +248,13 @@ inline Context Context::Create(DeviceType dev_type, int32_t dev_id) {
   ctx.dev_type = dev_type;
   if (dev_id < 0) {
     ctx.dev_id = 0;
-#if MXNET_USE_CUDA
     if (dev_type != kCPU) {
+#if MXNET_USE_CUDA
       CHECK_EQ(cudaGetDevice(&ctx.dev_id), cudaSuccess);
-    }
+#else
+      LOG(FATAL) << "Please compile with CUDA enabled for cuda features";
 #endif
+    }
   } else {
     ctx.dev_id = dev_id;
   }
@@ -302,6 +310,13 @@ inline std::ostream& operator<<(std::ostream &out, const Context &ctx) {
   out << ctx.dev_id << ")";
   return out;
 }
+
+// describe op registration point
+#define STRINGIZE_DETAIL(x) #x
+#define STRINGIZE(x) STRINGIZE_DETAIL(x)
+#define MXNET_DESCRIBE(...) describe(__VA_ARGS__ "\n\nFrom:" __FILE__ ":" STRINGIZE(__LINE__))
+#define ADD_FILELINE "\n\nDefined in " __FILE__ ":L" STRINGIZE(__LINE__)
+
 }  // namespace mxnet
 
 #include "./tensor_blob.h"

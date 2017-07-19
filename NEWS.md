@@ -1,15 +1,24 @@
 MXNet Change Log
 ================
+## 0.10.0
+- Overhauled documentation for commonly used Python APIs, Installation instructions, Tutorials, HowTos and MXNet Architecture.  
+- Updated mxnet.io for improved readability.  
+- Pad operator now support reflection padding.  
+- Fixed a memory corruption error in threadedengine.  
+- Added CTC loss layer to contrib package. See mx.contrib.sym.ctc_loss.  
+- Added new sampling operators for several distributions (normal,uniform,gamma,exponential,negative binomial).  
+- Added documentation for experimental RNN APIs.
+ 
 ## 0.9.3
 - Move symbolic API to NNVM @tqchen
   - Most front-end C API are backward  compatible
-  - Removed symbolic api in MXNet and relies on NNVM
+  - Removed symbolic API in MXNet and relies on NNVM
 - New features:
-  - MXNet profiler for profiling operator level executions
+  - MXNet profiler for profiling operator-level executions
   - mxnet.image package for fast image loading and processing
 - Change of JSON format
   - param and attr field are merged to attr
-  - New code is backward compatible can load old json format
+  - New code is backward-compatible can load old json format
 - OpProperty registration now is deprecated
   - New operators are encouraged to register their property to NNVM op registry attribute
 - Known features removed limitations to be fixed

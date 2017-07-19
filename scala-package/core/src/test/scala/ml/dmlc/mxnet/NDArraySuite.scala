@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ml.dmlc.mxnet
 
 import java.io.File
@@ -144,6 +161,19 @@ class NDArraySuite extends FunSuite with BeforeAndAfterAll with Matchers {
     assert(res.toArray === Array(11f))
   }
 
+  test("arange") {
+    for (i <- 0 until 5) {
+      val start = scala.util.Random.nextFloat() * 5
+      val stop = start + scala.util.Random.nextFloat() * 100
+      val step = scala.util.Random.nextFloat() * 4
+      val repeat = (scala.util.Random.nextFloat() * 5).toInt + 1
+      val result = (start until stop by step).flatMap(x => Array.fill[Float](repeat)(x))
+      val range = NDArray.arange(start = start, stop = Some(stop), step = step,
+        repeat = repeat, ctx = Context.cpu(), dType = DType.Float32)
+      assert(CheckUtils.reldiff(result.toArray, range.toArray) <= 1e-5f)
+    }
+  }
+
   test("power") {
     val arr = NDArray.array(Array(3f, 5f), shape = Shape(2, 1))
 
@@ -158,6 +188,101 @@ class NDArraySuite extends FunSuite with BeforeAndAfterAll with Matchers {
     val arrPower3 = NDArray.power(arr, arr)
     assert(arrPower3.shape === Shape(2, 1))
     assert(arrPower3.toArray === Array(27f, 3125f))
+
+   val arrPower4 = arr ** 2f
+    assert(arrPower4.shape === Shape(2, 1))
+    assert(arrPower4.toArray === Array(9f, 25f))
+
+    val arrPower5 = arr ** arr
+    assert(arrPower5.shape === Shape(2, 1))
+    assert(arrPower5.toArray === Array(27f, 3125f))
+
+    arr **= 2f
+    assert(arr.shape === Shape(2, 1))
+    assert(arr.toArray === Array(9f, 25f))
+
+    arr.set(Array(3f, 5f))
+    arr **= arr
+    assert(arr.shape === Shape(2, 1))
+    assert(arr.toArray === Array(27f, 3125f))
+  }
+
+  test("equal") {
+    val arr1 = NDArray.array(Array(1f, 2f, 3f, 5f), shape = Shape(2, 2))
+    val arr2 = NDArray.array(Array(1f, 4f, 3f, 6f), shape = Shape(2, 2))
+
+    val arrEqual1 = NDArray.equal(arr1, arr2)
+    assert(arrEqual1.shape === Shape(2, 2))
+    assert(arrEqual1.toArray === Array(1f, 0f, 1f, 0f))
+
+    val arrEqual2 = NDArray.equal(arr1, 3f)
+    assert(arrEqual2.shape === Shape(2, 2))
+    assert(arrEqual2.toArray === Array(0f, 0f, 1f, 0f))
+  }
+
+  test("not_equal") {
+    val arr1 = NDArray.array(Array(1f, 2f, 3f, 5f), shape = Shape(2, 2))
+    val arr2 = NDArray.array(Array(1f, 4f, 3f, 6f), shape = Shape(2, 2))
+
+    val arrEqual1 = NDArray.notEqual(arr1, arr2)
+    assert(arrEqual1.shape === Shape(2, 2))
+    assert(arrEqual1.toArray === Array(0f, 1f, 0f, 1f))
+
+    val arrEqual2 = NDArray.notEqual(arr1, 3f)
+    assert(arrEqual2.shape === Shape(2, 2))
+    assert(arrEqual2.toArray === Array(1f, 1f, 0f, 1f))
+  }
+
+  test("greater") {
+    val arr1 = NDArray.array(Array(1f, 2f, 4f, 5f), shape = Shape(2, 2))
+    val arr2 = NDArray.array(Array(1f, 4f, 3f, 6f), shape = Shape(2, 2))
+
+    val arrEqual1 = arr1 > arr2
+    assert(arrEqual1.shape === Shape(2, 2))
+    assert(arrEqual1.toArray === Array(0f, 0f, 1f, 0f))
+
+    val arrEqual2 = arr1 > 2f
+    assert(arrEqual2.shape === Shape(2, 2))
+    assert(arrEqual2.toArray === Array(0f, 0f, 1f, 1f))
+  }
+
+  test("greater_equal") {
+    val arr1 = NDArray.array(Array(1f, 2f, 4f, 5f), shape = Shape(2, 2))
+    val arr2 = NDArray.array(Array(1f, 4f, 3f, 6f), shape = Shape(2, 2))
+
+    val arrEqual1 = arr1 >= arr2
+    assert(arrEqual1.shape === Shape(2, 2))
+    assert(arrEqual1.toArray === Array(1f, 0f, 1f, 0f))
+
+    val arrEqual2 = arr1 >= 2f
+    assert(arrEqual2.shape === Shape(2, 2))
+    assert(arrEqual2.toArray === Array(0f, 1f, 1f, 1f))
+  }
+
+  test("lesser") {
+    val arr1 = NDArray.array(Array(1f, 2f, 4f, 5f), shape = Shape(2, 2))
+    val arr2 = NDArray.array(Array(1f, 4f, 3f, 6f), shape = Shape(2, 2))
+
+    val arrEqual1 = arr1 < arr2
+    assert(arrEqual1.shape === Shape(2, 2))
+    assert(arrEqual1.toArray === Array(0f, 1f, 0f, 1f))
+
+    val arrEqual2 = arr1 < 2f
+    assert(arrEqual2.shape === Shape(2, 2))
+    assert(arrEqual2.toArray === Array(1f, 0f, 0f, 0f))
+  }
+
+  test("lesser_equal") {
+    val arr1 = NDArray.array(Array(1f, 2f, 4f, 5f), shape = Shape(2, 2))
+    val arr2 = NDArray.array(Array(1f, 4f, 3f, 6f), shape = Shape(2, 2))
+
+    val arrEqual1 = arr1 <= arr2
+    assert(arrEqual1.shape === Shape(2, 2))
+    assert(arrEqual1.toArray === Array(1f, 1f, 0f, 1f))
+
+    val arrEqual2 = arr1 <= 2f
+    assert(arrEqual2.shape === Shape(2, 2))
+    assert(arrEqual2.toArray === Array(1f, 1f, 0f, 0f))
   }
 
   test("choose_element_0index") {
@@ -266,12 +391,20 @@ class NDArraySuite extends FunSuite with BeforeAndAfterAll with Matchers {
     assert(argmax.toArray === Array(1f, 0f))
   }
 
-  test("concatenate") {
+  test("concatenate axis-0") {
     val arr1 = NDArray.array(Array(1f, 2f, 4f, 3f, 3f, 3f), shape = Shape(2, 3))
     val arr2 = NDArray.array(Array(8f, 7f, 6f), shape = Shape(1, 3))
     val arr = NDArray.concatenate(arr1, arr2)
     assert(arr.shape === Shape(3, 3))
     assert(arr.toArray === Array(1f, 2f, 4f, 3f, 3f, 3f, 8f, 7f, 6f))
+  }
+
+  test("concatenate axis-1") {
+    val arr1 = NDArray.array(Array(1f, 2f, 3f, 4f), shape = Shape(2, 2))
+    val arr2 = NDArray.array(Array(5f, 6f), shape = Shape(2, 1))
+    val arr = NDArray.concatenate(Array(arr1, arr2), axis = 1)
+    assert(arr.shape === Shape(2, 3))
+    assert(arr.toArray === Array(1f, 2f, 5f, 3f, 4f, 6f))
   }
 
   test("transpose") {

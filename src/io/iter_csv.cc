@@ -26,14 +26,15 @@ struct CSVIterParam : public dmlc::Parameter<CSVIterParam> {
   // declare parameters
   DMLC_DECLARE_PARAMETER(CSVIterParam) {
     DMLC_DECLARE_FIELD(data_csv)
-        .describe("Dataset Param: Data csv path.");
+        .describe("The input CSV file or a directory path.");
     DMLC_DECLARE_FIELD(data_shape)
-        .describe("Dataset Param: Shape of the data.");
+        .describe("The shape of one example.");
     DMLC_DECLARE_FIELD(label_csv).set_default("NULL")
-        .describe("Dataset Param: Label csv path. If is NULL, all labels will be returned as 0");
+        .describe("The input CSV file or a directory path. "
+                  "If NULL, all labels will be returned as 0.");
     index_t shape1[] = {1};
     DMLC_DECLARE_FIELD(label_shape).set_default(TShape(shape1, shape1 + 1))
-        .describe("Dataset Param: Shape of the label.");
+        .describe("The shape of one label.");
   }
 };
 
@@ -106,7 +107,7 @@ class CSVIter: public IIterator<DataInst> {
         << "The data size in CSV do not match size of shape: "
         << "specified shape=" << shape << ", the csv row-length=" << row.length;
     const real_t* ptr = row.value;
-    return TBlob((real_t*)ptr, shape, cpu::kDevMask);  // NOLINT(*)
+    return TBlob((real_t*)ptr, shape, cpu::kDevMask, 0);  // NOLINT(*)
   }
 
   CSVIterParam param_;
@@ -129,8 +130,79 @@ class CSVIter: public IIterator<DataInst> {
 DMLC_REGISTER_PARAMETER(CSVIterParam);
 
 MXNET_REGISTER_IO_ITER(CSVIter)
-.describe("Create iterator for dataset in csv.")
+.describe(R"code(Returns the CSV file iterator.
+
+In this function, the `data_shape` parameter is used to set the shape of each line of the input data.
+If a row in an input file is `1,2,3,4,5,6`` and `data_shape` is (3,2), that row
+will be reshaped, yielding the array [[1,2],[3,4],[5,6]] of shape (3,2).
+
+By default, the `CSVIter` has `round_batch` parameter set to ``True``. So, if `batch_size`
+is 3 and there are 4 total rows in CSV file, 2 more examples
+are consumed at the first round. If `reset` function is called after first round,
+the call is ignored and remaining examples are returned in the second round.
+
+If one wants all the instances in the second round after calling `reset`, make sure
+to set `round_batch` to False.
+
+If ``data_csv = 'data/'`` is set, then all the files in this directory will be read.
+
+Examples::
+
+  // Contents of CSV file ``data/data.csv``.
+  1,2,3
+  2,3,4
+  3,4,5
+  4,5,6
+
+  // Creates a `CSVIter` with `batch_size`=2 and default `round_batch`=True.
+  CSVIter = mx.io.CSVIter(data_csv = 'data/data.csv', data_shape = (3,),
+  batch_size = 2)
+
+  // Two batches read from the above iterator are as follows:
+  [[ 1.  2.  3.]
+  [ 2.  3.  4.]]
+  [[ 3.  4.  5.]
+  [ 4.  5.  6.]]
+
+  // Creates a `CSVIter` with default `round_batch` set to True.
+  CSVIter = mx.io.CSVIter(data_csv = 'data/data.csv', data_shape = (3,),
+  batch_size = 3)
+
+  // Two batches read from the above iterator in the first pass are as follows:
+  [[1.  2.  3.]
+  [2.  3.  4.]
+  [3.  4.  5.]]
+
+  [[4.  5.  6.]
+  [1.  2.  3.]
+  [2.  3.  4.]]
+
+  // Now, `reset` method is called.
+  CSVIter.reset()
+
+  // Batch read from the above iterator in the second pass is as follows:
+  [[ 3.  4.  5.]
+  [ 4.  5.  6.]
+  [ 1.  2.  3.]]
+
+  // Creates a `CSVIter` with `round_batch`=False.
+  CSVIter = mx.io.CSVIter(data_csv = 'data/data.csv', data_shape = (3,),
+  batch_size = 3, round_batch=False)
+
+  // Contents of two batches read from the above iterator in both passes, after calling
+  // `reset` method before second pass, is as follows:
+  [[1.  2.  3.]
+  [2.  3.  4.]
+  [3.  4.  5.]]
+
+  [[4.  5.  6.]
+  [2.  3.  4.]
+  [3.  4.  5.]]
+
+)code" ADD_FILELINE)
 .add_arguments(CSVIterParam::__FIELDS__())
+.add_arguments(BatchParam::__FIELDS__())
+.add_arguments(PrefetcherParam::__FIELDS__())
 .set_body([]() {
     return new PrefetcherIter(
         new BatchLoader(

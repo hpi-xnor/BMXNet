@@ -1,7 +1,7 @@
 import os, sys
 curr_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(curr_path, "../../python"))
-sys.path.insert(0, os.path.join(curr_path, "../../example/image-classification/symbol"))
+sys.path.insert(0, os.path.join(curr_path, "../../example/image-classification/symbols"))
 import mxnet as mx
 import logging
 import argparse
@@ -9,6 +9,7 @@ import time
 import numpy as np
 from importlib import import_module
 from collections import namedtuple
+from functools import reduce
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

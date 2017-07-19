@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ml.dmlc.mxnet
 
 import ml.dmlc.mxnet.init.Base._
@@ -8,7 +25,7 @@ import scala.collection.mutable.ListBuffer
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
 
-private[mxnet] class AddNDArrayFunctions extends StaticAnnotation {
+private[mxnet] class AddNDArrayFunctions(isContrib: Boolean) extends StaticAnnotation {
   private[mxnet] def macroTransform(annottees: Any*) = macro NDArrayMacro.addDefs
 }
 
@@ -26,6 +43,15 @@ private[mxnet] object NDArrayMacro {
   private def impl(c: blackbox.Context)(addSuper: Boolean, annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
 
+    val isContrib: Boolean = c.prefix.tree match {
+      case q"new AddNDArrayFunctions($b)" => c.eval[Boolean](c.Expr(b))
+    }
+
+    val newNDArrayFunctions = {
+      if (isContrib) ndarrayFunctions.filter(_._1.startsWith("_contrib_"))
+      else ndarrayFunctions.filter(!_._1.startsWith("_contrib_"))
+    }
+
     val AST_NDARRAY_TYPE = Select(Select(Select(
       Ident(TermName("ml")), TermName("dmlc")), TermName("mxnet")), TypeName("NDArray"))
     val AST_TYPE_MAP_STRING_ANY = AppliedTypeTree(Ident(TypeName("Map")),
@@ -38,12 +64,22 @@ private[mxnet] object NDArrayMacro {
       List(Ident(TypeName("Any")))
     )
 
-    val functionDefs = ndarrayFunctions flatMap { case (funcName, funcProp) =>
-      val functionScope = if (funcName.startsWith("_")) Modifiers(Flag.PRIVATE) else Modifiers()
+    val functionDefs = newNDArrayFunctions flatMap { case (funcName, funcProp) =>
+      val functionScope = {
+        if (isContrib) Modifiers()
+        else {
+          if (funcName.startsWith("_")) Modifiers(Flag.PRIVATE) else Modifiers()
+        }
+      }
+      val newName = {
+        if (isContrib) funcName.substring(funcName.indexOf("_contrib_") + "_contrib_".length())
+        else funcName
+      }
+
       // It will generate definition something like,
       Seq(
         // def transpose(kwargs: Map[String, Any] = null)(args: Any*)
-        DefDef(functionScope, TermName(funcName), List(),
+        DefDef(functionScope, TermName(newName), List(),
           List(
             List(
               ValDef(Modifiers(Flag.PARAM | Flag.DEFAULTPARAM), TermName("kwargs"),
@@ -63,7 +99,7 @@ private[mxnet] object NDArrayMacro {
           )
         ),
         // def transpose(args: Any*)
-        DefDef(functionScope, TermName(funcName), List(),
+        DefDef(functionScope, TermName(newName), List(),
           List(
             List(
               ValDef(Modifiers(), TermName("args"), AST_TYPE_ANY_VARARG, EmptyTree)

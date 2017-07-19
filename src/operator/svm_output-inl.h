@@ -35,11 +35,13 @@ struct SVMOutputParam : public dmlc::Parameter<SVMOutputParam> {
   bool use_linear;
   DMLC_DECLARE_PARAMETER(SVMOutputParam) {
     DMLC_DECLARE_FIELD(margin).set_default(1.0f)
-    .describe("Scale the DType(param_.margin) for activation size");
+    .describe("The loss function penalizes outputs that lie outside this margin. "
+        "Default margin is 1.");
     DMLC_DECLARE_FIELD(regularization_coefficient).set_default(1.0f)
-    .describe("Scale the coefficient responsible for balacing coefficient size and error tradeoff");
+    .describe("Regularization parameter for the SVM. "
+        "This balances the tradeoff between coefficient size and error.");
     DMLC_DECLARE_FIELD(use_linear).set_default(false)
-    .describe("If set true, uses L1-SVM objective function. Default uses L2-SVM objective");
+    .describe("Whether to use L1-SVM objective. L2-SVM objective is used by default.");
   };
 };
 
@@ -55,9 +57,9 @@ class SVMOutputOp : public Operator {
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(in_data.size(), 2) << "Expecting [data, label]";
-    CHECK_EQ(out_data.size(), 1) << "Expecting [output]";
-    CHECK_EQ(req.size(), 1) << "Expecting output.size() == req.size()";
+    CHECK_EQ(in_data.size(), 2U) << "Expecting [data, label]";
+    CHECK_EQ(out_data.size(), 1U) << "Expecting [output]";
+    CHECK_EQ(req.size(), 1U) << "Expecting output.size() == req.size()";
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 2, DType> data = in_data[svm_enum::kData].FlatTo2D<xpu, DType>(s);
     Tensor<xpu, 2, DType> out = out_data[svm_enum::kOut].FlatTo2D<xpu, DType>(s);
@@ -73,10 +75,10 @@ class SVMOutputOp : public Operator {
                         const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(in_data.size(), 2);
-    CHECK_EQ(out_grad.size(), 1);
-    CHECK_GE(in_grad.size(), 1);
-    CHECK_GE(req.size(), 1);
+    CHECK_EQ(in_data.size(), 2U);
+    CHECK_EQ(out_grad.size(), 1U);
+    CHECK_GE(in_grad.size(), 1U);
+    CHECK_GE(req.size(), 1U);
     Stream<xpu> *s = ctx.get_stream<xpu>();
     const TShape& label_shape = in_data[svm_enum::kLabel].shape_;
 
@@ -120,7 +122,7 @@ class SVMOutputProp : public OperatorProperty {
                   std::vector<TShape> *out_shape,
                   std::vector<TShape> *aux_shape) const override {
     using namespace mshadow;
-    CHECK_EQ(in_shape->size(), 2) << "Input:[data, label]";
+    CHECK_EQ(in_shape->size(), 2U) << "Input:[data, label]";
     const TShape &dshape = in_shape->at(0);
     if (dshape.ndim() == 0) return false;
     TShape label_shape(dshape.ndim() - 1);
@@ -135,7 +137,7 @@ class SVMOutputProp : public OperatorProperty {
   bool InferType(std::vector<int> *in_type,
                  std::vector<int> *out_type,
                  std::vector<int> *aux_type) const override {
-    CHECK_GE(in_type->size(), 1);
+    CHECK_GE(in_type->size(), 1U);
     int dtype = (*in_type)[0];
     CHECK_NE(dtype, -1) << "First input must have specified type";
     for (index_t i = 0; i < in_type->size(); ++i) {

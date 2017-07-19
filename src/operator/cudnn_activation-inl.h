@@ -34,20 +34,18 @@ class CuDNNActivationOp : public Operator {
         LOG(FATAL) << "Not implmented";
         break;
     }
-    #if CUDNN_MAJOR == 5
+    #if CUDNN_MAJOR >= 5
     nan_prop_ = CUDNN_NOT_PROPAGATE_NAN;
-    CHECK_EQ(cudnnCreateActivationDescriptor(&desc_),
-             CUDNN_STATUS_SUCCESS);
-    CHECK_EQ(cudnnSetActivationDescriptor(desc_, mode_, nan_prop_, relu_ceil_),
-             CUDNN_STATUS_SUCCESS);
+    CUDNN_CALL(cudnnCreateActivationDescriptor(&desc_));
+    CUDNN_CALL(cudnnSetActivationDescriptor(desc_, mode_, nan_prop_, relu_ceil_));
     #endif
   }
 
   ~CuDNNActivationOp() {
     if (init_cudnn_) {
-      CHECK_EQ(cudnnDestroyTensorDescriptor(shape_desc_), CUDNN_STATUS_SUCCESS);
-      #if CUDNN_MAJOR == 5
-      CHECK_EQ(cudnnDestroyActivationDescriptor(desc_), CUDNN_STATUS_SUCCESS);
+      CUDNN_CALL(cudnnDestroyTensorDescriptor(shape_desc_));
+      #if CUDNN_MAJOR >= 5
+      CUDNN_CALL(cudnnDestroyActivationDescriptor(desc_));
       #endif
     }
   }
@@ -59,8 +57,8 @@ class CuDNNActivationOp : public Operator {
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(in_data.size(), 1);
-    CHECK_EQ(out_data.size(), 1);
+    CHECK_EQ(in_data.size(), 1U);
+    CHECK_EQ(out_data.size(), 1U);
     Stream<gpu> *s = ctx.get_stream<gpu>();
     Tensor<gpu, 4, DType> data;
     Tensor<gpu, 4, DType> out;
@@ -89,33 +87,33 @@ class CuDNNActivationOp : public Operator {
     CHECK_EQ(s->dnn_handle_ownership_, mshadow::Stream<gpu>::OwnHandle);
     if (!init_cudnn_) {
       init_cudnn_ = true;
-      CHECK_EQ(cudnnCreateTensorDescriptor(&shape_desc_), CUDNN_STATUS_SUCCESS);
-      CHECK_EQ(cudnnSetTensor4dDescriptor(shape_desc_,
-                                          CUDNN_TENSOR_NCHW,
-                                          dtype_,
-                                          data.shape_[0],
-                                          data.shape_[1],
-                                          data.shape_[2],
-                                          data.shape_[3]), CUDNN_STATUS_SUCCESS);
+      CUDNN_CALL(cudnnCreateTensorDescriptor(&shape_desc_));
+      CUDNN_CALL(cudnnSetTensor4dDescriptor(shape_desc_,
+                                            CUDNN_TENSOR_NCHW,
+                                            dtype_,
+                                            data.shape_[0],
+                                            data.shape_[1],
+                                            data.shape_[2],
+                                            data.shape_[3]));
     }
     #if CUDNN_MAJOR <= 4
-    CHECK_EQ(cudnnActivationForward(s->dnn_handle_,
-                                     mode_,
-                                    &alpha,
-                                    shape_desc_,
-                                    data.dptr_,
-                                    &beta,
-                                    shape_desc_,
-                                    out.dptr_), CUDNN_STATUS_SUCCESS);
-    #elif CUDNN_MAJOR == 5
-    CHECK_EQ(cudnnActivationForward(s->dnn_handle_,
+    CUDNN_CALL(cudnnActivationForward(s->dnn_handle_,
+                                      mode_,
+                                      &alpha,
+                                      shape_desc_,
+                                      data.dptr_,
+                                      &beta,
+                                      shape_desc_,
+                                      out.dptr_));
+    #elif CUDNN_MAJOR >= 5
+    CUDNN_CALL(cudnnActivationForward(s->dnn_handle_,
                                      desc_,
-                                    &alpha,
-                                    shape_desc_,
-                                    data.dptr_,
-                                    &beta,
-                                    shape_desc_,
-                                    out.dptr_), CUDNN_STATUS_SUCCESS);
+                                     &alpha,
+                                     shape_desc_,
+                                     data.dptr_,
+                                     &beta,
+                                     shape_desc_,
+                                     out.dptr_));
     #endif
   }
 
@@ -128,11 +126,11 @@ class CuDNNActivationOp : public Operator {
                         const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(out_grad.size(), 1);
-    CHECK_EQ(in_data.size(), 1);
-    CHECK_EQ(out_data.size(), 1);
-    CHECK_EQ(req.size(), 1);
-    CHECK_EQ(in_grad.size(), 1);
+    CHECK_EQ(out_grad.size(), 1U);
+    CHECK_EQ(in_data.size(), 1U);
+    CHECK_EQ(out_data.size(), 1U);
+    CHECK_EQ(req.size(), 1U);
+    CHECK_EQ(in_grad.size(), 1U);
     typename DataType<DType>::ScaleType alpha = 1.0f;
     typename DataType<DType>::ScaleType beta = 0.0f;
     Stream<gpu> *s = ctx.get_stream<gpu>();
@@ -166,31 +164,31 @@ class CuDNNActivationOp : public Operator {
     }
     CHECK_EQ(s->dnn_handle_ownership_, mshadow::Stream<gpu>::OwnHandle);
     #if CUDNN_MAJOR <= 4
-    CHECK_EQ(cudnnActivationBackward(s->dnn_handle_,
-                                     mode_,
-                                     &alpha,
-                                     shape_desc_,
-                                     output_data.dptr_,
-                                     shape_desc_,
-                                     grad.dptr_,
-                                     shape_desc_,
-                                     data.dptr_,
-                                     &beta,
-                                     shape_desc_,
-                                     input_grad.dptr_), CUDNN_STATUS_SUCCESS);
-    #elif CUDNN_MAJOR == 5
-    CHECK_EQ(cudnnActivationBackward(s->dnn_handle_,
-                                     desc_,
-                                     &alpha,
-                                     shape_desc_,
-                                     output_data.dptr_,
-                                     shape_desc_,
-                                     grad.dptr_,
-                                     shape_desc_,
-                                     data.dptr_,
-                                     &beta,
-                                     shape_desc_,
-                                     input_grad.dptr_), CUDNN_STATUS_SUCCESS);
+    CUDNN_CALL(cudnnActivationBackward(s->dnn_handle_,
+                                       mode_,
+                                       &alpha,
+                                       shape_desc_,
+                                       output_data.dptr_,
+                                       shape_desc_,
+                                       grad.dptr_,
+                                       shape_desc_,
+                                       data.dptr_,
+                                       &beta,
+                                       shape_desc_,
+                                       input_grad.dptr_));
+    #elif CUDNN_MAJOR >= 5
+    CUDNN_CALL(cudnnActivationBackward(s->dnn_handle_,
+                                       desc_,
+                                       &alpha,
+                                       shape_desc_,
+                                       output_data.dptr_,
+                                       shape_desc_,
+                                       grad.dptr_,
+                                       shape_desc_,
+                                       data.dptr_,
+                                       &beta,
+                                       shape_desc_,
+                                       input_grad.dptr_));
     #endif
   }
 
@@ -200,7 +198,7 @@ class CuDNNActivationOp : public Operator {
   cudnnActivationMode_t mode_;
   cudnnTensorDescriptor_t shape_desc_;
   ActivationParam param_;
-#if CUDNN_MAJOR == 5
+#if CUDNN_MAJOR >= 5
   cudnnActivationDescriptor_t desc_;
   cudnnNanPropagation_t nan_prop_;
   double relu_ceil_;
