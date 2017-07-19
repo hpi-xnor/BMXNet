@@ -27,9 +27,12 @@ ifndef EMCC
     EMCC=emcc
 endif
 
-ifndef DISABLE_OPENMP
+ifeq ($(OPENMP), 1)
+    CFLAGS += -fopenmp
+    LDFLAGS += -fopenmp
+else
     export OPENMP=0
-       DEFS+=-DDISABLE_OPENMP=1
+    DEFS+=-DDISABLE_OPENMP=1
 endif
 
 .PHONY: all clean
@@ -52,11 +55,6 @@ ifneq ($(MIN), 1)
         else
 		LDFLAGS += -lopenblas
 	endif
-endif
-
-ifeq ($(OPENMP), 1)
-    CFLAGS += -fopenmp
-    LDFLAGS += -fopenmp
 endif
 
 ifeq ($(ANDROID), 1)

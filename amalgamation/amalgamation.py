@@ -14,10 +14,6 @@ minimum = int(sys.argv[7]) if len(sys.argv) > 6 else 0
 android = int(sys.argv[8]) if len(sys.argv) > 7 else 0
 openmp = int(sys.argv[9]) if len(sys.argv) > 8 else 0
 
-if android != 0:
-    blacklist.append('execinfo.h')
-    blacklist.append('packet/sse-inl.h')
-
 def pprint(lst):
     for item in lst:
         print item
