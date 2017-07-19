@@ -16,7 +16,7 @@ if(NOT GTEST_ROOT)
   endif()
 endif()
 
-if(NOT MSVC)
+if(NOT MSVC AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   set(UNITTEST_STATIC_LINK ON)
 endif()
 
@@ -33,7 +33,6 @@ if(GTEST_FOUND)
   if(UNITTEST_STATIC_LINK)
     target_link_libraries(${PROJECT_NAME}_unit_tests
       ${GTEST_LIBRARY}
-      rt
       ${BEGIN_WHOLE_ARCHIVE} mxnet_static ${END_WHOLE_ARCHIVE}
       dmlc
       ${mxnet_LINKER_LIBS}
@@ -41,7 +40,6 @@ if(GTEST_FOUND)
   else()
     target_link_libraries(${PROJECT_NAME}_unit_tests
       ${GTEST_LIBRARY}
-      rt
       dmlc
       ${nnvm_LINKER_LIBS}
       ${mxnet_LINKER_LIBS}

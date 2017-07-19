@@ -430,7 +430,7 @@ else()
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" AND USE_MXNET_LIB_NAMING)
-  add_library(mxnet MODULE ${SOURCE})
+  add_library(mxnet SHARED ${SOURCE})
 else()
   if(UNIX)
     add_library(mxnet_static STATIC ${SOURCE})
@@ -514,10 +514,7 @@ if(USE_CPP_PACKAGE)
   add_subdirectory(cpp-package)
 endif()
 
-# Problems on Mac OS X: 1. librt not available 2. mxnet built as MODULE library, which can't be linked.
-if(!${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-  add_subdirectory(example/image-classification/predict-cpp)
-endif()
+add_subdirectory(example/image-classification/predict-cpp)
 
 # ---[ Linter target
 if(MSVC)
