@@ -1,12 +1,11 @@
 /*!
  * Copyright (c) 2017 by Contributors
- * \file convolution-inl.h
+ * \file qconvolution-inl.h
  * \brief
- * \ref: https://github.com/Yangqing/caffe/wiki/Convolution-in-Caffe:-a-memo
- * \author Bing Xu, Jun Wu
+ * \author HPI-DeepLearning, Bing Xu, Jun Wu
 */
-#ifndef MXNET_OPERATOR_CONVOLUTION_INL_H_
-#define MXNET_OPERATOR_CONVOLUTION_INL_H_
+#ifndef MXNET_OPERATOR_QCONVOLUTION_INL_H_
+#define MXNET_OPERATOR_QCONVOLUTION_INL_H_
 
 #include <mxnet/io.h>
 #include <mxnet/base.h>
@@ -20,21 +19,23 @@
 #include <vector>
 #include <string>
 #include <utility>
-#include "./operator_common.h"
-#include "./nn/im2col.h"
+#include "../../src/operator/operator_common.h"
+#include "../../src/operator/nn/im2col.h"
+#include "./xnor_cpu.h"
+#include "./q_helper.h"
 
 
 namespace mxnet {
     namespace op {
 
-        namespace conv {
+        namespace qconv {
             enum ConvolutionOpInputs {kData, kWeight, kBias};
             enum ConvolutionOpOutputs {kOut};
             enum ConvolutionOpResource {kTempSpace};
             enum ConvolutionOpCudnnTune {kOff, kLimited, kFastest};
         }
 
-        struct ConvolutionParam : public dmlc::Parameter<ConvolutionParam> {
+        struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
             TShape kernel;
             TShape stride;
             TShape dilate;
@@ -46,7 +47,11 @@ namespace mxnet {
             dmlc::optional<int> cudnn_tune;
             bool cudnn_off;
             dmlc::optional<int> layout;
-            DMLC_DECLARE_PARAMETER(ConvolutionParam) {
+            // mf quantization and binarization variables
+            uint32_t act_bit;
+            bool scaling_factor;
+            bool binarized_weights_only;
+            DMLC_DECLARE_PARAMETER(QConvolutionParam) {
               DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
               DMLC_DECLARE_FIELD(stride).set_default(TShape())
                       .describe("convolution stride: (h, w) or (d, h, w)");
@@ -60,12 +65,12 @@ namespace mxnet {
                       .describe("Number of group partitions.");
               DMLC_DECLARE_FIELD(workspace).set_default(1024).set_range(0, 8192)
                       .describe("Maximum temporary workspace allowed for convolution (MB).");
-              DMLC_DECLARE_FIELD(no_bias).set_default(false)
+              DMLC_DECLARE_FIELD(no_bias).set_default(true)
                       .describe("Whether to disable bias parameter.");
               DMLC_DECLARE_FIELD(cudnn_tune)
-                      .add_enum("off", conv::kOff)
-                      .add_enum("limited_workspace", conv::kLimited)
-                      .add_enum("fastest", conv::kFastest)
+                      .add_enum("off", qconv::kOff)
+                      .add_enum("limited_workspace", qconv::kLimited)
+                      .add_enum("fastest", qconv::kFastest)
                       .set_default(dmlc::optional<int>())
                       .describe("Whether to pick convolution algo by running performance test.");
               DMLC_DECLARE_FIELD(cudnn_off).set_default(false)
@@ -79,6 +84,13 @@ namespace mxnet {
                       .set_default(dmlc::optional<int>())
                       .describe("Set layout for input, output and weight. Empty for\n    "
                                         "default layout: NCW for 1d, NCHW for 2d and NCDHW for 3d.");
+              DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
+                      .describe("Number of bits to quantize weights to.");
+              DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
+                      .describe("Enable alpha and beta scaling factors.");
+              DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
+                      .describe("Params file contains only binarized weights. Set automatically by model converter.");
+
             }
             // Adjusts kernel size for effects of dilation in the dimension `dim`.
             index_t DilatedKernelSize(int dim) const {
@@ -87,9 +99,9 @@ namespace mxnet {
         };
 
         template<typename xpu, typename DType>
-        class ConvolutionOp : public Operator {
+        class QConvolutionOp : public Operator {
         public:
-            explicit ConvolutionOp(ConvolutionParam p) {
+            explicit QConvolutionOp(QConvolutionParam p) {
               this->param_ = p;
               // convert MBytes first to Bytes and then to elements.
               param_.workspace = (param_.workspace << 20) / sizeof(DType);
@@ -106,16 +118,16 @@ namespace mxnet {
                                  const std::vector<TBlob> &aux_args) {
               using namespace mshadow;
               using namespace mshadow::expr;
-              CHECK_EQ(req[conv::kOut], kWriteTo);
+              CHECK_EQ(req[qconv::kOut], kWriteTo);
               size_t expected = param_.no_bias ? 2 : 3;
               CHECK_EQ(in_data.size(), expected);
               CHECK_EQ(out_data.size(), 1U);
-              CHECK_EQ(req[conv::kOut], kWriteTo);
-              LayerSetUp(in_data[conv::kData].shape_, out_data[conv::kOut].shape_);
-              LOG(INFO) << "in_data: " << in_data[conv::kData].shape_ << ", out_data: " << out_data[conv::kOut].shape_;
+              CHECK_EQ(req[qconv::kOut], kWriteTo);
+              LayerSetUp(in_data[qconv::kData].shape_, out_data[qconv::kOut].shape_);
+              LOG(INFO) << "in_data: " << in_data[qconv::kData].shape_ << ", out_data: " << out_data[qconv::kOut].shape_;
               Stream<xpu>* s = ctx.get_stream<xpu>();
               // allocate workspace for col_buffer
-              Tensor<xpu, 1, DType> workspace = ctx.requested[conv::kTempSpace]
+              Tensor<xpu, 1, DType> workspace = ctx.requested[qconv::kTempSpace]
                       .get_space_typed<xpu, 1, DType>(Shape1(col_buffer_size_), s);
               // calculate the shape of col_buffer
               TShape col_buffer_shape(num_spatial_axes_ + 1);
@@ -131,26 +143,114 @@ namespace mxnet {
               index_t M = conv_out_channels_ / group_;
               index_t N = conv_out_spatial_dim_;
               index_t K = kernel_dim_;
-              Tensor<xpu, 3, DType> weight_3d = in_data[conv::kWeight].get_with_shape<xpu, 3, DType>(
-                      Shape3(group_, M, K), s);
+              Tensor<xpu, 3, DType> weight_3d;
+              mxnet::op::xnor_cpu::BINARY_WORD* wmat_binarized = NULL;
+              if (param_.binarized_weights_only) {
+                wmat_binarized = (mxnet::op::xnor_cpu::BINARY_WORD*) in_data[qconv::kWeight].dptr_;
+              } else {
+                weight_3d = in_data[qconv::kWeight].get_with_shape<xpu, 3, DType>(
+                        Shape3(group_, M, K), s);
+              }
               Tensor<xpu, 3, DType> col_buffer_3d = col_buffer.get_with_shape<xpu, 3, DType>(
                       Shape3(group_, K, N), s);
-              Tensor<xpu, 4, DType> output_4d = out_data[conv::kOut].get_with_shape<xpu, 4, DType>(
+              Tensor<xpu, 4, DType> output_4d = out_data[qconv::kOut].get_with_shape<xpu, 4, DType>(
                       Shape4(num_, group_, M, N), s);
-              LOG(INFO) << "dot(" << weight_3d.shape_ << ", " << col_buffer_3d.shape_ << ") in " << num_ << " steps";
+
+              // xnor related check
+              CHECK_EQ(in_data[qconv::kData].shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
+                << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << in_data[qconv::kData].shape_[1];
+
+              //============================================//
+              //            WEIGHTS quantization            //
+              // for training or prediction in gpu mode,    //
+              // we apply quantization function on weights. //
+              //                                            //
+              if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
+                // mf quantize weights
+                Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
+                // @todo only request workspace if act_bit != 1
+                Tensor<xpu, 1, DType> abs = ctx.requested[qconv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
+                helper::quantize(w1d, abs, this->param_.act_bit);
+                // /mf quantize weights
+              }
+              //                                            //
+              //============================================//
+
               for (index_t n = 0; n < num_; ++n) {
                 // transform image to col_buffer in order to use gemm
-                im2col(s, in_data[conv::kData].dptr<DType>()+n*input_dim_, in_data[conv::kData].shape_,
+                im2col(s, in_data[qconv::kData].dptr<DType>()+n*input_dim_, in_data[qconv::kData].shape_,
                        col_buffer.shape_, param_.kernel, param_.pad, param_.stride, param_.dilate,
                        col_buffer.dptr<DType>());
                 Tensor<xpu, 3, DType> output_3d = output_4d[n];
+
+                //============================================//
+                //             INPUT quantization             //
+                // for training or prediction in gpu mode,    //
+                // we apply quantization function on input    //
+                // This process should be after padding elemt //
+                // since the padding elements are all "0"     //
+                //                                            //
+                if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
+                  if(this->param_.act_bit == 1){
+                    col_buffer_3d = F<mshadow_op::det_sign>(col_buffer_3d);
+                  }else{
+                    col_buffer_3d = F<mshadow_op::quantize>(F<mshadow_op::maximum>(
+                            F<mshadow_op::minimum>(col_buffer_3d, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
+                                                            scalar(DType(this->param_.act_bit)));
+                  }
+                }
+                //                                            //
+                //============================================//
+
                 for (index_t g = 0; g < group_; ++g) {
-                  ASSIGN_DISPATCH(output_3d[g], req[conv::kOut], dot(weight_3d[g], col_buffer_3d[g]));
+
+
+                  //==================================================================//
+                  // For the training in order to make the training easier and faster,//
+                  // we binarize the input and weights of Qconv layer to +1 and -1,   //
+                  // still apply the standard dot() operator to generate the gemm     //
+                  // result. But for 1-bit prediction by using CPU we then apply      //
+                  //   xnor+_popc                                                     //
+                  // to generate the same result as the dot() function.               //
+                  // this means that for the prediction phase in 1-bit, the           //
+                  //   QConvolutionForward(...)                                       //
+                  // should produce the exactly same result as the dot(bina(..))method//
+                  //                                                                  //
+                  if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
+                    CHECK(g == 0) << "groups not yet supported for pre-binarized weights";
+
+                    // @todo: watch out, we get 32bit float space here and later possibly cast it into 64bit space
+                    Tensor<xpu, 1, DType> binary_inputs_workspace =
+                            ctx.requested[qconv::kTempSpace].get_space_typed<xpu, 1, DType>(
+                                    Shape1(N * K / (sizeof(DType) * CHAR_BIT)), s);
+                    Tensor<xpu, 2, DType> temp_dst_gid = output_3d[g];
+                    if (param_.binarized_weights_only) {
+                      QConvolutionForward(M, N, K,
+                                          wmat_binarized,
+                                          binary_inputs_workspace,
+                                          col_buffer_3d[g],
+                                          temp_dst_gid);
+                    } else {
+                      QConvolutionForward(M, N, K,
+                                          weight_3d[g],
+                                          binary_inputs_workspace,
+                                          col_buffer_3d[g],
+                                          temp_dst_gid);
+                    }
+                  }else{ // for training phase...
+                    ASSIGN_DISPATCH(output_3d[g], req[qconv::kOut], dot(weight_3d[g], col_buffer_3d[g]));
+
+                    //this converting is just for mimicing 1-bit xnor-popc operations
+                    if(this->param_.act_bit == 1)
+                      output_3d[g] = (ScalarExp<DType>(weight_3d[g].size(1)) + output_3d[g]) / scalar(DType(2.0));
+                  }
+                  //                                                                  //
+                  //==================================================================//
                 }
               }
               if (bias_term_) {
-                Tensor<xpu, 1, DType> bias = in_data[conv::kBias].get<xpu, 1, DType>(s);
-                Tensor<xpu, 3, DType> output_3d = out_data[conv::kOut].get_with_shape<xpu, 3, DType>(
+                Tensor<xpu, 1, DType> bias = in_data[qconv::kBias].get<xpu, 1, DType>(s);
+                Tensor<xpu, 3, DType> output_3d = out_data[qconv::kOut].get_with_shape<xpu, 3, DType>(
                         Shape3(num_, conv_out_channels_, conv_out_spatial_dim_), s);
                 // has bias term, broadcast it to the same shape of output_3d in channel dim
                 output_3d += mshadow::expr::broadcast<1>(bias, output_3d.shape_);
@@ -170,17 +270,17 @@ namespace mxnet {
               size_t expected = param_.no_bias == 0 ? 3 : 2;
               CHECK(in_data.size() == expected && in_grad.size() == expected);
               CHECK_EQ(req.size(), expected);
-              CHECK_EQ(in_data[conv::kWeight].CheckContiguous(), true);
-              LayerSetUp(in_grad[conv::kData].shape_, out_grad[conv::kOut].shape_);
+              CHECK_EQ(in_data[qconv::kWeight].CheckContiguous(), true);
+              LayerSetUp(in_grad[qconv::kData].shape_, out_grad[qconv::kOut].shape_);
               Stream<xpu> *s = ctx.get_stream<xpu>();
               // allocate workspace for col_buffer
-              Tensor<xpu, 1, DType> workspace = ctx.requested[conv::kTempSpace]
+              Tensor<xpu, 1, DType> workspace = ctx.requested[qconv::kTempSpace]
                       .get_space_typed<xpu, 1, DType>(Shape1(col_buffer_size_), s);
               // calculate the shape of col_buffer
               TShape col_buffer_shape(num_spatial_axes_ + 1);
               col_buffer_shape[0] = conv_in_channels_ * param_.kernel.Size();
               for (index_t i = 1; i < col_buffer_shape.ndim(); ++i) {
-                col_buffer_shape[i] = out_grad[conv::kData].shape_[i+1];
+                col_buffer_shape[i] = out_grad[qconv::kData].shape_[i+1];
               }
               // create a column buffer using workspace and col_buffer_shape
               TBlob col_buffer(workspace.dptr_, col_buffer_shape, xpu::kDevMask, DataType<DType>::kFlag);
@@ -190,14 +290,14 @@ namespace mxnet {
               index_t M = kernel_dim_;
               index_t N = conv_out_spatial_dim_;
               index_t K = conv_out_channels_ / group_;
-              Tensor<xpu, 3, DType> weight_3d = in_data[conv::kWeight].get_with_shape<xpu, 3, DType>(
+              Tensor<xpu, 3, DType> weight_3d = in_data[qconv::kWeight].get_with_shape<xpu, 3, DType>(
                       Shape3(group_, K, M), s);
-              Tensor<xpu, 4, DType> out_grad_4d = out_grad[conv::kOut].get_with_shape<xpu, 4, DType>(
+              Tensor<xpu, 4, DType> out_grad_4d = out_grad[qconv::kOut].get_with_shape<xpu, 4, DType>(
                       Shape4(num_, group_, K, N), s);
               Tensor<xpu, 3, DType> col_buffer_3d = col_buffer.get_with_shape<xpu, 3, DType>(
                       Shape3(group_, M, N), s);
               // For computing dLoss/dWeight
-              Tensor<xpu, 3, DType> dweight_3d = in_grad[conv::kWeight].get_with_shape<xpu, 3, DType>(
+              Tensor<xpu, 3, DType> dweight_3d = in_grad[qconv::kWeight].get_with_shape<xpu, 3, DType>(
                       Shape3(group_, K, M), s);
 
               for (index_t n = 0; n < num_; ++n) {
@@ -206,17 +306,17 @@ namespace mxnet {
                 for (index_t g = 0; g < group_; ++g) {
                   col_buffer_3d[g] = dot(weight_3d[g].T(), out_grad_3d[g]);
                 }
-                col2im(s, col_buffer.dptr<DType>(), in_grad[conv::kData].shape_, col_buffer.shape_,
+                col2im(s, col_buffer.dptr<DType>(), in_grad[qconv::kData].shape_, col_buffer.shape_,
                        param_.kernel, param_.pad, param_.stride, param_.dilate,
-                       in_grad[conv::kData].dptr<DType>()+n*input_dim_, req[conv::kData]);
+                       in_grad[qconv::kData].dptr<DType>()+n*input_dim_, req[qconv::kData]);
 
                 // gradient w.r.t. weight, dWeight should accumulate across the batch and group
-                im2col(s, in_data[conv::kData].dptr<DType>()+n*input_dim_, in_data[conv::kData].shape_,
+                im2col(s, in_data[qconv::kData].dptr<DType>()+n*input_dim_, in_data[qconv::kData].shape_,
                        col_buffer.shape_, param_.kernel, param_.pad, param_.stride, param_.dilate,
                        col_buffer.dptr<DType>());
                 for (index_t g = 0; g < group_; ++g) {
                   if (0 == n) {
-                    ASSIGN_DISPATCH(dweight_3d[g], req[conv::kWeight],
+                    ASSIGN_DISPATCH(dweight_3d[g], req[qconv::kWeight],
                                     dot(out_grad_3d[g], col_buffer_3d[g].T()));
                   } else {
                     dweight_3d[g] += dot(out_grad_3d[g], col_buffer_3d[g].T());
@@ -226,10 +326,10 @@ namespace mxnet {
 
               // gradient w.r.t bias
               if (bias_term_) {
-                Tensor<xpu, 1, DType> dbias = in_grad[conv::kBias].get<xpu, 1, DType>(s);
-                Tensor<xpu, 3, DType> dout = out_grad[conv::kOut].get_with_shape<xpu, 3, DType>(
+                Tensor<xpu, 1, DType> dbias = in_grad[qconv::kBias].get<xpu, 1, DType>(s);
+                Tensor<xpu, 3, DType> dout = out_grad[qconv::kOut].get_with_shape<xpu, 3, DType>(
                         Shape3(num_, conv_out_channels_, conv_out_spatial_dim_), s);
-                ASSIGN_DISPATCH(dbias, req[conv::kBias], sumall_except_dim<1>(dout));
+                ASSIGN_DISPATCH(dbias, req[qconv::kBias], sumall_except_dim<1>(dout));
               }
             }
 
@@ -268,7 +368,7 @@ namespace mxnet {
             }
 
         private:
-            ConvolutionParam param_;
+            QConvolutionParam param_;
             index_t channel_axis_;  // channel axis of the input
             index_t channels_;  // number of channels of input image
             index_t num_spatial_axes_;  // number of spatial axes
@@ -291,13 +391,13 @@ namespace mxnet {
         };  // class ConvolutionOp
 
         template<typename xpu>
-        Operator* CreateOp(ConvolutionParam param, int dtype,
+        Operator* CreateOp(QConvolutionParam param, int dtype,
                            std::vector<TShape> *in_shape,
                            std::vector<TShape> *out_shape,
                            Context ctx);
 
 #if DMLC_USE_CXX11
-        class ConvolutionProp : public OperatorProperty {
+        class QConvolutionProp : public OperatorProperty {
         public:
             std::vector<std::string> ListArguments() const override {
               if (!param_.no_bias) {
@@ -338,73 +438,40 @@ namespace mxnet {
                             std::vector<TShape> *aux_shape) const override {
               using namespace mshadow;
               if (!param_.no_bias) {
+                LOG(WARNING) << "convolution with bias untested //mf";
                 CHECK_EQ(in_shape->size(), 3U) << "Input:[data, weight, bias]";
               } else {
                 CHECK_EQ(in_shape->size(), 2U) << "Input:[data, weight]";
               }
               // CHECK_EQ(out_shape->size(), 1) << "Output: [output]";
               out_shape->resize(1, TShape());
-              const TShape &dshp = (*in_shape)[conv::kData];
+              const TShape &dshp = (*in_shape)[qconv::kData];
               if (dshp.ndim() ==  0) return false;
 
-              if (param_.kernel.ndim() == 1) {
-                // 1d conv
-                CHECK_EQ(dshp.ndim(), 3U) << "Input data should be 3D in batch-num_filter-x";
-                Shape<3> dshape = ConvertLayout(dshp.get<3>(), param_.layout.value(), kNCW);
-                Shape<3> wshape = Shape3(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
-                                         param_.kernel[0]);
-                wshape = ConvertLayout(wshape, kNCW, param_.layout.value());
-                wshape[0] *= param_.num_group;
-                SHAPE_ASSIGN_CHECK(*in_shape, conv::kWeight, wshape);
-                if (!param_.no_bias) {
-                  SHAPE_ASSIGN_CHECK(*in_shape, conv::kBias, Shape1(param_.num_filter));
-                }
-
-                const index_t dilated_ksize_x = param_.DilatedKernelSize(0);
-                CHECK_EQ(dshape[1] % param_.num_group, 0U) \
-          << "input num_filter must divide group size";
-                CHECK_EQ(param_.num_filter % param_.num_group, 0U) \
-          << "output num_filter must divide group size";
-                CHECK_GT(param_.kernel.Size(), 0U) \
-          << "incorrect kernel size: " << param_.kernel;
-                CHECK_GT(param_.stride.Size(), 0U) \
-          << "incorrect stride size: " << param_.stride;
-                CHECK_GT(param_.dilate.Size(), 0U) \
-          << "incorrect dilate size: " << param_.dilate;
-                Shape<3> oshape;
-                oshape[0] = dshape[0];
-                oshape[1] = param_.num_filter;
-                oshape[2] = dshape[2] ?
-                            (AddPad(dshape[2], param_.pad[0]) - dilated_ksize_x) / param_.stride[0] + 1 : 0;
-                SHAPE_ASSIGN_CHECK(*out_shape, 0, ConvertLayout(oshape, kNCW, param_.layout.value()));
-                // Perform incomplete shape inference. Fill in the missing values in data shape.
-                // 1) We can always fill in the batch_size.
-                // 2) We can back-calculate the input height/width if the corresponding stride is 1.
-                oshape = ConvertLayout((*out_shape)[0].get<3>(), param_.layout.value(), kNCW);
-                dshape[0] = oshape[0];
-                if (oshape[2] && param_.stride[0] == 1) {
-                  dshape[2] = oshape[2] + dilated_ksize_x - 1 - 2 * param_.pad[0];
-                }
-                SHAPE_ASSIGN_CHECK(*in_shape, conv::kData,
-                                   ConvertLayout(dshape, kNCW, param_.layout.value()));
-                // Check whether the kernel sizes are valid
-                if (dshape[2] != 0) {
-                  CHECK_LE(dilated_ksize_x, AddPad(dshape[2], param_.pad[0])) << "kernel size exceed input";
-                }
-                return true;
-              } else if (param_.kernel.ndim() == 2) {
+              if (param_.kernel.ndim() != 2) {
+                LOG(FATAL) << "Unknown convolution type (only 2d binary convolution supported)";
+                return false;
+              } else {
                 // 2d conv
                 CHECK_EQ(dshp.ndim(), 4U) \
           << "Input data should be 4D in batch-num_filter-y-x";
                 Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);
-                Shape<4> wshape = Shape4(param_.num_filter / param_.num_group,
-                                         dshape[1] / param_.num_group,
-                                         param_.kernel[0], param_.kernel[1]);
-                wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
-                wshape[0] *= param_.num_group;
-                SHAPE_ASSIGN_CHECK(*in_shape, conv::kWeight, wshape);
+
+                if (param_.binarized_weights_only) {
+                  CHECK_EQ(param_.num_group, 1) << "groups not (yet?) supported for pre-binarized weights";
+                  Shape<1> wshape = Shape1(dshape[1] * param_.num_filter * param_.kernel[0] * param_.kernel[1] / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD);
+                  SHAPE_ASSIGN_CHECK(*in_shape, qconv::kWeight, wshape);
+                } else {
+                  Shape<4> wshape = Shape4(param_.num_filter / param_.num_group,
+                                           dshape[1] / param_.num_group,
+                                           param_.kernel[0], param_.kernel[1]);
+                  wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
+                  wshape[0] *= param_.num_group;
+                  SHAPE_ASSIGN_CHECK(*in_shape, qconv::kWeight, wshape);
+                }
+
                 if (!param_.no_bias) {
-                  SHAPE_ASSIGN_CHECK(*in_shape, conv::kBias, Shape1(param_.num_filter));
+                  SHAPE_ASSIGN_CHECK(*in_shape, qconv::kBias, Shape1(param_.num_filter));
                 }
 
                 const index_t dilated_ksize_y = param_.DilatedKernelSize(0);
@@ -438,7 +505,7 @@ namespace mxnet {
                 if (oshape[3] && param_.stride[1] == 1) {
                   dshape[3] = oshape[3] + dilated_ksize_x - 1 - 2 * param_.pad[1];
                 }
-                SHAPE_ASSIGN_CHECK(*in_shape, conv::kData,
+                SHAPE_ASSIGN_CHECK(*in_shape, qconv::kData,
                                    ConvertLayout(dshape, kNCHW, param_.layout.value()));
                 // Check whether the kernel sizes are valid
                 if (dshape[2] != 0) {
@@ -448,77 +515,6 @@ namespace mxnet {
                   CHECK_LE(dilated_ksize_x, AddPad(dshape[3], param_.pad[1])) << "kernel size exceed input";
                 }
                 return true;
-              } else if (param_.kernel.ndim() == 3) {
-                // 3d conv
-                CHECK_EQ(dshp.ndim(), 5U) \
-        << "Input data should be 5D in batch-num_filter-depth-y-x";
-                Shape<5> dshape = ConvertLayout(dshp.get<5>(), param_.layout.value(), kNCDHW);
-                Shape<5> wshape = Shape5(param_.num_filter / param_.num_group, dshape[1] / param_.num_group,
-                                         param_.kernel[0], param_.kernel[1], param_.kernel[2]);
-                wshape = ConvertLayout(wshape, kNCDHW, param_.layout.value());
-                wshape[0] *= param_.num_group;
-                SHAPE_ASSIGN_CHECK(*in_shape, conv::kWeight, wshape);
-                if (!param_.no_bias) {
-                  SHAPE_ASSIGN_CHECK(*in_shape, conv::kBias, Shape1(param_.num_filter));
-                }
-
-                // Note: 3D dilation currently not supported.
-                // Calculations below done to preserve symmetry with 1D/2D code.
-                const index_t dilated_ksize_d = param_.DilatedKernelSize(0);
-                const index_t dilated_ksize_y = param_.DilatedKernelSize(1);
-                const index_t dilated_ksize_x = param_.DilatedKernelSize(2);
-                CHECK_EQ(dshape[1] % param_.num_group, 0U)
-                  << "input num_filter must divide group size";
-                CHECK_EQ(param_.num_filter % param_.num_group, 0U)
-                  << "output num_filter must divide group size";
-                CHECK_GT(param_.kernel.Size(), 0U) \
-        << "incorrect kernel size: " << param_.kernel;
-                CHECK_GT(param_.stride.Size(), 0U) \
-        << "incorrect stride size: " << param_.stride;
-                CHECK_GT(param_.dilate.Size(), 0U) \
-        << "incorrect dilate size: " << param_.dilate;
-                CHECK_EQ(param_.dilate.Size(), 1U)
-                  << "Dilate is not supported in 3d convolution";
-                Shape<5> oshape;
-                oshape[0] = dshape[0];
-                oshape[1] = param_.num_filter;
-                oshape[2] = dshape[2] ?
-                            (AddPad(dshape[2], param_.pad[0]) - dilated_ksize_d) / param_.stride[0] + 1 : 0;
-                oshape[3] = dshape[3] ?
-                            (AddPad(dshape[3], param_.pad[1]) - dilated_ksize_y) / param_.stride[1] + 1 : 0;
-                oshape[4] = dshape[4] ?
-                            (AddPad(dshape[4], param_.pad[2]) - dilated_ksize_x) / param_.stride[2] + 1 : 0;
-                SHAPE_ASSIGN_CHECK(*out_shape, 0, ConvertLayout(oshape, kNCDHW, param_.layout.value()));
-                // Perform incomplete shape inference. Fill in the missing values in data shape.
-                // 1) We can always fill in the batch_size.
-                // 2) We can back-calculate the input depth/height/width if the corresponding stride is 1.
-                oshape = ConvertLayout((*out_shape)[0].get<5>(), param_.layout.value(), kNCDHW);
-                dshape[0] = oshape[0];
-                if (oshape[2] && param_.stride[0] == 1) {
-                  dshape[2] = oshape[2] + dilated_ksize_d - 1 - 2 * param_.pad[0];
-                }
-                if (oshape[3] && param_.stride[1] == 1) {
-                  dshape[3] = oshape[3] + dilated_ksize_y - 1 - 2 * param_.pad[1];
-                }
-                if (oshape[4] && param_.stride[2] == 1) {
-                  dshape[4] = oshape[4] + dilated_ksize_x - 1 - 2 * param_.pad[2];
-                }
-                SHAPE_ASSIGN_CHECK(*in_shape, conv::kData,
-                                   ConvertLayout(dshape, kNCDHW, param_.layout.value()));
-                // Check whether the kernel sizes are valid
-                if (dshape[2] != 0) {
-                  CHECK_LE(dilated_ksize_d, AddPad(dshape[2], param_.pad[0])) << "kernel size exceed input";
-                }
-                if (dshape[3] != 0) {
-                  CHECK_LE(dilated_ksize_y, AddPad(dshape[3], param_.pad[1])) << "kernel size exceed input";
-                }
-                if (dshape[4] != 0) {
-                  CHECK_LE(dilated_ksize_x, AddPad(dshape[4], param_.pad[2])) << "kernel size exceed input";
-                }
-                return true;
-              } else {
-                LOG(FATAL) << "Unknown convolution type";
-                return false;
               }
             }
 
@@ -532,10 +528,17 @@ namespace mxnet {
                 if ((*in_type)[i] == -1) {
                   (*in_type)[i] = dtype;
                 } else {
+                  if (param_.binarized_weights_only &&
+                      (i == qconv::kWeight)) {
+                    continue;
+                  }
                   CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "
                                                  << "Expected " << dtype << " v.s. given "
                                                  << (*in_type)[i] << " at " << ListArguments()[i];
                 }
+              }
+              if (param_.binarized_weights_only) {
+                (*in_type)[qconv::kWeight] = mxnet::op::xnor_cpu::corresponding_dtype();
               }
               out_type->clear();
               out_type->push_back(dtype);
@@ -543,20 +546,20 @@ namespace mxnet {
             }
 
             OperatorProperty* Copy() const override {
-              auto ptr = new ConvolutionProp();
+              auto ptr = new QConvolutionProp();
               ptr->param_ = param_;
               return ptr;
             }
 
             std::string TypeString() const override {
-              return "Convolution";
+              return "QConvolution";
             }
 
             std::vector<int> DeclareBackwardDependency(
                     const std::vector<int> &out_grad,
                     const std::vector<int> &in_data,
                     const std::vector<int> &out_data) const override {
-              return {out_grad[conv::kOut], in_data[conv::kData], in_data[conv::kWeight]};
+              return {out_grad[qconv::kOut], in_data[qconv::kData], in_data[qconv::kWeight]};
             }
 
             std::vector<ResourceRequest> ForwardResource(
@@ -583,9 +586,9 @@ namespace mxnet {
               return dsize + 2 * pad;
             }
 
-            ConvolutionParam param_;
-        };  // class ConvolutionProp
+            QConvolutionParam param_;
+        };  // class QConvolutionProp
 #endif  // DMLC_USE_CXX11
     }  // namespace op
 }  // namespace mxnet
-#endif  // MXNET_OPERATOR_CONVOLUTION_INL_H_
+#endif  // MXNET_OPERATOR_QCONVOLUTION_INL_H_
