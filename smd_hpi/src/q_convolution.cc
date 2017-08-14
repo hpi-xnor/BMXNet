@@ -21,14 +21,14 @@ namespace mshadow {
   			CHECK_EQ(workspace.shape_.Size() * sizeof(workspace[0]) * CHAR_BIT, n * k);
   			BINARY_WORD* binary_col = (BINARY_WORD*) workspace.dptr_;
 
-  			get_binary_col_unrolled(in_col.dptr_, binary_col, n, k);
+  			get_binary_col_unrolled(in_col.dptr_, binary_col, k, n);
   			
   			temp_dst = 0;
       	
-    		xnor_gemm(m, k, n/BITS_PER_BINARY_WORD,
-                    binary_weights_row, n/BITS_PER_BINARY_WORD,
-                    binary_col, k,
-                    temp_dst.dptr_, k);
+    		xnor_gemm(m, n, k/BITS_PER_BINARY_WORD,
+                    binary_weights_row, k/BITS_PER_BINARY_WORD,
+                    binary_col, n,
+                    temp_dst.dptr_, n);
     }
 
 
@@ -46,8 +46,8 @@ namespace mshadow {
 									Tensor<cpu, 1, float> &workspace,
 									const Tensor<cpu, 2, float> &in_col,
 									Tensor<cpu, 2, float> &temp_dst) {
-      	BINARY_WORD binary_row[m * n/BITS_PER_BINARY_WORD];
-      	get_binary_row(wmat.dptr_, &binary_row[0], m*n);
+      	BINARY_WORD binary_row[m * k/BITS_PER_BINARY_WORD];
+      	get_binary_row(wmat.dptr_, &binary_row[0], m*k);
 		    _QConvolutionForward(m, n, k, binary_row, workspace, in_col, temp_dst);
 	}
 
