@@ -68,7 +68,7 @@ def get_binary_lenet():
 	data = mx.symbol.Variable('data')
 
 	# first conv layer
-	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=64)	
+	conv1 = mx.sym.Convolution(data=data, kernel=(5,5), num_filter=64)
 	tanh1 = mx.sym.Activation(data=conv1, act_type="tanh")
 	pool1 = mx.sym.Pooling(data=tanh1, pool_type="max", kernel=(2,2), stride=(2,2))
 	bn1 = mx.sym.BatchNorm(data=pool1)
