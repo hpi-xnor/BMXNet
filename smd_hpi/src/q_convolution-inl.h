@@ -124,7 +124,6 @@ namespace mxnet {
               CHECK_EQ(out_data.size(), 1U);
               CHECK_EQ(req[qconv::kOut], kWriteTo);
               LayerSetUp(in_data[qconv::kData].shape_, out_data[qconv::kOut].shape_);
-              LOG(INFO) << "in_data: " << in_data[qconv::kData].shape_ << ", out_data: " << out_data[qconv::kOut].shape_;
               Stream<xpu>* s = ctx.get_stream<xpu>();
               // allocate workspace for col_buffer
               Tensor<xpu, 1, DType> workspace = ctx.requested[qconv::kTempSpace]
@@ -135,7 +134,6 @@ namespace mxnet {
               for (index_t i = 1; i < col_buffer_shape.ndim(); ++i) {
                 col_buffer_shape[i] = out_data[0].shape_[i+1];
               }
-              LOG(INFO) << "col_buffer_size_=" << col_buffer_size_ << ", shape: " << col_buffer_shape;
               // create a column buffer using workspace and col_buffer_shape
               TBlob col_buffer(workspace.dptr_, col_buffer_shape, xpu::kDevMask, DataType<DType>::kFlag);
 
