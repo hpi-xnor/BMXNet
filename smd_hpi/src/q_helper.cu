@@ -95,7 +95,7 @@ float launch_max_reduce(float *input, int size_of_array, cudaStream_t stream)
   QHELPER_CUDA_CHECK(cudaMemcpy(h_final, d_final, mem_size_f, cudaMemcpyDeviceToHost));
 
   // --- find the maximum on the host   STAGE 3
-  float result_reduce0 = 0.0f;
+  float result_reduce0 = -FLT_MAX;
   for (int i=0; i<NumBlocks; i++) result_reduce0 = fmax(h_final[i], result_reduce0);
   //printf("Result = %f\n", result_reduce0);
   
@@ -104,9 +104,9 @@ float launch_max_reduce(float *input, int size_of_array, cudaStream_t stream)
   QHELPER_CUDA_CHECK(cudaFree(d_final));
   QHELPER_CUDA_CHECK(cudaFree(d_tmp));
   return result_reduce0;
-}  
+}  // launch_max_reduce
 
-}   //namespace cuda
+}  // namespace cuda
 }  // namespace mshadow
 
 #endif //MXNET_Q_HELPER_CU
