@@ -9,8 +9,8 @@ from random import randint
 
 logging.getLogger().setLevel(logging.DEBUG)
 
-BITW = 1
-BITA = 1
+BITW = 6
+BITA = 6
 BITG = 6 # TODO: we don't have binarized gradient implementation yet.
 
 # get quantized functions

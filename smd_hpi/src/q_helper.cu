@@ -58,7 +58,7 @@ unsigned int nextPow2(unsigned int x)
  * 2. calc the maximum amount all block-max
  */
 extern "C" 
-float launch_max_reduce(float *input, int size_of_array, cudaStream_t stream)  
+float launch_max_reduce(float *input, int size_of_array)  
 {  
   int NumThreads  = (size_of_array < kMaxThreadsPerBlock) ? nextPow2(size_of_array) : kMaxThreadsPerBlock;
   int NumBlocks   = (size_of_array + NumThreads - 1) / NumThreads;
@@ -74,7 +74,7 @@ float launch_max_reduce(float *input, int size_of_array, cudaStream_t stream)
   QHELPER_CUDA_CHECK(cudaMalloc((void**) &d_tmp, mem_size_tmp));
 
   // --- reduce2  STAGE 1
-  reduce_max_kernel<<<NumBlocks, NumThreads, smemSize, stream>>>(input, d_tmp, size_of_array);
+  reduce_max_kernel<<<NumBlocks, NumThreads, smemSize>>>(input, d_tmp, size_of_array);
 
   // --- recalc parameters
   int old_NumBlocks = NumBlocks;
@@ -88,7 +88,7 @@ float launch_max_reduce(float *input, int size_of_array, cudaStream_t stream)
   QHELPER_CUDA_CHECK(cudaMalloc((void**) &d_final, mem_size_f));  
 
   // --- reduce2  STAGE 2
-  reduce_max_kernel<<<NumBlocks, NumThreads, smemSize, stream>>>(d_tmp, d_final, old_NumBlocks);
+  reduce_max_kernel<<<NumBlocks, NumThreads, smemSize>>>(d_tmp, d_final, old_NumBlocks);
 
   // --- copy final result from device to host
   float* h_final = (float*)malloc(mem_size_f);

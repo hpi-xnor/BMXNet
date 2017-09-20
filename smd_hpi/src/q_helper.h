@@ -20,7 +20,7 @@ namespace mxnet {
         using mshadow::expr::scalar;
 
         //wrapper function for CUDA kernel        
-        extern "C" float launch_max_reduce(float*, int, cudaStream_t);
+        extern "C" float launch_max_reduce(float*, int);
         
         // @todo naive implementation |==> this needs to be implemented nicely and with gpu support (see nvidia pdf on reduction with cuda)
         // GPU (includes copy to CPU)
@@ -45,8 +45,7 @@ namespace mxnet {
         inline float amax(const mshadow::Tensor<gpu, dim, float> &tensor) {           
           int tensor_size = tensor.size(0);
           float * input = tensor.dptr_;
-          cudaStream_t stream = mshadow::Stream<gpu>::GetStream(tensor.stream_);
-          float max = launch_max_reduce(input, tensor_size, stream);
+          float max = launch_max_reduce(input, tensor_size);
           return max;
         }
 
