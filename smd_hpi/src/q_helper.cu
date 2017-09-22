@@ -1,3 +1,10 @@
+/*!
+ * Copyright (c) 2016 by Contributors
+ * \file q_helper.cu
+ * \brief CUDA kernel function for q_helper.h
+ * \author HPI-DeepLearning
+*/
+
 #ifndef MXNET_Q_HELPER_CU  
 #define MXNET_Q_HELPER_CU  
 
@@ -43,19 +50,19 @@ __global__ void reduce_max_kernel(const float *input, float *d_out,  int size) {
 // calc the next X^2
 unsigned int nextPow2(unsigned int x)
 {
-    --x;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    return ++x;
+  --x;
+  x |= x >> 1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  return ++x;
 }
 
 /*
  * We apply a multiple-stage strategy for max reduce.
  * 1. calc the maximum for each block
- * 2. calc the maximum amount all block-max
+ * 2. calc the maximum among all block-max
  */
 extern "C" 
 float launch_max_reduce(float *input, int size_of_array)  
