@@ -157,8 +157,7 @@ class QConvolutionV1Op : public Operator {
     if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
       // mf quantize weights
       Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
-      Tensor<xpu, 1, DType> abs = ctx.requested[q_conv_v1::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
-      helper::quantize(w1d, abs, this->param_.act_bit);
+      helper::quantize(w1d, this->param_.act_bit);
       // /mf quantize weights
     }
 

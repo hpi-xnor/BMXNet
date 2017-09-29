@@ -63,13 +63,13 @@ namespace mxnet {
 
 
         template<typename xpu, typename DType>
-        inline void quantize(mshadow::Tensor<xpu, 1, DType> &weights, mshadow::Tensor<xpu, 1, DType> &workspace,
-                             unsigned int act_bit) {
+        inline void quantize(mshadow::Tensor<xpu, 1, DType> &weights, unsigned int act_bit) {
           if (act_bit == 1) {
             real_t scaling_factor = 1;
             weights = F<mshadow_op::det_sign>(weights / ScalarExp<DType>(scaling_factor)) *
                       ScalarExp<DType>(scaling_factor);
           } else if (act_bit < 32) {
+            mshadow::Tensor<xpu, 1, DType> workspace = mshadow::NewTensor<xpu>(weights.shape_, DType(1.0), true, weights.stream_);
             workspace = F<mshadow_op::abs>(F<mshadow_op::tanh>(weights));
 
             DType max = amax(workspace);
