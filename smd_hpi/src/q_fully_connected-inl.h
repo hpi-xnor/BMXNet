@@ -122,8 +122,7 @@ class QFullyConnectedOp : public Operator {
       //============================================//
   		// mf quantize weights
   		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-  		Tensor<xpu, 1, DType> abs = ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
-  		helper::quantize(w1d, abs, this->param_.act_bit);
+  		helper::quantize(w1d, this->param_.act_bit);
   		// /mf quantize weights
       //============================================//
       //             INPUT quantization             //   

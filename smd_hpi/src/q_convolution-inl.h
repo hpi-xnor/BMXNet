@@ -166,9 +166,7 @@ namespace mxnet {
               if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
                 // mf quantize weights
                 Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
-                // @todo only request workspace if act_bit != 1
-                Tensor<xpu, 1, DType> abs = ctx.requested[qconv::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
-                helper::quantize(w1d, abs, this->param_.act_bit);
+                helper::quantize(w1d, this->param_.act_bit);
                 // /mf quantize weights
               }
               //                                            //
@@ -199,7 +197,6 @@ namespace mxnet {
                 }
                 //                                            //
                 //============================================//
-
                 for (index_t g = 0; g < group_; ++g) {
 
 
@@ -237,7 +234,6 @@ namespace mxnet {
                     }
                   }else{ // for training phase...
                     ASSIGN_DISPATCH(output_3d[g], req[qconv::kOut], dot(weight_3d[g], col_buffer_3d[g]));
-
                     //this converting is just for mimicing 1-bit xnor-popc operations
                     if(this->param_.act_bit == 1)
                       output_3d[g] = (ScalarExp<DType>(weight_3d[g].size(1)) + output_3d[g]) / scalar(DType(2.0));
