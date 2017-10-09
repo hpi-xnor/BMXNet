@@ -172,7 +172,8 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
   for (rapidjson::Value::ValueIterator itr = nodes.Begin(); itr != nodes.End(); ++itr) {
     if (!(itr->HasMember("op") && (*itr)["op"].IsString() &&
             (std::strcmp((*itr)["op"].GetString(), "QConvolution") == 0 ||
-             std::strcmp((*itr)["op"].GetString(), "QFullyConnected") == 0))) {
+             std::strcmp((*itr)["op"].GetString(), "QFullyConnected") == 0 ||
+             std::strcmp((*itr)["op"].GetString(), "QConvolution_v1") == 0))) {
       continue;
     }
 
@@ -183,7 +184,8 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
     assert((*itr).HasMember("name"));
     std::cout << "|- adjusting attributes for " << (*itr)["name"].GetString() << std::endl;
 
-    if (std::strcmp((*itr)["op"].GetString(), "QConvolution") == 0) {
+    if (std::strcmp((*itr)["op"].GetString(), "QConvolution") == 0 ||
+             std::strcmp((*itr)["op"].GetString(), "QConvolution_v1") == 0) {
       filters_conv.push_back((*itr)["name"].GetString());
     } else if (std::strcmp((*itr)["op"].GetString(), "QFullyConnected") == 0) {
       filters_fc.push_back((*itr)["name"].GetString());
