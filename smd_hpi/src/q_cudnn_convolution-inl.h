@@ -45,6 +45,12 @@ class QCuDNNConvolutionOp : public Operator {
     init_temp_size_ = false;
     dtype_ = DataType<DType>::kCudnnFlag;
 
+    //============================================//
+    //            limits of q_cudnn               //
+    CHECK_EQ(param_.kernel.ndim(), 2) << "ndim != 2 not supported for q_cudnn calculation";
+    CHECK_EQ(param_.num_group, 1) << "q_cudnn does not (yet) support groups";
+    //============================================//
+
 #if CUDNN_MAJOR >= 5
     MSHADOW_LAYOUT_SWITCH(param_.layout.value(), Layout, {
       format_ = LayoutType<Layout>::kCudnnFlag;
@@ -101,9 +107,6 @@ class QCuDNNConvolutionOp : public Operator {
     Tensor<gpu, 1, DType> workspace =
         ctx.requested[qconv::kTempSpace].get_space_typed<gpu, 1, DType>(
             mshadow::Shape1(forward_workspace_), s);
-
-    CHECK_EQ(param_.kernel.ndim(), 2) << "ndim != 2 not supported for q_cudnn calculation";
-
     Tensor<gpu, 4, DType> data = in_data[qconv::kData].get<gpu, 4, DType>(s);
     Tensor<gpu, 4, DType> wmat = in_data[qconv::kWeight].get<gpu, 4, DType>(s);
     Tensor<gpu, 4, DType> out = out_data[qconv::kOut].get<gpu, 4, DType>(s);
@@ -121,10 +124,27 @@ class QCuDNNConvolutionOp : public Operator {
     //                                            //
     // mf quantize weights                        //
     Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
-    // @todo only request workspace if act_bit != 1
-    Tensor<gpu, 1, DType> abs = ctx.requested[qconv::kTempSpace].get_space_typed<gpu, 1, DType>(w1d.shape_, w1d.stream_);
-    helper::quantize(w1d, abs, this->param_.act_bit);
+    helper::quantize(w1d, this->param_.act_bit);
     // /mf quantize weights                       //
+    //============================================//
+
+    //============================================//
+    //             INPUT padding                  //
+    Shape<4> padded_shape = Shape4(data.shape_[0],
+                                   data.shape_[1],
+                                   data.shape_[2] + 2 * param_.pad[0],
+                                   data.shape_[3] + 2 * param_.pad[1]);
+//    LOG(WARNING) << padded_shape;
+//    mshadow::Tensor<gpu, 4, DType> padded_data(padded_shape);
+//    mshadow::AllocSpace(&padded_data);
+
+    mshadow::Tensor<gpu, 4, DType> padded_data = mshadow::NewTensor<gpu>(padded_shape, static_cast<DType>(0), true, data.stream_);
+
+    padded_data = pad(data, param_.pad[0], param_.pad[1], static_cast<DType>(-1));
+
+    CHECK_EQ(padded_data.CheckContiguous(), true);
+    data_ptr = padded_data.dptr_;
+                                                  //
     //============================================//
 
     //============================================//
@@ -143,7 +163,7 @@ class QCuDNNConvolutionOp : public Operator {
     }                                             //
     //============================================//
 
-    for (uint32_t g = 0; g < param_.num_group; ++g) {
+    for (uint32_t g = 0; g < param_.num_group; ++g) { // for our tests: num_group == 1, so not-a-loop
       typename DataType<DType>::ScaleType alpha = 1.0f;
       typename DataType<DType>::ScaleType beta = 0.0f;
       typename DataType<DType>::ScaleType beta_add = 1.0f;
@@ -195,6 +215,7 @@ class QCuDNNConvolutionOp : public Operator {
       out = (mshadow::expr::ScalarExp<DType>(k) + out) / mshadow::expr::scalar(DType(2.0));
     }                                             //
     //============================================//
+    mshadow::FreeSpace(&padded_data);
   }
 
   virtual void Backward(const OpContext &ctx,
@@ -390,8 +411,8 @@ class QCuDNNConvolutionOp : public Operator {
       // cudnnSetConvolution2dDescriptor_v5(), but was never accessed.
       #if CUDNN_MAJOR >= 6
       CUDNN_CALL(cudnnSetConvolution2dDescriptor(forward_conv_desc_,
-                                               param_.pad[0],
-                                               param_.pad[1],
+                                               0, //param_.pad[0],
+                                               0, //param_.pad[1],
                                                param_.stride[0],
                                                param_.stride[1],
                                                param_.dilate[0],
@@ -399,8 +420,8 @@ class QCuDNNConvolutionOp : public Operator {
                                                CUDNN_CROSS_CORRELATION,
                                                cudnn_forward_compute_type));
       CUDNN_CALL(cudnnSetConvolution2dDescriptor(backward_conv_desc_,
-                                               param_.pad[0],
-                                               param_.pad[1],
+                                               0, //param_.pad[0],
+                                               0, //param_.pad[1],
                                                param_.stride[0],
                                                param_.stride[1],
                                                param_.dilate[0],
@@ -409,16 +430,16 @@ class QCuDNNConvolutionOp : public Operator {
                                                cudnn_backward_compute_type));
       #else
       CUDNN_CALL(cudnnSetConvolution2dDescriptor(forward_conv_desc_,
-                                               param_.pad[0],
-                                               param_.pad[1],
+                                                 0, //param_.pad[0],
+                                                 0, //param_.pad[1],
                                                param_.stride[0],
                                                param_.stride[1],
                                                param_.dilate[0],
                                                param_.dilate[1],
                                                CUDNN_CROSS_CORRELATION));
       CUDNN_CALL(cudnnSetConvolution2dDescriptor(backward_conv_desc_,
-                                               param_.pad[0],
-                                               param_.pad[1],
+                                                 0, //param_.pad[0],
+                                                 0, //param_.pad[1],
                                                param_.stride[0],
                                                param_.stride[1],
                                                param_.dilate[0],
@@ -459,6 +480,7 @@ class QCuDNNConvolutionOp : public Operator {
                               param_.layout.value(), kNCHW);
       oshape = ConvertLayout(oshape.get<4>(), param_.layout.value(), kNCHW);
     } else if (param_.kernel.ndim() == 3) {
+      LOG(FATAL) << "ndim != 2 not supported for q_cudnn calculation";
       // 3d conv
       #if CUDNN_MAJOR >= 5
       CHECK_EQ(param_.layout.value(), kNCDHW) << "CuDNN only support 3D conv with NCDHW layout";
