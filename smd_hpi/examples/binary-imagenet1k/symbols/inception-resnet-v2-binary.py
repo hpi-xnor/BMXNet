@@ -11,7 +11,7 @@ BIT = 1
 def ConvFactory(data, num_filter, kernel, stride=(1, 1), pad=(0, 0), act_type="relu", mirror_attr={}, with_bn_out=False):
     bn = mx.symbol.BatchNorm(data=data, fix_gamma=False, eps=2e-5)
     qact = mx.sym.QActivation(data=bn, act_bit=BIT, backward_only=True)
-    conv = mx.symbol.QConvolution(
+    conv = mx.symbol.QConvolution_v1(
         data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, act_bit=BIT)
     
     if with_bn_out:

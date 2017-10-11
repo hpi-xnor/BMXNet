@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser.set_defaults(
         # network
         network        = 'resnet',
-        num_layers     = 50,
+        num_layers     = 18,
 
         # data
         num_classes      = 1000,
@@ -34,10 +34,10 @@ if __name__ == '__main__':
         min_random_scale = 1, # if input image has min size k, suggest to use
                               # 256.0/x, e.g. 0.533 for 480
         # train
-        num_epochs       = 5,
-        lr_step_epochs   = '1,2,3,4',
-        lr               = 0.001,
-	lr_factor        = 0.1,
+        num_epochs       = 40,
+        lr_step_epochs   = '10,20,30',
+        lr               = 0.01,
+	    lr_factor        = 0.1,
         batch_size     = 32,
         optimizer        = 'sgd',
         disp_batches     = 10,
