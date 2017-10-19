@@ -1,8 +1,8 @@
 /*!
- * Copyright (c) 2015 by Contributors
+ * Copyright (c) 2017 by Contributors
  * \file cudnn_convolution-inl.h
  * \brief
- * \author Bing Xu
+ * \author HPI-DeepLearning, Bing Xu
 */
 #ifndef MXNET_OPERATOR_Q_CUDNN_CONVOLUTION_INL_H_
 #define MXNET_OPERATOR_Q_CUDNN_CONVOLUTION_INL_H_
