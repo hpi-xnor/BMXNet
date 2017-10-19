@@ -1,7 +1,10 @@
 export MXNET_ROOT=`pwd`/..
 
 # set this to root folder of ndk toolchain
-export NDK_TOOLCHAIN_ROOT=/home/christian/workspace/android/arm-toolchain
+export NDK_TOOLCHAIN_ROOT=/home/fb10dl02/workspace/arm-toolchain
+
+# Change this to path of openblas
+export OPENBLAS_ROOT=/home/fb10dl02/workspace/openblas-32bit
 
 # Change this to path or specify in make command
 ifndef OPENBLAS_ROOT
@@ -38,7 +41,7 @@ endif
 .PHONY: all clean
 
 # definitions for binarization
-DEFS += -DBINARY_WORD_32=0 -DBINARY_WORD_64=1
+DEFS += -DBINARY_WORD_32=1 -DBINARY_WORD_64=0
 
 DEFS+=-DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_MKL=0 -DMSHADOW_RABIT_PS=0 -DMSHADOW_DIST_PS=0 -DDMLC_LOG_STACK_TRACE=0
 DEFS+=-DMSHADOW_FORCE_STREAM -DMXNET_USE_OPENCV=0 -DMXNET_PREDICT_ONLY=1
@@ -58,7 +61,7 @@ ifneq ($(MIN), 1)
 endif
 
 ifeq ($(ANDROID), 1)
-    CFLAGS += -mfpu=neon -march=armv7-a -mthumb -mfloat-abi=softfp
+    CFLAGS += -march=armv7-a -funsafe-math-optimizations -mfloat-abi=hard  -mfpu=neon -mthumb
     CFLAGS += -I${NDK_TOOLCHAIN_ROOT}/include/c++/4.9.x
     LDFLAGS += -march=armv7-a
 
