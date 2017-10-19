@@ -82,6 +82,7 @@ class QCuDNNConvolutionOp : public Operator {
   ~QCuDNNConvolutionOp() {
     if (init_cudnn_) {
       CUDNN_CALL(cudnnDestroyTensorDescriptor(in_desc_));
+      CUDNN_CALL(cudnnDestroyTensorDescriptor(in_desc_padded_));
       CUDNN_CALL(cudnnDestroyTensorDescriptor(out_desc_));
       CUDNN_CALL(cudnnDestroyTensorDescriptor(bias_desc_));
       CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_desc_));
@@ -129,37 +130,39 @@ class QCuDNNConvolutionOp : public Operator {
     //============================================//
 
     //============================================//
-    //             INPUT padding                  //
-    Shape<4> padded_shape = Shape4(data.shape_[0],
-                                   data.shape_[1],
-                                   data.shape_[2] + 2 * param_.pad[0],
-                                   data.shape_[3] + 2 * param_.pad[1]);
-//    LOG(WARNING) << padded_shape;
-//    mshadow::Tensor<gpu, 4, DType> padded_data(padded_shape);
-//    mshadow::AllocSpace(&padded_data);
-
-    mshadow::Tensor<gpu, 4, DType> padded_data = mshadow::NewTensor<gpu>(padded_shape, static_cast<DType>(0), true, data.stream_);
-
-    padded_data = pad(data, param_.pad[0], param_.pad[1], static_cast<DType>(-1));
-
-    CHECK_EQ(padded_data.CheckContiguous(), true);
-    data_ptr = padded_data.dptr_;
-                                                  //
-    //============================================//
-
-    //============================================//
-    //             INPUT quantization             //
+    //             INPUT quantization + padding   //
     // for training or prediction in gpu mode,    //
     // we apply quantization function on input    //
     // This process should be after padding elemt //
     // since the padding elements are all "0"     //
     //                                            //
-    if(this->param_.act_bit == 1){                //
-      data = mshadow::expr::F<mshadow_op::det_sign>(data);
-    }else{                                        //
-      data = mshadow::expr::F<mshadow_op::quantize>(mshadow::expr::F<mshadow_op::maximum>(
-              mshadow::expr::F<mshadow_op::minimum>(data, mshadow::expr::scalar(DType(1))), mshadow::expr::scalar(DType(0))), //clip to [0, 1]
-                                           mshadow::expr::scalar(DType(this->param_.act_bit)));
+    mshadow::Tensor<gpu, 4, DType> padded_data = data;
+    bool padded = (param_.pad[0] != 0) || (param_.pad[1] != 0);
+    if (padded) {
+      Shape<4> padded_shape = Shape4(data.shape_[0],
+                                     data.shape_[1],
+                                     data.shape_[2] + 2 * param_.pad[0],
+                                     data.shape_[3] + 2 * param_.pad[1]);
+      padded_data = mshadow::NewTensor<gpu>(padded_shape, static_cast<DType>(0), true,
+                                                                           data.stream_);
+      if (this->param_.act_bit == 1) {            //
+        padded_data = mshadow::expr::F<mshadow_op::det_sign>(pad(data, param_.pad[0], param_.pad[1]));
+      } else {                                    //
+        padded_data = mshadow::expr::F<mshadow_op::quantize>(mshadow::expr::F<mshadow_op::maximum>(
+                                                         mshadow::expr::F<mshadow_op::minimum>(pad(data, param_.pad[0], param_.pad[1]), mshadow::expr::scalar(DType(1))),
+                                                         mshadow::expr::scalar(DType(0))), //clip to [0, 1]
+                                                      mshadow::expr::scalar(DType(this->param_.act_bit)));
+      }
+      data_ptr = padded_data.dptr_;
+    } else {                                      //
+      if (this->param_.act_bit == 1) {            //
+        data = mshadow::expr::F<mshadow_op::det_sign>(data);
+      } else {                                    //
+        data = mshadow::expr::F<mshadow_op::quantize>(mshadow::expr::F<mshadow_op::maximum>(
+                                                         mshadow::expr::F<mshadow_op::minimum>(data, mshadow::expr::scalar(DType(1))),
+                                                         mshadow::expr::scalar(DType(0))), //clip to [0, 1]
+                                                      mshadow::expr::scalar(DType(this->param_.act_bit)));
+      }
     }                                             //
     //============================================//
 
@@ -169,8 +172,8 @@ class QCuDNNConvolutionOp : public Operator {
       typename DataType<DType>::ScaleType beta_add = 1.0f;
       CUDNN_CALL(cudnnConvolutionForward(s->dnn_handle_,
                                        &alpha,
-                                       in_desc_,
-                                       data_ptr + data_offset_ * g,
+                                       in_desc_padded_,
+                                       data_ptr + data_offset_padded_ * g,
                                        filter_desc_,
                                        wmat_ptr + weight_offset_ * g,
                                        forward_conv_desc_,
@@ -215,7 +218,9 @@ class QCuDNNConvolutionOp : public Operator {
       out = (mshadow::expr::ScalarExp<DType>(k) + out) / mshadow::expr::scalar(DType(2.0));
     }                                             //
     //============================================//
-    mshadow::FreeSpace(&padded_data);
+    if (padded) {
+      mshadow::FreeSpace(&padded_data);
+    }
   }
 
   virtual void Backward(const OpContext &ctx,
@@ -391,6 +396,7 @@ class QCuDNNConvolutionOp : public Operator {
     CHECK_EQ(in_shape.size(), expected);
     CHECK_EQ(out_shape.size(), 1U);
     CUDNN_CALL(cudnnCreateTensorDescriptor(&in_desc_));
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&in_desc_padded_));
     CUDNN_CALL(cudnnCreateTensorDescriptor(&out_desc_));
     CUDNN_CALL(cudnnCreateTensorDescriptor(&bias_desc_));
     CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_desc_));
@@ -398,9 +404,16 @@ class QCuDNNConvolutionOp : public Operator {
     CUDNN_CALL(cudnnCreateConvolutionDescriptor(&backward_conv_desc_));
 
     TShape dshape = in_shape[qconv::kData];
+    //============================================//
+    //  adjust input size to be already padded    //
+    //  keep original shape for seperate desc     //
+    TShape dshape_padded = dshape;                //
+    dshape_padded[2] += 2 * param_.pad[0];        //
+    dshape_padded[3] += 2 * param_.pad[1];        //
+    //============================================//
     TShape wshape = in_shape[qconv::kWeight];
     TShape oshape = out_shape[qconv::kOut];
-    TShape dstride, ostride;
+    TShape dstride, dstride_padded, ostride;
     wshape[0] /= param_.num_group;
     if (param_.kernel.ndim() == 2) {
       // 2d conv
@@ -420,8 +433,8 @@ class QCuDNNConvolutionOp : public Operator {
                                                CUDNN_CROSS_CORRELATION,
                                                cudnn_forward_compute_type));
       CUDNN_CALL(cudnnSetConvolution2dDescriptor(backward_conv_desc_,
-                                               0, //param_.pad[0],
-                                               0, //param_.pad[1],
+                                               param_.pad[0],
+                                               param_.pad[1],
                                                param_.stride[0],
                                                param_.stride[1],
                                                param_.dilate[0],
@@ -432,19 +445,19 @@ class QCuDNNConvolutionOp : public Operator {
       CUDNN_CALL(cudnnSetConvolution2dDescriptor(forward_conv_desc_,
                                                  0, //param_.pad[0],
                                                  0, //param_.pad[1],
-                                               param_.stride[0],
-                                               param_.stride[1],
-                                               param_.dilate[0],
-                                               param_.dilate[1],
-                                               CUDNN_CROSS_CORRELATION));
+                                                 param_.stride[0],
+                                                 param_.stride[1],
+                                                 param_.dilate[0],
+                                                 param_.dilate[1],
+                                                 CUDNN_CROSS_CORRELATION));
       CUDNN_CALL(cudnnSetConvolution2dDescriptor(backward_conv_desc_,
-                                                 0, //param_.pad[0],
-                                                 0, //param_.pad[1],
-                                               param_.stride[0],
-                                               param_.stride[1],
-                                               param_.dilate[0],
-                                               param_.dilate[1],
-                                               CUDNN_CROSS_CORRELATION));
+                                                 param_.pad[0],
+                                                 param_.pad[1],
+                                                 param_.stride[0],
+                                                 param_.stride[1],
+                                                 param_.dilate[0],
+                                                 param_.dilate[1],
+                                                 CUDNN_CROSS_CORRELATION));
       #endif
 
       #if CUDNN_MAJOR >= 5
@@ -472,6 +485,12 @@ class QCuDNNConvolutionOp : public Operator {
                                      1),
                               param_.layout.value(), kNCHW);
       dshape = ConvertLayout(dshape.get<4>(), param_.layout.value(), kNCHW);
+      dstride_padded = ConvertLayout(Shape4(dshape_padded[1] * dshape_padded[2] * dshape_padded[3],
+                                            dshape_padded[2] * dshape_padded[3],
+                                            dshape_padded[3],
+                                            1),
+                              param_.layout.value(), kNCHW);
+      dshape_padded = ConvertLayout(dshape_padded.get<4>(), param_.layout.value(), kNCHW);
 
       ostride = ConvertLayout(Shape4(oshape[1] * oshape[2] * oshape[3],
                                      oshape[2] * oshape[3],
@@ -480,7 +499,7 @@ class QCuDNNConvolutionOp : public Operator {
                               param_.layout.value(), kNCHW);
       oshape = ConvertLayout(oshape.get<4>(), param_.layout.value(), kNCHW);
     } else if (param_.kernel.ndim() == 3) {
-      LOG(FATAL) << "ndim != 2 not supported for q_cudnn calculation";
+      LOG(WARNING) << "ndim != 2 completely untested for q_cudnn calculation - might have to set cudnn_off=True";
       // 3d conv
       #if CUDNN_MAJOR >= 5
       CHECK_EQ(param_.layout.value(), kNCDHW) << "CuDNN only support 3D conv with NCDHW layout";
@@ -526,21 +545,34 @@ class QCuDNNConvolutionOp : public Operator {
       oshape = ConvertLayout(oshape.get<5>(), param_.layout.value(), kNCDHW);
     }
     dshape[1] /= param_.num_group;
+    dshape_padded[1] /= param_.num_group;
     oshape[1] /= param_.num_group;
     weight_offset_ = wshape.Size();
     data_offset_ = dstride[1] * dshape[1];
+    data_offset_padded_ = dstride_padded[1] * dshape_padded[1];
     out_offset_ = ostride[1] * oshape[1];
 
     std::vector<int> dshape_buffer(dshape.ndim());
     nnvm::ShapeTypeCast(dshape.begin(), dshape.end(), dshape_buffer.data());
+    std::vector<int> dshape_buffer_padded(dshape_padded.ndim());
+    nnvm::ShapeTypeCast(dshape_padded.begin(), dshape_padded.end(), dshape_buffer_padded.data());
+
     std::vector<int> dstride_buffer(dstride.ndim());
     nnvm::ShapeTypeCast(dstride.begin(), dstride.end(), dstride_buffer.data());
+    std::vector<int> dstride_buffer_padded(dstride_padded.ndim());
+    nnvm::ShapeTypeCast(dstride_padded.begin(), dstride_padded.end(), dstride_buffer_padded.data());
 
     CUDNN_CALL(cudnnSetTensorNdDescriptor(in_desc_,
                                           dtype_,
                                           static_cast<int>(dshape.ndim()),
                                           dshape_buffer.data(),
                                           dstride_buffer.data()));
+
+    CUDNN_CALL(cudnnSetTensorNdDescriptor(in_desc_padded_,
+                                          dtype_,
+                                          static_cast<int>(dshape_padded.ndim()),
+                                          dshape_buffer_padded.data(),
+                                          dstride_buffer_padded.data()));
 
     std::vector<int> oshape_buffer(oshape.ndim());
     nnvm::ShapeTypeCast(oshape.begin(), oshape.end(), oshape_buffer.data());
@@ -595,7 +627,7 @@ class QCuDNNConvolutionOp : public Operator {
           algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
         } else {
           CUDNN_CALL(cudnnGetConvolutionForwardAlgorithm(s->dnn_handle_,
-                 in_desc_,
+                 in_desc_padded_,
                  filter_desc_,
                  forward_conv_desc_,
                  out_desc_,
@@ -631,7 +663,7 @@ class QCuDNNConvolutionOp : public Operator {
         } else {
           cudnnConvolutionFwdAlgoPerf_t fwd_algo[kMaxAlgos];
           CUDNN_CALL(cudnnFindConvolutionForwardAlgorithm(s->dnn_handle_,
-                 in_desc_,
+                 in_desc_padded_,
                  filter_desc_,
                  forward_conv_desc_,
                  out_desc_,
@@ -717,7 +749,7 @@ class QCuDNNConvolutionOp : public Operator {
                &back_size_w));
     backward_workspace_byte_ = std::max(back_size, back_size_w);
     CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(s->dnn_handle_,
-               in_desc_,
+               in_desc_padded_,
                filter_desc_,
                forward_conv_desc_,
                out_desc_,
@@ -752,11 +784,13 @@ class QCuDNNConvolutionOp : public Operator {
   size_t forward_workspace_byte_;
   size_t backward_workspace_byte_;
   size_t data_offset_;
+  size_t data_offset_padded_;
   size_t out_offset_;
   size_t weight_offset_;
   size_t bias_offset_;
   cudnnDataType_t dtype_;
   cudnnTensorDescriptor_t in_desc_;
+  cudnnTensorDescriptor_t in_desc_padded_;
   cudnnTensorDescriptor_t out_desc_;
   cudnnTensorDescriptor_t bias_desc_;
   cudnnFilterDescriptor_t filter_desc_;
