@@ -15,9 +15,6 @@
 #include "../../src/operator/cudnn_algoreg-inl.h"
 #include "../../src/common/cuda_utils.h"
 
-
-#include <mshadow/tensor.h>
-
 namespace mxnet {
 namespace op {
 #if MXNET_USE_CUDNN == 1
@@ -108,6 +105,7 @@ class QCuDNNConvolutionOp : public Operator {
     Tensor<gpu, 1, DType> workspace =
         ctx.requested[qconv::kTempSpace].get_space_typed<gpu, 1, DType>(
             mshadow::Shape1(forward_workspace_), s);
+
     Tensor<gpu, 4, DType> data = in_data[qconv::kData].get<gpu, 4, DType>(s);
     Tensor<gpu, 4, DType> wmat = in_data[qconv::kWeight].get<gpu, 4, DType>(s);
     Tensor<gpu, 4, DType> out = out_data[qconv::kOut].get<gpu, 4, DType>(s);
@@ -183,7 +181,6 @@ class QCuDNNConvolutionOp : public Operator {
                                        req[qconv::kOut] == kAddTo? &beta_add : &beta,
                                        out_desc_,
                                        out_ptr + out_offset_ * g));
-
       if (!param_.no_bias) {
         Tensor<gpu, 1, DType> bias = in_data[qconv::kBias].get<gpu, 1, DType>(s);
         #if CUDNN_MAJOR >= 4
