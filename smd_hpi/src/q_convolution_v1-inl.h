@@ -23,6 +23,7 @@
 #include "./q_helper.h"
 #include "./xnor_cpu.h"
 #include <type_traits>
+#include "./q_convolution-inl.h"
 
 namespace mxnet {
 namespace op {
@@ -430,6 +431,8 @@ Operator* CreateOp(QConvolutionV1Param param, int dtype,
                    std::vector<TShape> *in_shape,
                    std::vector<TShape> *out_shape,
                    Context ctx);
+
+QConvolutionParam GetQCParamFromQV1Param(QConvolutionV1Param v1_param);
 
 #if DMLC_USE_CXX11
 class QConvolutionV1Prop : public OperatorProperty {
