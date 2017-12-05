@@ -118,6 +118,24 @@ struct ConvolutionParam : public dmlc::Parameter<ConvolutionParam> {
            this->cudnn_off == other.cudnn_off &&
            this->layout == other.layout;
   }
+
+  ConvolutionParam() {}
+
+  ConvolutionParam(TShape kernel, TShape stride, TShape dilate, TShape pad,
+                   uint32_t num_filter, uint32_t num_group, uint64_t workspace, bool no_bias,
+                   dmlc::optional<int> cudnn_tune, bool cudnn_off, dmlc::optional<int> layout):
+  kernel(kernel),
+  stride(stride),
+  dilate(dilate),
+  pad(pad),
+  num_filter(num_filter),
+  num_group(num_group),
+  workspace(workspace),
+  no_bias(no_bias),
+  cudnn_tune(cudnn_tune),
+  cudnn_off(cudnn_off),
+  layout(layout) {}
+
 };
 
 }  // namespace op
