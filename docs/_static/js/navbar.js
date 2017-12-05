@@ -1,8 +1,30 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 var searchBox = $("#search-input-wrap");
-var TITLE = ['/get_started/', '/tutorials/', '/how_to/', '/api/', '/architecture/'];
-var APIsubMenu;
+var TITLE = ['/get_started/', '/tutorials/', '/gluon/' , '/api/', '/community/contribute.html', ];
+var DOC_TITLE = ['/faq/', '/architecture/', '/model_zoo/'];
+var APISubmenu, versionSubmenu, docSubmenu;
 $("#burgerMenu").children().each(function () {
-    if($(this).children().first().html() == 'API') APIsubMenu = $(this).clone()
+    if($(this).children().first().html() == 'API') APISubmenu = $(this).clone();
+    if($(this).children().first().html().startsWith('Versions')) versionSubmenu = $(this).clone();
+    if($(this).children().first().html() == 'Docs') docSubmenu= $(this).clone();
 });
 
 function navbar() {
@@ -38,8 +60,14 @@ function navbar() {
     }
     $("#plusMenu").empty();
     for (var i = 0; i < plusMenuList.length; ++i) {
-        if(plusMenuList[i].html().length > 20) {
-            $("#plusMenu").append(APIsubMenu);
+        if(plusMenuList[i].attr('id') == 'dropdown-menu-position-anchor') {
+            $("#plusMenu").append(APISubmenu);
+        }
+        else if(plusMenuList[i].attr('id') == 'dropdown-menu-position-anchor-version') {
+            $("#plusMenu").append(versionSubmenu);
+        }
+        else if(plusMenuList[i].attr('id') == 'dropdown-menu-position-anchor-docs') {
+            $("#plusMenu").append(docSubmenu);
         }
         else {
             $("#plusMenu").append("<li></li>");
@@ -58,8 +86,16 @@ function showTab() {
             var tab = $($('#main-nav').children().eq(i));
             if(!tab.is('a')) tab = tab.find('a').first();
             tab.css('border-bottom', '3px solid');
+            return;
         }
     }
+     for(var i = 0; i < DOC_TITLE.length; ++i) {
+        if(url.indexOf(DOC_TITLE[i]) != -1) {
+            var tab = $($('#main-nav').children().eq(4));
+            if(!tab.is('a')) tab = tab.find('a').first();
+            tab.css('border-bottom', '3px solid');
+        }
+     }
 }
 
 $(document).ready(function () {
@@ -67,5 +103,7 @@ $(document).ready(function () {
     showTab();
     $(window).resize(function () {
         navbar();
+        if($("body").prop("clientWidth") < 1000 || $('div.sphinxsidebar').css('visibility') == 'hidden') $('div.content').css('width', '100%');
+        else $('div.content').css('width', 'calc(100% - 300px)');
     });
 });

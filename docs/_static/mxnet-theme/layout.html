@@ -1,3 +1,22 @@
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+
 {%- block doctype -%}
 <!DOCTYPE html>
 {%- endblock %}
@@ -148,10 +167,15 @@
 
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/image/mxnet-icon.png">
   </head>
-  <body role="document">
+  <body role="document" background="https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/image/mxnet-background.png">
+    <div class='content-block'>
     {%- include "navbar.html" %}
+    
 
     {% if pagename != 'index' %}
+    <script type="text/javascript">
+        $('body').css('background', 'white');
+    </script>
     <div class="container">
       <div class="row">
         <div class="sphinxsidebar leftsidebar" role="navigation" aria-label="main navigation">
@@ -160,15 +184,18 @@
           </div>
         </div>
         <div class="content">
+          <div class="page-tracker"></div>
           {% block body %} {% endblock %}
-          {%- include "footer.html" %}
         </div>
-        {{ sidebar() }}
+      </div>
+      {{ sidebar() }}
     </div>
+    {%- include "footer.html" %}
     {%- else %}
     {%- include "index.html" %}
     {%- include "footer.html" %}
     {%- endif %} <!-- pagename != index -->
+    </div>
 
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
     <script type="text/javascript" src="{{ pathto('_static/js/sidebar.js', 1) }}"></script>
@@ -176,6 +203,7 @@
     <script type="text/javascript" src="{{ pathto('_static/js/navbar.js', 1) }}"></script>
     <script type="text/javascript" src="{{ pathto('_static/js/clipboard.min.js', 1) }}"></script>
     <script type="text/javascript" src="{{ pathto('_static/js/copycode.js', 1) }}"></script>
+    <script type="text/javascript" src="{{ pathto('_static/js/page.js', 1) }}"></script>
     <script type="text/javascript">
         $('body').ready(function () {
             $('body').css('visibility', 'visible');

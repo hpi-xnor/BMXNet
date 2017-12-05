@@ -1,5 +1,5 @@
-Contributors of DMLC/MXNet
-==========================
+Contributors of Apache MXNet (incubating)
+=========================================
 MXNet has been developed by a community of people who are interested in large-scale machine learning and deep learning.
 Everyone is more than welcomed to is a great way to make the project better and more accessible to more users.
 
@@ -7,6 +7,7 @@ Committers
 ----------
 Committers are people who have made substantial contribution to the project and being active.
 The committers are the granted write access to the project.
+A full list of committers can be found here:  http://incubator.apache.org/projects/mxnet.html
 
 * [Bing Xu](https://github.com/antinucleon)
   - Bing is the initiator and major contributor of operators and ndarray modules of mxnet.
@@ -39,6 +40,7 @@ The committers are the granted write access to the project.
   - Zixuan is one of major maintainers of mxnet scala package.
 * [Yuan Tang](https://github.com/terrytangyuan)
   - Yuan is one of major maintainers of mxnet scala package.
+* [Chris Olivier](https://github.com/cjolivier01)
 
 ### Become a Committer
 MXNet is a opensource project and we are actively looking for new committers
@@ -50,7 +52,7 @@ New committers will be proposed by current committers, with support from more th
 
 List of Contributors
 --------------------
-* [Full List of Contributors](https://github.com/dmlc/mxnet/graphs/contributors)
+* [Full List of Contributors](https://github.com/apache/incubator-mxnet/graphs/contributors)
   - To contributors: please add your name to the list when you submit a patch to the project:)
 * [Feng Wang](https://github.com/happynear)
   - Feng makes mxnet compatible with Windows Visual Studio.
@@ -145,3 +147,5 @@ List of Contributors
 * [Guodong Zhang](https://github.com/gd-zhang/)
 * [Xizhou Zhu](https://github.com/einsiedler0408/)
 * [Jean Kossaifi](https://github.com/JeanKossaifi/)
+* [Kenta Kubo](https://github.com/kkk669/)
+* [Manu Seth](https://github.com/mseth10/)
