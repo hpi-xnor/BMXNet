@@ -165,6 +165,20 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
   rapidjson::Document d;
   d.Parse(json.c_str());
 
+  // detecting mxnet version, starting with v1.0.0 (?) they switched from key 'attr' to 'attrs'
+  CHECK(d.HasMember("attrs"));
+  rapidjson::Value::ConstMemberIterator itr = d["attrs"].FindMember("mxnet_version");
+  CHECK(itr != d["attrs"].MemberEnd());
+  CHECK(itr->value.IsArray());
+  CHECK(itr->value.Size() == 2);
+  int version = itr->value[1].GetInt();
+  std::string node_attrs_name = "attrs";
+  if (version / 10000 < 1) {
+    LOG(INFO) << "detected model saved with mxnet v" << version/10000 << "." << (version/100)%100 << "." << version%100
+              << ", using old 'attr' name for layer attributes instead of 'attrs'";
+    node_attrs_name = "attr";
+  }
+
   assert(d.HasMember("nodes"));
   rapidjson::Value& nodes = d["nodes"];
   assert(nodes.IsArray());
@@ -177,8 +191,8 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
       continue;
     }
 
-    assert((*itr).HasMember("attr"));
-    rapidjson::Value& op_attributes = (*itr)["attr"];
+    assert((*itr).HasMember(node_attrs_name.c_str()));
+    rapidjson::Value& op_attributes = (*itr)[node_attrs_name.c_str()];
     op_attributes.AddMember("binarized_weights_only", "True", d.GetAllocator());
 
     assert((*itr).HasMember("name"));
