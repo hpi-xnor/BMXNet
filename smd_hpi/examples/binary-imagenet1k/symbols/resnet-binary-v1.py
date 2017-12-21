@@ -93,27 +93,26 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
     workspace : int
         Workspace used in convolution operator
     """
-    cudnn_off = False
 
     if bottle_neck:
         # the same as https://github.com/facebook/fb.resnet.torch#notes, a bit difference with origin paper
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
         act1 = mx.sym.QActivation(data=bn1, act_bit=BIT, backward_only=True)
         conv1 = mx.sym.QConvolution_v1(data=act1, num_filter=int(num_filter*0.25), kernel=(1,1), stride=(1,1), pad=(0,0),
-                                   no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT, cudnn_off=cudnn_off)
+                                   no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT)
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn2')
         act2 = mx.sym.QActivation(data=bn2,  act_bit=BIT, backward_only=True)
         conv2 = mx.sym.QConvolution_v1(data=act2, num_filter=int(num_filter*0.25), kernel=(3,3), stride=stride, pad=(1,1),
-                                   no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT, cudnn_off=cudnn_off)
+                                   no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT)
         bn3 = mx.sym.BatchNorm(data=conv2, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn3')
         act3 = mx.sym.QActivation(data=bn3, act_bit=BIT, backward_only=True)
         conv3 = mx.sym.QConvolution_v1(data=act3, num_filter=num_filter, kernel=(1,1), stride=(1,1), pad=(0,0), no_bias=True,
-                                   workspace=workspace, name=name + '_conv3', act_bit=BIT, cudnn_off=cudnn_off)
+                                   workspace=workspace, name=name + '_conv3', act_bit=BIT)
         if dim_match:
             shortcut = data
         else:
             shortcut = mx.sym.QConvolution_v1(data=bn1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
-                                            workspace=workspace, name=name+'_sc', act_bit=BIT, cudnn_off=cudnn_off)
+                                            workspace=workspace, name=name+'_sc', act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
         return conv3 + shortcut
@@ -121,16 +120,16 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn1')
         act1 = mx.sym.QActivation(data=bn1, act_bit=BIT, backward_only=True)
         conv1 = mx.sym.QConvolution_v1(data=act1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
-                                      no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT, cudnn_off=cudnn_off)
+                                      no_bias=True, workspace=workspace, name=name + '_conv1', act_bit=BIT)
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2')
         act2 = mx.sym.QActivation(data=bn2, act_bit=BIT, backward_only=True)
         conv2 = mx.sym.QConvolution_v1(data=act2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
-                                      no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT, cudnn_off=cudnn_off)
+                                      no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BIT)
         if dim_match:
             shortcut = data
         else:
             shortcut = mx.sym.QConvolution_v1(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
-                         workspace=workspace, name=name+'_sc', act_bit=BIT, cudnn_off=cudnn_off)
+                         workspace=workspace, name=name+'_sc', act_bit=BIT)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
         return conv2 + shortcut
