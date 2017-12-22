@@ -227,8 +227,7 @@ class QConvolutionV1Op : public Operator {
         //   QConvolutionForward(...)                                       //         
         // should produce the exactly same result as the dot(bina(..))method//
         //==================================================================//
-        if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
-          CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
+        if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){          
           
           int m = wmat_shape[1];
           int n = wmat_shape[2];
@@ -239,6 +238,7 @@ class QConvolutionV1Op : public Operator {
                           Shape1(n * k / (sizeof(DType) * CHAR_BIT)), s);
           Tensor<xpu, 2, DType> temp_dst_gid = temp_dst[gid];
           if (param_.binarized_weights_only) {
+            CHECK(gid == 0) << "groups not yet supported for pre-binarized weights";
             QConvolutionV1Forward(m, n, k,
                                 wmat_binarized,
                                 binary_inputs_workspace,

@@ -212,7 +212,6 @@ namespace mxnet {
                   // should produce the exactly same result as the dot(bina(..))method//
                   //                                                                  //
                   if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
-                    CHECK(g == 0) << "groups not yet supported for pre-binarized weights";
 
                     // @todo: watch out, we get 32bit float space here and later possibly cast it into 64bit space
                     Tensor<xpu, 1, DType> binary_inputs_workspace =
@@ -220,6 +219,7 @@ namespace mxnet {
                                     Shape1(N * K / (sizeof(DType) * CHAR_BIT)), s);
                     Tensor<xpu, 2, DType> temp_dst_gid = output_3d[g];
                     if (param_.binarized_weights_only) {
+                      CHECK(g == 0) << "groups not yet supported for pre-binarized weights";
                       QConvolutionForward(M, N, K,
                                           wmat_binarized,
                                           binary_inputs_workspace,
