@@ -25,8 +25,8 @@ using mxnet::op::xnor_cpu::BINARY_WORD;
  */
 
 void convert_to_binary_row(mxnet::NDArray& array) {
-  assert(array.shape().ndim() >= 2); // second dimension is input depth from prev. layer, needed for next line
-  assert(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64)
+  CHECK(array.shape().ndim() >= 2); // second dimension is input depth from prev. layer, needed for next line
+  CHECK(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64)
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
@@ -42,7 +42,7 @@ void convert_to_binary_row(mxnet::NDArray& array) {
  */
 
 void transpose(mxnet::NDArray& array) {
-  assert(array.shape().ndim() == 2);
+  CHECK(array.shape().ndim() == 2);
   nnvm::TShape tansposed_shape(2);
   int rows = array.shape()[0];
   int cols = array.shape()[1];
@@ -67,8 +67,8 @@ void transpose(mxnet::NDArray& array) {
 
 void transpose_and_convert_to_binary_col(mxnet::NDArray& array) {
   transpose(array);
-  assert(array.shape().ndim() == 2); // since we binarize column wise, we need to know no of rows and columns
-  assert(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
+  CHECK(array.shape().ndim() == 2); // since we binarize column wise, we need to know no of rows and columns
+  CHECK(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
   binarized_shape[0] = size / BITS_PER_BINARY_WORD;
@@ -165,9 +165,23 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
   rapidjson::Document d;
   d.Parse(json.c_str());
 
-  assert(d.HasMember("nodes"));
+  // detecting mxnet version, starting with v1.0.0 (?) they switched from key 'attr' to 'attrs'
+  CHECK(d.HasMember("attrs"));
+  rapidjson::Value::ConstMemberIterator itr = d["attrs"].FindMember("mxnet_version");
+  CHECK(itr != d["attrs"].MemberEnd());
+  CHECK(itr->value.IsArray());
+  CHECK(itr->value.Size() == 2);
+  int version = itr->value[1].GetInt();
+  std::string node_attrs_name = "attrs";
+  if (version / 10000 < 1) {
+    LOG(INFO) << "detected model saved with mxnet v" << version/10000 << "." << (version/100)%100 << "." << version%100
+              << ", using old 'attr' name for layer attributes instead of 'attrs'";
+    node_attrs_name = "attr";
+  }
+
+  CHECK(d.HasMember("nodes"));
   rapidjson::Value& nodes = d["nodes"];
-  assert(nodes.IsArray());
+  CHECK(nodes.IsArray());
 
   for (rapidjson::Value::ValueIterator itr = nodes.Begin(); itr != nodes.End(); ++itr) {
     if (!(itr->HasMember("op") && (*itr)["op"].IsString() &&
@@ -177,11 +191,11 @@ int convert_json_file(const std::string& input_fname, const std::string& output_
       continue;
     }
 
-    assert((*itr).HasMember("attr"));
-    rapidjson::Value& op_attributes = (*itr)["attr"];
+    CHECK((*itr).HasMember(node_attrs_name.c_str()));
+    rapidjson::Value& op_attributes = (*itr)[node_attrs_name.c_str()];
     op_attributes.AddMember("binarized_weights_only", "True", d.GetAllocator());
 
-    assert((*itr).HasMember("name"));
+    CHECK((*itr).HasMember("name"));
     std::cout << "|- adjusting attributes for " << (*itr)["name"].GetString() << std::endl;
 
     if (std::strcmp((*itr)["op"].GetString(), "QConvolution") == 0 ||

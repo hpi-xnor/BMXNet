@@ -6,6 +6,12 @@ Our current efforts are focused on binarizing the inputs and weights of convolut
 
 - [BMXNet: An Open-Source Binary Neural Network Implementation Based on MXNet](https://arxiv.org/abs/1705.09864)
 
+## News
+
+- **Dec 22, 2018** - MXNet v1.0.0 and cuDNN
+    - We are updating the underlying MXNet to version 1.0.0, see changes and release notes [here](https://github.com/apache/incubator-mxnet/releases/tag/1.0.0).
+    - cuDNN is now supported in the training of binary networks, speeding up the training process by about 2x
+
 # Setup
 
 We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](docs/get_started/setup.md#prerequisites). 
@@ -88,4 +94,3 @@ Please cite BMXNet in your publications if it helps your research work:
 - [XNOR-Net: ImageNet Classification Using Binary Convolutional Neural Networks](https://arxiv.org/abs/1603.05279)
 - [Binarized Neural Networks: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1](https://arxiv.org/abs/1602.02830)
 - [DoReFa-Net: Training Low Bitwidth Convolutional Neural Networks with Low Bitwidth Gradients](https://arxiv.org/abs/1606.06160)
-

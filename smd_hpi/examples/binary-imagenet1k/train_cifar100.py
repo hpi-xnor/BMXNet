@@ -6,17 +6,13 @@ from common import find_mxnet, data, fit
 from common.util import download_file
 import mxnet as mx
 
-def download_cifar10():
-    data_dir="data"
-    fnames = (os.path.join(data_dir, "cifar10_train.rec"),
-              os.path.join(data_dir, "cifar10_val.rec"))
-    download_file('http://data.mxnet.io/data/cifar10/cifar10_val.rec', fnames[1])
-    download_file('http://data.mxnet.io/data/cifar10/cifar10_train.rec', fnames[0])
-    return fnames
+def add_binary_args(parser):
+    parser.add_argument('--bit-w', type=int, default=1,
+                       help='number of bits for weights')
+    parser.add_argument('--bit-a', type=int, default=1,
+                       help='number of bits for activations')
 
 if __name__ == '__main__':
-    # download data
-#    (train_fname, val_fname) = download_cifar10()
 
     # parse args
     parser = argparse.ArgumentParser(description="train cifar100",
@@ -24,7 +20,14 @@ if __name__ == '__main__':
     fit.add_fit_args(parser)
     data.add_data_args(parser)
     data.add_data_aug_args(parser)
-    data.set_data_aug_level(parser, 2)
+    data.set_data_aug_level(parser, 3)
+
+    parser.add_argument('--pretrained', type=str,
+                help='the pre-trained model')
+    parser.add_argument('--log', dest='log_file', type=str, default="train.log",
+                    help='save training log to file')
+    add_binary_args(parser)
+
     parser.set_defaults(
         # network
         network        = 'cifar10',
@@ -40,20 +43,44 @@ if __name__ == '__main__':
         batch_size     = 256,
         num_epochs     = 200,
         lr_step_epochs = '50,100,150',
-        optimizer        = 'sgd',
+        optimizer        = 'nadam',
         disp_batches     = 10,
         lr               = 0.1,
         top_k            = 5,
     )
     args = parser.parse_args()
 
-    parser.add_argument('--log', dest='log_file', type=str, default="train.log",
-                    help='save training log to file')
+    # set up logger    
+    log_file = args.log_file
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    if log_file:
+        fh = logging.FileHandler(log_file)
+        logger.addHandler(fh)
 
     # load network
     from importlib import import_module
     net = import_module('symbols.'+args.network)
     sym = net.get_symbol(**vars(args))
 
+    devs = mx.cpu() if args.gpus is None or args.gpus is '' else [
+    mx.gpu(int(i)) for i in args.gpus.split(',')]
+    
+    #load pretrained
+    args_params=None
+    auxs_params=None
+    
     # train
-    fit.fit(args, sym, data.get_rec_iter)
+    if args_params and auxs_params:
+        fit.fit(
+            args, 
+            sym, 
+            data.get_rec_iter, 
+            arg_params=args_params, 
+            aux_params=auxs_params)
+    else:
+        fit.fit(
+            args, 
+            sym, 
+            data.get_rec_iter)
+

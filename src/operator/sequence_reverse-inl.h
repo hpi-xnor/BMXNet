@@ -1,4 +1,23 @@
 /*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+/*
  * Copyright (c) 2016 by Contributors
  * \file sequence_reverse-inl.h
  * \brief
@@ -55,7 +74,7 @@ struct ReverseKernel {
                                   : max_seq_len;
       const index_t padded_periods = max_seq_len - num_seq;
       // padded part
-      if (padded_periods > 0 && i < padded_periods) {
+      if (padded_periods > 0 && i < static_cast<int>(padded_periods)) {
         const int padded_in_offset =
             (i + num_seq) * batch_size * other_dim + batch * other_dim;
 
@@ -65,7 +84,7 @@ struct ReverseKernel {
         }
       }
       // unpadded part
-      if (i < num_seq) {
+      if (i < static_cast<int>(num_seq)) {
         const int in_offset = i * batch_size * other_dim + batch * other_dim;
         const int out_offset =
             numel - (i + 1 + padded_periods) * batch_size * other_dim +
@@ -203,8 +222,8 @@ class SequenceReverseProp : public OperatorProperty {
         << "Input:[data, sequence_length]";
 
     const TShape &dshape = (*in_shape)[seq_reverse::kData];
-    CHECK_GT(dshape.ndim(), 2U)
-        << "The data array must be of rank 3 or greater.";
+    CHECK_GT(dshape.ndim(), 1U)
+        << "The data array must be of rank 2 or greater.";
     // seq length vector is same as batch size
     if (param_.use_sequence_length)
       SHAPE_ASSIGN_CHECK(*in_shape, seq_reverse::kSequenceLength,
@@ -225,10 +244,7 @@ class SequenceReverseProp : public OperatorProperty {
       if ((*in_type)[i] == -1) {
         (*in_type)[i] = dtype;
       } else {
-        CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "
-                                       << "Expected " << dtype << " v.s. given "
-                                       << (*in_type)[i] << " at "
-                                       << ListArguments()[i];
+        UNIFORM_TYPE_CHECK((*in_type)[i], dtype, ListArguments()[i]);
       }
     }
     out_type->clear();

@@ -1,5 +1,11 @@
 ROOTDIR = $(CURDIR)
 
+ifeq ($(OS),Windows_NT)
+	UNAME_S := Windows
+else
+	UNAME_S := $(shell uname -s)
+endif
+
 ifndef config
 ifdef CXXNET_CONFIG
 	config = $(CXXNET_CONFIG)
@@ -13,6 +19,7 @@ endif
 ifndef DMLC_CORE
 	DMLC_CORE = $(ROOTDIR)/dmlc-core
 endif
+CORE_INC = $(wildcard $(DMLC_CORE)/include/*/*.h)
 
 ifndef NNVM_PATH
 	NNVM_PATH = $(ROOTDIR)/nnvm
@@ -20,6 +27,10 @@ endif
 
 ifndef DLPACK_PATH
 	DLPACK_PATH = $(ROOTDIR)/dlpack
+endif
+
+ifndef AMALGAMATION_PATH
+	AMALGAMATION_PATH = $(ROOTDIR)/amalgamation
 endif
 
 ifneq ($(USE_OPENMP), 1)
@@ -31,8 +42,8 @@ include $(config)
 
 ifeq ($(USE_MKL2017), 1)
 # must run ./prepare_mkl before including mshadow.mk
-	RETURN_STRING = $(shell ./prepare_mkl.sh $(MKLML_ROOT))
-	MKLROOT = $(firstword $(RETURN_STRING))
+	RETURN_STRING := $(shell ./prepare_mkl.sh $(MKLML_ROOT))
+	MKLROOT := $(firstword $(RETURN_STRING))
 	export USE_MKLML = $(lastword $(RETURN_STRING))
 endif
 
@@ -67,9 +78,14 @@ ifeq ($(USE_PROFILER), 1)
 	CFLAGS += -DMXNET_USE_PROFILER=1
 endif
 
+# CFLAGS for segfault logger
+ifeq ($(USE_SIGNAL_HANDLER), 1)
+	CFLAGS += -DMXNET_USE_SIGNAL_HANDLER=1
+endif
+
 # Caffe Plugin
 ifdef CAFFE_PATH
-  CFLAGS += -DMXNET_USE_CAFFE=1
+	CFLAGS += -DMXNET_USE_CAFFE=1
 endif
 
 ifndef LINT_LANG
@@ -86,7 +102,9 @@ else
 endif
 
 ifeq ($(USE_OPENMP), 1)
-	CFLAGS += -fopenmp
+	ifneq ($(UNAME_S), Darwin)
+		CFLAGS += -fopenmp
+	endif
 endif
 
 ifeq ($(USE_NNPACK), 1)
@@ -100,11 +118,21 @@ ifeq ($(USE_MKL2017), 1)
 	CFLAGS += -I$(ROOTDIR)/src/operator/mkl/
 	CFLAGS += -I$(MKLML_ROOT)/include
 	LDFLAGS += -L$(MKLML_ROOT)/lib
-ifeq ($(USE_MKL2017_EXPERIMENTAL), 1)
-	CFLAGS += -DMKL_EXPERIMENTAL=1
-else
-	CFLAGS += -DMKL_EXPERIMENTAL=0
+	ifeq ($(USE_MKL2017_EXPERIMENTAL), 1)
+		CFLAGS += -DMKL_EXPERIMENTAL=1
+	else
+		CFLAGS += -DMKL_EXPERIMENTAL=0
+	endif
+	ifeq ($(UNAME_S), Darwin)
+		LDFLAGS += -lmklml
+	else
+		LDFLAGS += -Wl,--as-needed -lmklml_intel -lmklml_gnu
+	endif
+	LDFLAGS +=  -liomp5
 endif
+
+ifeq ($(USE_OPERATOR_TUNING), 1)
+	CFLAGS += -DMXNET_USE_OPERATOR_TUNING=1
 endif
 
 # verify existence of separate lapack library when using blas/openblas/atlas
@@ -141,7 +169,60 @@ ifeq ($(USE_CUDNN), 1)
 	LDFLAGS += -lcudnn
 endif
 
+# gperftools malloc library (tcmalloc)
+ifeq ($(USE_GPERFTOOLS), 1)
+#	FIND_LIBNAME=tcmalloc_and_profiler
+	FIND_LIBNAME=tcmalloc
+	FIND_LIBFILEEXT=so
+	FIND_LIBFILE=$(wildcard /lib/lib$(FIND_LIBNAME).$(FIND_LIBFILEEXT))
+	ifeq (,$(FIND_LIBFILE))
+		FIND_LIBFILE=$(wildcard /usr/lib/lib$(FIND_LIBNAME).$(FIND_LIBFILEEXT))
+		ifeq (,$(FIND_LIBFILE))
+			FIND_LIBFILE=$(wildcard /usr/local/lib/lib$(FIND_LIBNAME).$(FIND_LIBFILEEXT))
+			ifeq (,$(FIND_LIBFILE))
+				USE_GPERFTOOLS=0
+			endif
+		endif
+	endif
+	ifeq ($(USE_GPERFTOOLS), 1)
+		CFLAGS += -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free
+		LDFLAGS += $(FIND_LIBFILE)
+	endif
+endif
 
+# jemalloc malloc library (if not using gperftools)
+ifneq ($(USE_GPERFTOOLS), 1)
+	ifeq ($(USE_JEMALLOC), 1)
+		FIND_LIBNAME=jemalloc
+		FIND_LIBFILEEXT=so
+		FIND_LIBFILE=$(wildcard /lib/lib$(FIND_LIBNAME).$(FIND_LIBFILEEXT))
+		ifeq (,$(FIND_LIBFILE))
+			FIND_LIBFILE=$(wildcard /usr/lib/lib$(FIND_LIBNAME).$(FIND_LIBFILEEXT))
+			ifeq (,$(FIND_LIBFILE))
+				FIND_LIBFILE=$(wildcard /usr/local/lib/lib$(FIND_LIBNAME).$(FIND_LIBFILEEXT))
+				ifeq (,$(FIND_LIBFILE))
+					FIND_LIBFILE=$(wildcard /usr/lib/x86_64-linux-gnu/lib$(FIND_LIBNAME).$(FIND_LIBFILEEXT))
+					ifeq (,$(FIND_LIBFILE))
+						USE_JEMALLOC=0
+					endif
+				endif
+			endif
+		endif
+		ifeq ($(USE_JEMALLOC), 1)
+			CFLAGS += -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc \
+			-fno-builtin-free -DUSE_JEMALLOC
+			LDFLAGS += $(FIND_LIBFILE)
+		endif
+	endif
+endif
+
+# If not using tcmalloc or jemalloc, print a warning (user should consider installing)
+ifneq ($(USE_GPERFTOOLS), 1)
+	ifneq ($(USE_JEMALLOC), 1)
+$(warning WARNING: Significant performance increases can be achieved by installing and \
+enabling gperftools or jemalloc development packages)
+	endif
+endif
 
 ifeq ($(USE_THREADED_ENGINE), 1)
 	CFLAGS += -DMXNET_USE_THREADED_ENGINE
@@ -161,8 +242,8 @@ endif
 
 # Sets 'CUDA_ARCH', which determines the GPU architectures supported
 # by the compiled kernels.  Users can edit the KNOWN_CUDA_ARCHS list below
-# to remove archs they don't wish to support to speed compilation, or they
-# can pre-set the CUDA_ARCH args in config.mk for full control.
+# to remove archs they don't wish to support to speed compilation, or they can
+# pre-set the CUDA_ARCH args in config.mk to a non-null value for full control.
 #
 # For archs in this list, nvcc will create a fat-binary that will include
 # the binaries (SASS) for all architectures supported by the installed version
@@ -170,13 +251,13 @@ endif
 # If these kernels are then run on a newer-architecture GPU, the binary will
 # be JIT-compiled by the updated driver from the included PTX.
 ifeq ($(USE_CUDA), 1)
-ifeq ($(origin CUDA_ARCH), undefined)
-	KNOWN_CUDA_ARCHS := 30 35 50 52 60 61
+ifeq ($(CUDA_ARCH),)
+	KNOWN_CUDA_ARCHS := 30 35 50 52 60 61 70
 	# Run nvcc on a zero-length file to check architecture-level support.
 	# Create args to include SASS in the fat binary for supported levels.
 	CUDA_ARCH := $(foreach arch,$(KNOWN_CUDA_ARCHS), \
-                  $(shell $(NVCC) -arch=sm_$(arch) -E --x cu /dev/null >/dev/null 2>&1 && \
-                          echo -gencode arch=compute_$(arch),code=sm_$(arch)))
+				$(shell $(NVCC) -arch=sm_$(arch) -E --x cu /dev/null >/dev/null 2>&1 && \
+						echo -gencode arch=compute_$(arch),code=sm_$(arch)))
 	# Convert a trailing "code=sm_NN" to "code=[sm_NN,compute_NN]" to also
 	# include the PTX of the most recent arch in the fat-binaries for
 	# forward compatibility with newer GPUs.
@@ -184,7 +265,7 @@ ifeq ($(origin CUDA_ARCH), undefined)
 	# Add fat binary compression if supported by nvcc.
 	COMPRESS := --fatbin-options -compress-all
 	CUDA_ARCH += $(shell $(NVCC) -cuda $(COMPRESS) --x cu /dev/null -o /dev/null >/dev/null 2>&1 && \
-	                     echo $(COMPRESS))
+						 echo $(COMPRESS))
 endif
 endif
 
@@ -226,20 +307,18 @@ PLUGIN_OBJ =
 PLUGIN_CUOBJ =
 include $(MXNET_PLUGINS)
 
-# scala package profile
-ifeq ($(OS),Windows_NT)
+ifeq ($(UNAME_S), Windows)
 	# TODO(yizhi) currently scala package does not support windows
 	SCALA_PKG_PROFILE := windows
 else
-	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S), Darwin)
 		WHOLE_ARCH= -all_load
 		NO_WHOLE_ARCH= -noall_load
 		SCALA_PKG_PROFILE := osx-x86_64
 	else
-		SCALA_PKG_PROFILE := linux-x86_64
 		WHOLE_ARCH= --whole-archive
 		NO_WHOLE_ARCH= --no-whole-archive
+		SCALA_PKG_PROFILE := linux-x86_64
 	endif
 endif
 
@@ -250,21 +329,36 @@ ALL_DEP = $(OBJ) $(EXTRA_OBJ) $(PLUGIN_OBJ) $(LIB_DEP)
 ifeq ($(USE_CUDA), 1)
 	CFLAGS += -I$(ROOTDIR)/cub
 	ALL_DEP += $(CUOBJ) $(EXTRA_CUOBJ) $(PLUGIN_CUOBJ)
-	LDFLAGS += -lcuda -lcufft
+	LDFLAGS += -lcuda -lcufft -lnvrtc
 	SCALA_PKG_PROFILE := $(SCALA_PKG_PROFILE)-gpu
+	ifeq ($(USE_NCCL), 1)
+		ifneq ($(USE_NCCL_PATH), NONE)
+			CFLAGS += -I$(USE_NCCL_PATH)/include
+			LDFLAGS += -L$(USE_NCCL_PATH)/lib
+		endif
+		LDFLAGS += -lnccl
+		CFLAGS += -DMXNET_USE_NCCL=1
+	else
+		CFLAGS += -DMXNET_USE_NCCL=0
+	endif
 else
 	SCALA_PKG_PROFILE := $(SCALA_PKG_PROFILE)-cpu
+	CFLAGS += -DMXNET_USE_NCCL=0
+endif
+
+ifeq ($(USE_LIBJPEG_TURBO), 1)
+	ifneq ($(USE_LIBJPEG_TURBO_PATH), NONE)
+		CFLAGS += -I$(USE_LIBJPEG_TURBO_PATH)/include
+		LDFLAGS += -L$(USE_LIBJPEG_TURBO_PATH)/lib
+	endif
+	LDFLAGS += -lturbojpeg
+	CFLAGS += -DMXNET_USE_LIBJPEG_TURBO=1
+else
+	CFLAGS += -DMXNET_USE_LIBJPEG_TURBO=0
 endif
 
 # For quick compile test, used smaller subset
 ALLX_DEP= $(ALL_DEP)
-
-ifeq ($(USE_NVRTC), 1)
-	LDFLAGS += -lnvrtc
-	CFLAGS += -DMXNET_USE_NVRTC=1
-else
-	CFLAGS += -DMXNET_USE_NVRTC=0
-endif
 
 build/src/%.o: src/%.cc
 	@mkdir -p $(@D)
@@ -291,7 +385,7 @@ build/plugin/%.o: plugin/%.cc
 	$(NVCC) $(NVCCFLAGS) $(CUDA_ARCH) -Xcompiler "$(CFLAGS) -Isrc/operator" -M -MT $*_gpu.o $< >$*_gpu.d
 	$(NVCC) -c -o $@ $(NVCCFLAGS) $(CUDA_ARCH) -Xcompiler "$(CFLAGS) -Isrc/operator" $<
 
-%.o: %.cc
+%.o: %.cc $(CORE_INC)
 	@mkdir -p $(@D)
 	$(CXX) -std=c++11 -c $(CFLAGS) -MMD -Isrc/operator -c $< -o $@
 
@@ -302,9 +396,9 @@ lib/libmxnet.a: $(ALLX_DEP)
 	ar crv $@ $(filter %.o, $?)
 
 lib/libmxnet.so: $(ALLX_DEP)
-	 @mkdir -p $(@D)
-	 $(CXX) $(CFLAGS) -shared -o $@ $(filter-out %libnnvm.a, $(filter %.o %.a, $^)) $(LDFLAGS) \
-	 -Wl,${WHOLE_ARCH} $(filter %libnnvm.a, $^) -Wl,${NO_WHOLE_ARCH}
+	@mkdir -p $(@D)
+	$(CXX) $(CFLAGS) -shared -o $@ $(filter-out %libnnvm.a, $(filter %.o %.a, $^)) $(LDFLAGS) \
+	-Wl,${WHOLE_ARCH} $(filter %libnnvm.a, $^) -Wl,${NO_WHOLE_ARCH}
 
 $(PS_PATH)/build/libps.a: PSLITE
 
@@ -341,7 +435,7 @@ test: $(TEST)
 lint: cpplint rcpplint jnilint pylint
 
 cpplint:
-	python2 dmlc-core/scripts/lint.py mxnet cpp include src plugin cpp-package tests \
+	dmlc-core/scripts/lint.py mxnet cpp include src plugin cpp-package tests \
 	--exclude_path src/operator/contrib/ctc_include
 
 pylint:
@@ -373,11 +467,12 @@ cyclean:
 
 # R related shortcuts
 rcpplint:
-	python2 dmlc-core/scripts/lint.py mxnet-rcpp ${LINT_LANG} R-package/src
+	dmlc-core/scripts/lint.py mxnet-rcpp ${LINT_LANG} R-package/src
 
 rpkg:
 	mkdir -p R-package/inst
 	mkdir -p R-package/inst/libs
+	cp src/io/image_recordio.h R-package/src
 	cp -rf lib/libmxnet.so R-package/inst/libs
 	mkdir -p R-package/inst/include
 	cp -rf include/* R-package/inst/include
@@ -394,16 +489,19 @@ rpkg:
 	devtools::install_version('roxygen2',version='5.0.1',\
 	repo='https://cloud.r-project.org/',quiet=TRUE)}"
 	Rscript -e "require(roxygen2); roxygen2::roxygenise('R-package')"
-	R CMD build --no-build-vignettes R-package
-	rm -rf mxnet_current_r.tar.gz
-	mv mxnet_*.tar.gz mxnet_current_r.tar.gz
+	R CMD INSTALL R-package
+	rm -rf R-package/src/image_recordio.h
 
 rpkgtest:
 	Rscript -e "require(testthat);res<-test_dir('R-package/tests/testthat');if(!testthat:::all_passed(res)){stop('Test failures', call. = FALSE)}"
 
+scalaclean:
+	(cd $(ROOTDIR)/scala-package; \
+		mvn clean -P$(SCALA_PKG_PROFILE))
+
 scalapkg:
 	(cd $(ROOTDIR)/scala-package; \
-		mvn clean package -P$(SCALA_PKG_PROFILE) -Dcxx="$(CXX)" \
+		mvn package -P$(SCALA_PKG_PROFILE) -Dcxx="$(CXX)" \
 			-Dcflags="$(CFLAGS)" -Dldflags="$(LDFLAGS)" \
 			-Dcurrent_libdir="$(ROOTDIR)/lib" \
 			-Dlddeps="$(LIB_DEP) $(ROOTDIR)/lib/libmxnet.a")
@@ -427,7 +525,7 @@ scaladeploy:
 			-Dlddeps="$(LIB_DEP) $(ROOTDIR)/lib/libmxnet.a")
 
 jnilint:
-	python2 dmlc-core/scripts/lint.py mxnet-jnicpp cpp scala-package/native/src
+	dmlc-core/scripts/lint.py mxnet-jnicpp cpp scala-package/native/src
 
 ifneq ($(EXTRA_OPERATORS),)
 clean: cyclean $(EXTRA_PACKAGES_CLEAN)
@@ -436,15 +534,17 @@ clean: cyclean $(EXTRA_PACKAGES_CLEAN)
 	cd $(DMLC_CORE); $(MAKE) clean; cd -
 	cd $(PS_PATH); $(MAKE) clean; cd -
 	cd $(NNVM_PATH); $(MAKE) clean; cd -
+	cd $(AMALGAMATION_PATH); $(MAKE) clean; cd -
 	$(RM) -r  $(patsubst %, %/*.d, $(EXTRA_OPERATORS)) $(patsubst %, %/*/*.d, $(EXTRA_OPERATORS))
 	$(RM) -r  $(patsubst %, %/*.o, $(EXTRA_OPERATORS)) $(patsubst %, %/*/*.o, $(EXTRA_OPERATORS))
 else
 clean: cyclean testclean $(EXTRA_PACKAGES_CLEAN)
 	$(RM) -r build lib bin *~ */*~ */*/*~ */*/*/*~ R-package/NAMESPACE R-package/man R-package/R/mxnet_generated.R \
-		R-package/inst R-package/src/*.o R-package/src/*.so mxnet_*.tar.gz
+		R-package/inst R-package/src/image_recordio.h R-package/src/*.o R-package/src/*.so mxnet_*.tar.gz
 	cd $(DMLC_CORE); $(MAKE) clean; cd -
 	cd $(PS_PATH); $(MAKE) clean; cd -
 	cd $(NNVM_PATH); $(MAKE) clean; cd -
+	cd $(AMALGAMATION_PATH); $(MAKE) clean; cd -
 endif
 
 clean_all: clean
