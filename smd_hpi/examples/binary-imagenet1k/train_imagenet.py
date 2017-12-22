@@ -6,6 +6,14 @@ from common import find_mxnet, data, fit
 from common.util import download_file
 import mxnet as mx
 
+
+def add_binary_args(parser):
+    parser.add_argument('--bit-w', type=int, default=1,
+                       help='number of bits for weights')
+    parser.add_argument('--bit-a', type=int, default=1,
+                       help='number of bits for activations')
+
+
 if __name__ == '__main__':
 
     # parse args
@@ -16,16 +24,23 @@ if __name__ == '__main__':
     data.add_data_aug_args(parser)
     # use a large aug level
     data.set_data_aug_level(parser, 3)
+
     parser.add_argument('--pretrained', type=str,
                     help='the pre-trained model')
 
     parser.add_argument('--log', dest='log_file', type=str, default="train.log",
                     help='save training log to file')
 
+    add_binary_args(parser)
+
     parser.set_defaults(
         # network
         network        = 'resnet',
         num_layers     = 18,
+
+        # only for binarized models
+        bit_w = 1,
+        bit_a = 1,
 
         # data
         num_classes      = 1000,
@@ -37,9 +52,9 @@ if __name__ == '__main__':
         num_epochs       = 40,
         lr_step_epochs   = '10,20,30',
         lr               = 0.01,
-	    lr_factor        = 0.1,
-        batch_size     = 32,
-        optimizer        = 'sgd',
+        lr_factor        = 0.1,
+        batch_size       = 32,
+        optimizer        = 'Nadam',
         disp_batches     = 10,
         top_k            = 5,
         data_train       = '/data/imagenet1k/imagenet1k-train.rec',

@@ -14,6 +14,12 @@ def download_cifar10():
     download_file('http://data.mxnet.io/data/cifar10/cifar10_train.rec', fnames[0])
     return fnames
 
+def add_binary_args(parser):
+    parser.add_argument('--bit-w', type=int, default=1,
+                       help='number of bits for weights')
+    parser.add_argument('--bit-a', type=int, default=1,
+                       help='number of bits for activations')
+
 if __name__ == '__main__':
     # download data
     (train_fname, val_fname) = download_cifar10()
@@ -27,6 +33,8 @@ if __name__ == '__main__':
     data.set_data_aug_level(parser, 3)
     parser.add_argument('--pretrained', type=str,
                 help='the pre-trained model')
+    add_binary_args(parser)
+
     parser.set_defaults(
         # network
         network        = 'cifar10',
@@ -41,7 +49,7 @@ if __name__ == '__main__':
         batch_size     = 128,
         num_epochs     = 300,
         lr_step_epochs = '50,200,250',
-        optimizer        = 'Adam',
+        optimizer        = 'Nadam',
         disp_batches     = 100,
         lr               = 0.01,
         lr_factor        = 0.1
