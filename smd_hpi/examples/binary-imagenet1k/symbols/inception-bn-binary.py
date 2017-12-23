@@ -139,8 +139,8 @@ def get_symbol(num_classes, image_shape, **kwargs):
         conv1 = ConvFactory(data=data, num_filter=64, kernel=(7, 7), stride=(2, 2), pad=(3, 3), name='1')
         pool1 = mx.symbol.Pooling(data=conv1, kernel=(3, 3), stride=(2, 2), name='max_pool_1', pool_type='max')
         # stage 2
-        conv2red = ConvFactory(data=pool1, num_filter=64, kernel=(1, 1), stride=(1, 1), name='2_reduce')
-        conv2 = ConvFactory(data=conv2red, num_filter=192, kernel=(3, 3), stride=(1, 1), pad=(1, 1), name='2')
+        conv2red = QConvFactory(data=pool1, num_filter=64, kernel=(1, 1), stride=(1, 1), name='2_reduce')
+        conv2 = QConvFactory(data=conv2red, num_filter=192, kernel=(3, 3), stride=(1, 1), pad=(1, 1), name='2')
         pool2 = mx.symbol.Pooling(data=conv2, kernel=(3, 3), stride=(2, 2), name='max_pool_2', pool_type='max')
 
 #        gblocker = mx.symbol.BlockGrad(pool2)
@@ -154,7 +154,7 @@ def get_symbol(num_classes, image_shape, **kwargs):
         in4a = QInceptionFactoryA(in3c, 224, 64, 96, 96, 128, "avg", 128, '4a')
         in4b = QInceptionFactoryA(in4a, 192, 96, 128, 96, 128, "avg", 128, '4b')
         in4c = QInceptionFactoryA(in4b, 160, 128, 160, 128, 160, "avg", 128, '4c')
-	in4d = QInceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
+	    in4d = QInceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
         in4e = QInceptionFactoryB(in4d, 128, 192, 192, 256, '4e')
 
         # stage 4
