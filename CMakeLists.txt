@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.0.2)
 
-if((${CMAKE_VERSION} VERSION_GREATER "3.9.0") OR (${CMAKE_VERSION} VERSION_EQUAL "3.9.0"))
-  set(FIRST_CUDA TRUE)
-else()
-  set(FIRST_CUDA FALSE)
-endif()
+#if((${CMAKE_VERSION} VERSION_GREATER "3.9.0") OR (${CMAKE_VERSION} VERSION_EQUAL "3.9.0"))
+#  set(FIRST_CUDA TRUE)
+#else()
+#  set(FIRST_CUDA FALSE)
+#endif()
 include(cmake/Utils.cmake)
 
 #Some things have order. This must be put in front alone
