@@ -125,7 +125,7 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
         if dim_match:
             shortcut = data
         else:
-            shortcut_conv = mx.sym.QConvolution(data=bn1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
+            shortcut_conv = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc', act_bit=BITW, cudnn_off=cudnn_off)
             shortcut = mx.sym.BatchNorm(data=shortcut_conv, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_sc_bn')
 
@@ -149,7 +149,7 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
         if dim_match:
             shortcut = data
         else:
-            shortcut_conv = mx.sym.QConvolution(data=bn1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
+            shortcut_conv = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc', act_bit=BITW, cudnn_off=cudnn_off)
             shortcut = mx.sym.BatchNorm(data=shortcut_conv, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_sc_bn')
 
@@ -193,7 +193,7 @@ def resnext(units, num_stages, filter_list, num_classes, num_group, image_shape,
         body = mx.symbol.Pooling(data=body, kernel=(3, 3), stride=(2,2), pad=(1,1), pool_type='max')
 
     for i in range(num_stages):
-    	if i == False:
+    	if i == None:
 	        body = residual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
 	                             name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, num_group=num_group, 
 	                             bn_mom=bn_mom, workspace=workspace, memonger=memonger)
