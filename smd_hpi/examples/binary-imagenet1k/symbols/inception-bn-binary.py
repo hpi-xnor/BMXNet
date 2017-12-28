@@ -11,11 +11,14 @@ arXiv:1502.03167, 2015.
 """
 import mxnet as mx
 
-eps = 2e-5#1e-10 + 1e-5
+eps = 2e-5
 bn_mom = 0.9
 fix_gamma = False
-BIT = 1
 
+BITW = -1 # set in get_symbol
+BITA = -1 # set in get_symbol
+
+#==================== Original inception blocks ====================#
 def ConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, suffix='', attr={}):
     conv = mx.symbol.Convolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix))
     bn = mx.symbol.BatchNorm(data=conv, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))
@@ -32,6 +35,7 @@ def InceptionFactoryA(data, num_1x1, num_3x3red, num_3x3, num_d3x3red, num_d3x3,
     cd3x3r = ConvFactory(data=data, num_filter=num_d3x3red, kernel=(1, 1), name=('%s_double_3x3' % name), suffix='_reduce')
     cd3x3 = ConvFactory(data=cd3x3r, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), name=('%s_double_3x3_0' % name))
     cd3x3 = ConvFactory(data=cd3x3, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), name=('%s_double_3x3_1' % name))
+
     # pool + proj
     pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(1, 1), pad=(1, 1), pool_type=pool, name=('%s_pool_%s_pool' % (pool, name)))
     cproj = ConvFactory(data=pooling, num_filter=proj, kernel=(1, 1), name=('%s_proj' %  name))
@@ -43,21 +47,36 @@ def InceptionFactoryB(data, num_3x3red, num_3x3, num_d3x3red, num_d3x3, name):
     # 3x3 reduce + 3x3
     c3x3r = ConvFactory(data=data, num_filter=num_3x3red, kernel=(1, 1), name=('%s_3x3' % name), suffix='_reduce')
     c3x3 = ConvFactory(data=c3x3r, num_filter=num_3x3, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name=('%s_3x3' % name))
+
     # double 3x3 reduce + double 3x3
     cd3x3r = ConvFactory(data=data, num_filter=num_d3x3red, kernel=(1, 1),  name=('%s_double_3x3' % name), suffix='_reduce')
     cd3x3 = ConvFactory(data=cd3x3r, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name=('%s_double_3x3_0' % name))
     cd3x3 = ConvFactory(data=cd3x3, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name=('%s_double_3x3_1' % name))
+
     # pool + proj
     pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(2, 2), pad=(1, 1), pool_type="max", name=('max_pool_%s_pool' % name))
     # concat
     concat = mx.symbol.Concat(*[c3x3, cd3x3, pooling], name='ch_concat_%s_chconcat' % name)
     return concat
 
+# A Simple Downsampling Factory
+def DownsampleFactory(data, ch_3x3, name, attr):
+    # conv 3x3
+    conv = ConvFactory(data=data, name=name+'_conv',kernel=(3, 3), stride=(2, 2), num_filter=ch_3x3, pad=(1, 1), attr=attr)
+    # pool
+    pool = mx.symbol.Pooling(data=data, name=name+'_pool',kernel=(3, 3), stride=(2, 2), pad=(1, 1), pool_type='max', attr=attr)
+    # concat
+    concat = mx.symbol.Concat(*[conv, pool], name=name+'_ch_concat')
+    return concat
+#===================================================================#
+
+#========================= binary blocks ===========================#
 def QConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, suffix='', attr={}):
-    act = mx.sym.QActivation(data=data, act_bit=BIT, backward_only=True)
-    conv = mx.symbol.QConvolution_v1(data=act, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, name='conv_%s%s' %(name, suffix), act_bit=BIT)
-    bn = mx.symbol.BatchNorm(data=conv, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))    
-    return bn
+    bn = mx.symbol.BatchNorm(data=data, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))
+    act = mx.sym.QActivation(data=bn, act_bit=BITA, backward_only=True)
+    conv = mx.symbol.QConvolution(data=act, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, 
+    			name='conv_%s%s' %(name, suffix), act_bit=BITW, cudnn_off=False)
+    return conv
 
 def QInceptionFactoryA(data, num_1x1, num_3x3red, num_3x3, num_d3x3red, num_d3x3, pool, proj, name):
     # 1x1
@@ -71,7 +90,7 @@ def QInceptionFactoryA(data, num_1x1, num_3x3red, num_3x3, num_d3x3red, num_d3x3
     cd3x3 = QConvFactory(data=cd3x3, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), name=('%s_double_3x3_1' % name))
     # pool + proj
     pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(1, 1), pad=(1, 1), pool_type=pool, name=('%s_pool_%s_pool' % (pool, name)))
-    cproj = ConvFactory(data=pooling, num_filter=proj, kernel=(1, 1), name=('%s_proj' %  name))
+    cproj = QConvFactory(data=pooling, num_filter=proj, kernel=(1, 1), name=('%s_proj' %  name))
     # concat
     concat = mx.symbol.Concat(*[c1x1, c3x3, cd3x3, cproj], name='ch_concat_%s_chconcat' % name)
     return concat
@@ -80,39 +99,38 @@ def QInceptionFactoryB(data, num_3x3red, num_3x3, num_d3x3red, num_d3x3, name):
     # 3x3 reduce + 3x3
     c3x3r = QConvFactory(data=data, num_filter=num_3x3red, kernel=(1, 1), name=('%s_3x3' % name), suffix='_reduce')
     c3x3 = QConvFactory(data=c3x3r, num_filter=num_3x3, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name=('%s_3x3' % name))
+    #add a bn for shifting
+    c3x3 = mx.symbol.BatchNorm(data=c3x3, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+
     # double 3x3 reduce + double 3x3
     cd3x3r = QConvFactory(data=data, num_filter=num_d3x3red, kernel=(1, 1),  name=('%s_double_3x3' % name), suffix='_reduce')
     cd3x3 = QConvFactory(data=cd3x3r, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name=('%s_double_3x3_0' % name))
     cd3x3 = QConvFactory(data=cd3x3, num_filter=num_d3x3, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name=('%s_double_3x3_1' % name))
+    #add a bn for shifting
+    cd3x3 = mx.symbol.BatchNorm(data=cd3x3, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+
     # pool + proj
     pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(2, 2), pad=(1, 1), pool_type="max", name=('max_pool_%s_pool' % name))
     # concat
     concat = mx.symbol.Concat(*[c3x3, cd3x3, pooling], name='ch_concat_%s_chconcat' % name)
     return concat
 
-
-# A Simple Downsampling Factory
-def DownsampleFactory(data, ch_3x3, name, attr):
-    # conv 3x3
-    conv = ConvFactory(data=data, name=name+'_conv',kernel=(3, 3), stride=(2, 2), num_filter=ch_3x3, pad=(1, 1), attr=attr)
-    # pool
-    pool = mx.symbol.Pooling(data=data, name=name+'_pool',kernel=(3, 3), stride=(2, 2), pad=(1, 1), pool_type='max', attr=attr)
-    # concat
-    concat = mx.symbol.Concat(*[conv, pool], name=name+'_ch_concat')
-    return concat
-
 # A Simple module
 def SimpleFactory(data, ch_1x1, ch_3x3, name, attr):
     # 1x1
-    conv1x1 = ConvFactory(data=data, name=name+'_1x1', kernel=(1, 1), pad=(0, 0), num_filter=ch_1x1, attr=attr)
+    conv1x1 = QConvFactory(data=data, name=name+'_1x1', kernel=(1, 1), pad=(0, 0), num_filter=ch_1x1, attr=attr)
     # 3x3
-    conv3x3 = ConvFactory(data=data, name=name+'_3x3', kernel=(3, 3), pad=(1, 1), num_filter=ch_3x3, attr=attr)
+    conv3x3 = QConvFactory(data=data, name=name+'_3x3', kernel=(3, 3), pad=(1, 1), num_filter=ch_3x3, attr=attr)
     #concat
     concat = mx.symbol.Concat(*[conv1x1, conv3x3], name=name+'_ch_concat')
     return concat
+#=====================================================================#
 
+def get_symbol(num_classes, image_shape, bits_w=1, bits_a=1, **kwargs):
+    global BITW, BITA
+    BITW = bits_w
+    BITA = bits_a
 
-def get_symbol(num_classes, image_shape, **kwargs):
     image_shape = [int(l) for l in image_shape.split(',')]
     (nchannel, height, width) = image_shape
     # attr = {'force_mirroring': 'true'}
@@ -141,7 +159,8 @@ def get_symbol(num_classes, image_shape, **kwargs):
         # stage 2
         conv2red = QConvFactory(data=pool1, num_filter=64, kernel=(1, 1), stride=(1, 1), name='2_reduce')
         conv2 = QConvFactory(data=conv2red, num_filter=192, kernel=(3, 3), stride=(1, 1), pad=(1, 1), name='2')
-        pool2 = mx.symbol.Pooling(data=conv2, kernel=(3, 3), stride=(2, 2), name='max_pool_2', pool_type='max')
+        bn = mx.symbol.BatchNorm(data=conv2, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom)
+        pool2 = mx.symbol.Pooling(data=bn, kernel=(3, 3), stride=(2, 2), name='max_pool_2', pool_type='max')
 
 #        gblocker = mx.symbol.BlockGrad(pool2)
 

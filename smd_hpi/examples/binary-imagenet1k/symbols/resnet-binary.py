@@ -114,7 +114,7 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
         if dim_match:
             shortcut = data
         else:
-            shortcut = mx.sym.QConvolution(data=bn1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
+            shortcut = mx.sym.QConvolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc', act_bit=BITW, cudnn_off=cudnn_off)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
@@ -171,7 +171,7 @@ def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck
 
     for i in range(num_stages):
         # we can select specific stage in full precision 
-        if i==0:
+        if i==None:
             body = residual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
                 name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, workspace=workspace,
                 memonger=memonger)
