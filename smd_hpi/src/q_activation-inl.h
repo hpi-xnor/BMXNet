@@ -61,8 +61,8 @@ class QActivationOp : public Operator {
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(in_data.size(), 1);
-    CHECK_EQ(out_data.size(), 1);
+    CHECK_EQ(in_data.size(), 1U);
+    CHECK_EQ(out_data.size(), 1U);
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 2, DType> data = in_data[q_activation::kData].FlatTo2D<xpu, DType>(s);
     Tensor<xpu, 2, DType> out = out_data[q_activation::kOut].FlatTo2D<xpu, DType>(s);
@@ -87,15 +87,15 @@ class QActivationOp : public Operator {
                         const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    CHECK_EQ(out_grad.size(), 1);
+    CHECK_EQ(out_grad.size(), 1U);
     CHECK(in_data.size() == 1 && in_grad.size() == 1);
-    CHECK_EQ(req.size(), 1);
+    CHECK_EQ(req.size(), 1U);
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 2, DType> m_out_grad = out_grad[q_activation::kOut].FlatTo2D<xpu, DType>(s);
     Tensor<xpu, 2, DType> m_in_data = in_data[q_activation::kData].FlatTo2D<xpu, DType>(s);
     Tensor<xpu, 2, DType> m_in_grad = in_grad[q_activation::kData].FlatTo2D<xpu, DType>(s);
     if(act_bit_ == 1){
-      Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
+      Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
     }else{
       Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
     }
@@ -124,7 +124,7 @@ class QActivationProp : public OperatorProperty {
                   std::vector<TShape> *out_shape,
                   std::vector<TShape> *aux_shape) const override {
     using namespace mshadow;
-    CHECK_EQ(in_shape->size(), 1) << "Input:[data]";
+    CHECK_EQ(in_shape->size(), 1U) << "Input:[data]";
     const TShape &dshape = in_shape->at(q_activation::kData);
     if (dshape.ndim() == 0) return false;
     out_shape->clear();
@@ -135,16 +135,14 @@ class QActivationProp : public OperatorProperty {
   bool InferType(std::vector<int> *in_type,
                  std::vector<int> *out_type,
                  std::vector<int> *aux_type) const override {
-    CHECK_GE(in_type->size(), 1);
+    CHECK_GE(in_type->size(), 1U);
     int dtype = (*in_type)[0];
     CHECK_NE(dtype, -1) << "First input must have specified type";
     for (index_t i = 0; i < in_type->size(); ++i) {
       if ((*in_type)[i] == -1) {
           (*in_type)[i] = dtype;
       } else {
-        CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "
-                                       << "Expected " << dtype << " v.s. given "
-                                       << (*in_type)[i] << " at " << ListArguments()[i];
+        UNIFORM_TYPE_CHECK((*in_type)[i], dtype, ListArguments()[i]);
       }
     }
     out_type->clear();
@@ -167,7 +165,11 @@ class QActivationProp : public OperatorProperty {
     const std::vector<int> &out_grad,
     const std::vector<int> &in_data,
     const std::vector<int> &out_data) const override {
+#if MXNET_USE_CUDNN == 1
     return {out_grad[q_activation::kOut], out_data[q_activation::kOut], in_data[q_activation::kData]};
+#else
+    return {out_grad[q_activation::kOut], out_data[q_activation::kOut]};
+#endif  // MXNET_USE_CUDNN
   }
 
   std::vector<std::pair<int, void*> > BackwardInplaceOption(
