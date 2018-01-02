@@ -865,7 +865,7 @@ struct det_sign {
 struct det_sign_grad {
     template<typename DType>
     MSHADOW_XINLINE static DType Map(DType a) {
-      return DType(fabsf(float(a)) <= DType(1.0f) ? DType(1.0f) : DType(0.0f));
+      return DType(fabsf(float(a)) <= DType(0.5f) ? DType(1.0f) : DType(0.0f));
     }
 };
 

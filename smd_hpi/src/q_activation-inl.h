@@ -95,7 +95,7 @@ class QActivationOp : public Operator {
     Tensor<xpu, 2, DType> m_in_data = in_data[q_activation::kData].FlatTo2D<xpu, DType>(s);
     Tensor<xpu, 2, DType> m_in_grad = in_grad[q_activation::kData].FlatTo2D<xpu, DType>(s);
     if(act_bit_ == 1){
-      Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
+      Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::det_sign_grad>(m_in_data) * m_out_grad);
     }else{
       Assign(m_in_grad, req[q_activation::kData], F<mshadow_op::quantize_grad>(m_in_data) * m_out_grad);
     }
