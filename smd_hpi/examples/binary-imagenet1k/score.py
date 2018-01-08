@@ -1,5 +1,5 @@
 import argparse
-from common import modelzoo, find_mxnet
+from common import find_mxnet
 import mxnet as mx
 import time
 import os

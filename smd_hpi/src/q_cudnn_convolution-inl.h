@@ -66,7 +66,8 @@ class QCuDNNConvolutionOp : public Operator {
     //============================================//
     //            limits of q_cudnn               //
     CHECK_EQ(param_.kernel.ndim(), 2) << "ndim != 2 not supported for q_cudnn calculation";
-    CHECK_EQ(param_.num_group, 1) << "q_cudnn does not (yet) support groups";
+    //We remove this constraint firstly to enable our experiments		
+    //CHECK_EQ(param_.num_group, 1) << "q_cudnn does not (yet) support groups";
     //============================================//
 
 #if CUDNN_MAJOR >= 5
