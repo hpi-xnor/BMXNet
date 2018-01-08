@@ -40,6 +40,7 @@ scalar of the input tensor):
 - `2-32 bit`: using quantization function 
 
 )")
+.add_argument("data", "NDArray-or-Symbol", "Input array to q_activation function.") 
 .add_arguments(QActivationParam::__FIELDS__());
 
 }  // namespace op
