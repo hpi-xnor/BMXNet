@@ -21,8 +21,8 @@ def QConv(data, num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=None,
     act = mx.sym.QActivation(data=bn, act_type='relu', name='%s%s_relu' %(name, suffix), act_bit=BITA, backward_only=True) 
     conv = mx.sym.QConvolution(data=act, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, no_bias=True, name='%s%s_conv2d' %(name, suffix), 
                               act_bit=BITW, cudnn_off=cudnn_off)
-	bn2 = mx.sym.BatchNorm(data=conv, name='%s%s_batchnorm' %(name, suffix), fix_gamma=True, eps=2e-5, momentum=0.9)
-	return bn2
+    bn2 = mx.sym.BatchNorm(data=conv, name='%s%s_batchnorm' %(name, suffix), fix_gamma=True, eps=2e-5, momentum=0.9)
+    return bn2
 
 def QInception7A(data,
                 num_1x1,

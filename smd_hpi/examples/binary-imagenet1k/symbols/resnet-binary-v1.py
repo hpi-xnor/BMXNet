@@ -169,20 +169,20 @@ def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck
         body = mx.symbol.Pooling(data=body, kernel=(3, 3), stride=(2,2), pad=(1,1), pool_type='max')
 
     for i in range(num_stages):
-    # we can select specific stage in full precision 
-	if i==None:
-		body = residual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
-                             name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, workspace=workspace,
-                             memonger=memonger)
-		for j in range(units[i]-1):
-            		body = residual_unit(body, filter_list[i+1], (1,1), True, name='stage%d_unit%d' % (i + 1, j + 2),
-                                 bottle_neck=bottle_neck, workspace=workspace, memonger=memonger)
-	else:
-		body = Qresidual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
-                             name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, workspace=workspace,
-                             memonger=memonger)
-	        for j in range(units[i]-1):
-        	    body = Qresidual_unit(body, filter_list[i+1], (1,1), True, name='stage%d_unit%d' % (i + 1, j + 2),
+        # we can select specific stage in full precision 
+        if i==None:
+            body = residual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
+                                 name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, workspace=workspace,
+                                 memonger=memonger)
+            for j in range(units[i]-1):
+                body = residual_unit(body, filter_list[i+1], (1,1), True, name='stage%d_unit%d' % (i + 1, j + 2),
+                             bottle_neck=bottle_neck, workspace=workspace, memonger=memonger)
+        else:
+            body = Qresidual_unit(body, filter_list[i+1], (1 if i==0 else 2, 1 if i==0 else 2), False,
+                                 name='stage%d_unit%d' % (i + 1, 1), bottle_neck=bottle_neck, workspace=workspace,
+                                 memonger=memonger)
+            for j in range(units[i]-1):
+                body = Qresidual_unit(body, filter_list[i+1], (1,1), True, name='stage%d_unit%d' % (i + 1, j + 2),
                                  bottle_neck=bottle_neck, workspace=workspace, memonger=memonger)
     bn1 = mx.sym.BatchNorm(data=body, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn1')
     relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')

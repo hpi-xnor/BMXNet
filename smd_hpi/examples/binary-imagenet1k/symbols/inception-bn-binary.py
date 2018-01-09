@@ -75,7 +75,7 @@ def QConvFactory(data, num_filter, kernel, stride=(1,1), pad=(0, 0), name=None, 
     bn = mx.symbol.BatchNorm(data=data, fix_gamma=fix_gamma, eps=eps, momentum=bn_mom, name='bn_%s%s' %(name, suffix))
     act = mx.sym.QActivation(data=bn, act_bit=BITA, backward_only=True)
     conv = mx.symbol.QConvolution(data=act, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, 
-    			name='conv_%s%s' %(name, suffix), act_bit=BITW, cudnn_off=False)
+        name='conv_%s%s' %(name, suffix), act_bit=BITW, cudnn_off=False)
     return conv
 
 def QInceptionFactoryA(data, num_1x1, num_3x3red, num_3x3, num_d3x3red, num_d3x3, pool, proj, name):
@@ -173,7 +173,7 @@ def get_symbol(num_classes, image_shape, bits_w=1, bits_a=1, **kwargs):
         in4a = QInceptionFactoryA(in3c, 224, 64, 96, 96, 128, "avg", 128, '4a')
         in4b = QInceptionFactoryA(in4a, 192, 96, 128, 96, 128, "avg", 128, '4b')
         in4c = QInceptionFactoryA(in4b, 160, 128, 160, 128, 160, "avg", 128, '4c')
-	    in4d = QInceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
+        in4d = QInceptionFactoryA(in4c, 96, 128, 192, 160, 192, "avg", 128, '4d')
         in4e = QInceptionFactoryB(in4d, 128, 192, 192, 256, '4e')
 
         # stage 4
