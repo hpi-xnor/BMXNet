@@ -9,6 +9,7 @@ import mxnet as mx
 
 BITW = -1 # set in get_symbol
 BITA = -1 # set in get_symbol
+cudnn_off = False
 
 def Conv(data, num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=None, suffix=''):
     conv = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, no_bias=True, name='%s%s_conv2d' %(name, suffix))
@@ -18,7 +19,7 @@ def Conv(data, num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=None, 
 
 def QConv(data, num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=None, suffix=''):
     bn = mx.sym.BatchNorm(data=data, name='%s%s_batchnorm' %(name, suffix), fix_gamma=True)
-    act = mx.sym.QActivation(data=bn, act_type='relu', name='%s%s_relu' %(name, suffix), act_bit=BITA, backward_only=True) 
+    act = mx.sym.QActivation(data=bn, name='%s%s_qact' %(name, suffix), act_bit=BITA, backward_only=True) 
     conv = mx.sym.QConvolution(data=act, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, no_bias=True, name='%s%s_conv2d' %(name, suffix), 
                               act_bit=BITW, cudnn_off=cudnn_off)
     bn2 = mx.sym.BatchNorm(data=conv, name='%s%s_batchnorm' %(name, suffix), fix_gamma=True, eps=2e-5, momentum=0.9)
@@ -123,22 +124,22 @@ def get_symbol(num_classes=1000, bits_w=1, bits_a=1, **kwargs):
     # stage 1
     conv = Conv(data, 32, kernel=(3, 3), stride=(2, 2), name="conv")
     conv_1 = QConv(conv, 32, kernel=(3, 3), name="conv_1")
-    conv_2 = QConv(conv_1, 64, kernel=(3, 3), pad=(1, 1), name="conv_2", with_bn_out=True)
+    conv_2 = QConv(conv_1, 64, kernel=(3, 3), pad=(1, 1), name="conv_2")
     pool = mx.sym.Pooling(data=conv_2, kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool")
     # stage 2
     conv_3 = QConv(pool, 80, kernel=(1, 1), name="conv_3")
-    conv_4 = QConv(conv_3, 192, kernel=(3, 3), name="conv_4", with_bn_out=True)
+    conv_4 = QConv(conv_3, 192, kernel=(3, 3), name="conv_4")
     pool1 = mx.sym.Pooling(data=conv_4, kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool1")
     # stage 3
-    in3aQ = QInception7A(pool1, 64,
+    in3a = QInception7A(pool1, 64,
                        64, 96, 96,
                        48, 64,
                        "avg", 32, "mixed")
-    in3bQ = QInception7A(in3a, 64,
+    in3b = QInception7A(in3a, 64,
                        64, 96, 96,
                        48, 64,
                        "avg", 64, "mixed_1")
-    in3cQ = QInception7A(in3b, 64,
+    in3c = QInception7A(in3b, 64,
                        64, 96, 96,
                        48, 64,
                        "avg", 64, "mixed_2")

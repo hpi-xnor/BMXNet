@@ -28,7 +28,7 @@ def QConvFactory(data, num_filter, kernel, stride=(1, 1), pad=(0, 0), act_type="
     bn = mx.symbol.BatchNorm(data=data, fix_gamma=False, eps=2e-5)
     qact = mx.sym.QActivation(data=bn, act_bit=BITA, backward_only=True)
     conv = mx.symbol.QConvolution(
-        data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, act_bit=BITW, cudnn_off=F)
+        data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, act_bit=BITW, cudnn_off=False)
     
     if with_bn_out:
         bn2 = mx.symbol.BatchNorm(data=conv, fix_gamma=False, eps=2e-5, momentum=0.9)
@@ -48,7 +48,7 @@ def block35(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', 
     tower_out = QConvFactory(
         tower_mixed, input_num_channels, (1, 1), with_bn_out=True)
 
-    net += scale * tower_out
+    net = net + scale * tower_out
     if with_act:
         act = mx.symbol.Activation(
             data=net, act_type=act_type, attr=mirror_attr)
@@ -65,7 +65,7 @@ def block17(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', 
     tower_mixed = mx.symbol.Concat(*[tower_conv, tower_conv1_2])
     tower_out = QConvFactory(
         tower_mixed, input_num_channels, (1, 1), with_bn_out=True)
-    net += scale * tower_out
+    net = net + scale * tower_out
     if with_act:
         act = mx.symbol.Activation(
             data=net, act_type=act_type, attr=mirror_attr)
@@ -82,7 +82,7 @@ def block8(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', m
     tower_mixed = mx.symbol.Concat(*[tower_conv, tower_conv1_2])
     tower_out = QConvFactory(
         tower_mixed, input_num_channels, (1, 1), with_bn_out=True)
-    net += scale * tower_out
+    net = net + scale * tower_out
     if with_act:
         act = mx.symbol.Activation(
             data=net, act_type=act_type, attr=mirror_attr)
