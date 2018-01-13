@@ -26,6 +26,10 @@ using mxnet::op::xnor_cpu::BINARY_WORD;
 
 void convert_to_binary_row(mxnet::NDArray& array) {
   CHECK(array.shape().ndim() >= 2); // second dimension is input depth from prev. layer, needed for next line
+
+  std::cout << "array shape: " << array.shape() << std::endl;
+  //if(array.shape()[1] < BITS_PER_BINARY_WORD) return;  
+  
   CHECK(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64)
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
@@ -68,6 +72,11 @@ void transpose(mxnet::NDArray& array) {
 void transpose_and_convert_to_binary_col(mxnet::NDArray& array) {
   transpose(array);
   CHECK(array.shape().ndim() == 2); // since we binarize column wise, we need to know no of rows and columns
+  
+  std::cout << "array shape: " << array.shape() << std::endl;
+
+  //if(array.shape()[0] < BITS_PER_BINARY_WORD) return;
+  
   CHECK(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
   nnvm::TShape binarized_shape(1);
   size_t size = array.shape().Size();
@@ -96,19 +105,31 @@ void filter_for(std::vector<mxnet::NDArray>& data,
   auto iter = std::find_if(keys.begin(),
                            keys.end(),
                            containsFilterString);
-
+  int converted = 0;
   //Use a while loop, checking whether iter is at the end of myVector
   //Do a find_if starting at the item after iter, std::next(iter)
   while (iter != keys.end())
   {
+    if ((*iter).find("weight") == std::string::npos) {
+      iter = std::find_if(std::next(iter),
+                        keys.end(),
+                        containsFilterString);
+      continue;
+    }
+
     std::cout << "|- converting weights " << *iter << "..." << std::endl;
-    CHECK((*iter).find("weight") != std::string::npos) << "onyl weight binarization supported currently";
 
     task(data[iter - keys.begin()]);
+    converted++;
 
     iter = std::find_if(std::next(iter),
                         keys.end(),
                         containsFilterString);
+  }
+
+  if (converted != filter_strings.size()){
+    std::cout << "Error: The number of found q_conv or q_fc layers doesn't equal the number of converted layers." 
+              << std::endl;
   }
 }
 
