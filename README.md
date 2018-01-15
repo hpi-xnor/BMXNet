@@ -8,7 +8,7 @@ Our current efforts are focused on binarizing the inputs and weights of convolut
 
 ## News
 
-- **Dec 22, 2018** - MXNet v1.0.0 and cuDNN
+- **Dec 22, 2017** - MXNet v1.0.0 and cuDNN
     - We are updating the underlying MXNet to version 1.0.0, see changes and release notes [here](https://github.com/apache/incubator-mxnet/releases/tag/1.0.0).
     - cuDNN is now supported in the training of binary networks, speeding up the training process by about 2x
 
@@ -54,7 +54,7 @@ Set the parameter ``act_bit`` to a value between 1 and 32 to quantize the weight
 
 The quantization on bit widths ranging from 2 to 31 bit is available mainly for scientific purpose. There is no speed or memory gain (rather the opposite since there are conversion steps) as the quantized values are still stored in full precision ``float`` variables.
 
-### Binarization
+## Binarization
 
 To binarize the weights first set ``act_bit=1``. Then train your network (you can use CUDA). The resulting .params file will contain binary weights, but still store a single weight in one float. 
 
