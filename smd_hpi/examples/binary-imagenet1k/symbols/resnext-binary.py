@@ -240,12 +240,14 @@ def get_symbol(num_classes, num_layers, image_shape, num_group=32, conv_workspac
             raise ValueError("no experiments done on num_layers {}, you can do it youself".format(num_layers))
         units = per_unit * num_stages
     else:
-        if num_layers >= 50:
-            filter_list = [64, 256, 512, 1024, 2048]
-            bottle_neck = False
-        else:
-            filter_list = [64, 64, 128, 256, 512]
-            bottle_neck = False
+        #if num_layers >= 50:
+        #    filter_list = [64, 256, 512, 1024, 2048]
+        #    bottle_neck = True
+        #else:
+        #    filter_list = [64, 64, 128, 256, 512]
+        #    bottle_neck = False
+	bottle_neck = False # bottle neck design will significantly decrease the bnn accuracy
+        filter_list = [64, 128, 256, 512, 1024]
         num_stages = 4
         if num_layers == 18:
             units = [2, 2, 2, 2]
