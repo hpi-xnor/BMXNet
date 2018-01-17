@@ -118,7 +118,7 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
         conv2 = mx.sym.QConvolution(data=act2, num_filter=int(num_filter*0.5), num_group=num_group, kernel=(3,3), stride=stride, pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv2', act_bit=BITW, cudnn_off=cudnn_off)
         
-    bn3 = mx.sym.BatchNorm(data=conv2, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn3')
+        bn3 = mx.sym.BatchNorm(data=conv2, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn3')
         act3 = mx.sym.QActivation(data=bn3, act_bit=BITA, backward_only=True)     
         conv3 = mx.sym.QConvolution(data=act3, num_filter=num_filter, kernel=(1,1), stride=(1,1), pad=(0,0), no_bias=True,
                                    workspace=workspace, name=name + '_conv3', act_bit=BITW, cudnn_off=cudnn_off)
