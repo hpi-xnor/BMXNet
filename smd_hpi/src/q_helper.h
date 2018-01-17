@@ -73,12 +73,13 @@ namespace mxnet {
             workspace = F<mshadow_op::abs>(F<mshadow_op::tanh>(weights));
 
             DType max = amax(workspace);
+            mshadow::FreeSpace(&workspace);
 
             weights = scalar(DType(2.0)) *
                       F<mshadow_op::quantize>(
                               F<mshadow_op::tanh>(weights) / scalar(DType(2.0) * max) + scalar(DType(0.5)),
                               scalar(DType(act_bit))) 
-                      - scalar(DType(1.0));
+                      - scalar(DType(1.0));            
           }
         };
     }
