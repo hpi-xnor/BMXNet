@@ -46,17 +46,17 @@ You probably also want to map a folder to share files (trained models) inside do
 
 Our main contribution are drop-in replacements for the Convolution, FullyConnected and Activation layers of mxnet called **QConvoluion**, **QFullyConnected** and **QActivation**.
 
-These can be used when specifying a model. They extend the parameters of their corresponding original layer of mxnet with ``act_bit``.
+These can be used when specifying a model. They extend the parameters of their corresponding original layer of mxnet with ``act_bit`` for activations and ``weight_bit`` for weights.
 
 ## Quantization
 
-Set the parameter ``act_bit`` to a value between 1 and 32 to quantize the weights and activation to that bit width.
+Set the parameter ``act_bit`` and ``weight_bit`` to a value between 1 and 32 to quantize the activations and weights to that bit width.
 
 The quantization on bit widths ranging from 2 to 31 bit is available mainly for scientific purpose. There is no speed or memory gain (rather the opposite since there are conversion steps) as the quantized values are still stored in full precision ``float`` variables.
 
 ## Binarization
 
-To binarize the weights first set ``act_bit=1``. Then train your network (you can use CUDA). The resulting .params file will contain binary weights, but still store a single weight in one float. 
+To binarize the weights first set ``weight_bit=1`` and ``act_bit=1``. Then train your network (you can use CUDA). The resulting .params file will contain binary weights, but still store a single weight in one float. 
 
 To convert your trained and saved network, call the model converter with your ``.params`` file: 
 ```shell
