@@ -31,14 +31,12 @@ if __name__ == '__main__':
     parser.add_argument('--log', dest='log_file', type=str, default="train.log",
                     help='save training log to file')
 
+    add_binary_args(parser)
+
     parser.set_defaults(
         # network
         network        = 'resnet',
         num_layers     = 18,
-
-        # only for binarized models
-        bit_w = 1,
-        bit_a = 1,
 
         # data
         num_classes      = 1000,
@@ -59,7 +57,6 @@ if __name__ == '__main__':
         data_val         = '/data/imagenet1k/imagenet1k-val.rec'
     )
     args = parser.parse_args()
-    add_binary_args(parser)
 
     # set up logger
     log_file = args.log_file
