@@ -103,8 +103,7 @@ def Qresidual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, 
         Workspace used in convolution operator
     """
     cudnn_off = False
-    print BITA
-    print BITW
+
     if bottle_neck:
         # the same as https://github.com/facebook/fb.resnet.torch#notes, a bit difference with origin paper
         
@@ -222,6 +221,7 @@ def get_symbol(num_classes, num_layers, image_shape, num_group=32, conv_workspac
     Original author Wei Wu
     """
     global BITW, BITA
+
     BITW = bits_w
     BITA = bits_a
 
