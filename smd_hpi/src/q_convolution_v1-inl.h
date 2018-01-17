@@ -48,6 +48,7 @@ struct QConvolutionV1Param : public dmlc::Parameter<QConvolutionV1Param> {
   dmlc::optional<int> layout;
   // mf quantization and binarization variables
   uint32_t act_bit;
+  uint32_t weight_bit;
   bool scaling_factor;
   bool binarized_weights_only;
   DMLC_DECLARE_PARAMETER(QConvolutionV1Param) {
@@ -92,11 +93,13 @@ struct QConvolutionV1Param : public dmlc::Parameter<QConvolutionV1Param> {
     .describe("Set layout for input, output and weight. Empty for\n    "
               "default layout: NCHW for 2d and NCDHW for 3d.");
     DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
-            .describe("Number of bits to quantize weights to.");
+            .describe("Number of bits to quantize activations to.");
     DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
             .describe("Enable alpha and beta scaling factors.");
     DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
             .describe("Params file contains only binarized weights. Set automatically by model converter.");
+    DMLC_DECLARE_FIELD(weight_bit).set_default(1).set_range(1, 32)
+        .describe("Number of bits to quantize weights to.");
   }
 };
 
@@ -157,7 +160,7 @@ class QConvolutionV1Op : public Operator {
     if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
       // mf quantize weights
       Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
-      helper::quantize(w1d, this->param_.act_bit);
+      helper::quantize_weights(w1d, this->param_.weight_bit);
       // /mf quantize weights
     }
 
@@ -202,13 +205,7 @@ class QConvolutionV1Op : public Operator {
       // since the padding elements are all "0"     //
       //============================================//
       if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
-        if(this->param_.act_bit == 1){
-          temp_col = F<mshadow_op::det_sign>(temp_col);
-        }else{
-          temp_col = F<mshadow_op::quantize>(F<mshadow_op::maximum>(
-                                              F<mshadow_op::minimum>(temp_col, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
-                                              scalar(DType(this->param_.act_bit)));
-        }
+        helper::quantize_activations(temp_col, this->param_.act_bit);
       }
 
       const index_t gstride = temp_col.size(0) / param_.num_group;
@@ -227,7 +224,10 @@ class QConvolutionV1Op : public Operator {
         //   QConvolutionForward(...)                                       //         
         // should produce the exactly same result as the dot(bina(..))method//
         //==================================================================//
-        if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){          
+        if(!ctx.is_train 
+           && std::is_same<xpu, cpu>::value 
+           && this->param_.act_bit == 1
+           && this->param_.weight_bit == 1){          
           
           int m = wmat_shape[1];
           int n = wmat_shape[2];
@@ -255,7 +255,7 @@ class QConvolutionV1Op : public Operator {
           temp_dst[gid] = dot(wmat[gid], tmpc);      
                     
           //this converting is just for mimicing 1-bit xnor-popc operations
-          if(this->param_.act_bit == 1)
+          if(this->param_.act_bit == 1 && this->param_.weight_bit == 1)
             temp_dst[gid] = (ScalarExp<DType>(wmat[gid].size(1)) + temp_dst[gid]) / scalar(DType(2.0));          
         }
       }

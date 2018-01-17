@@ -28,7 +28,7 @@ def QConvFactory(data, num_filter, kernel, stride=(1, 1), pad=(0, 0), act_type="
     bn = mx.symbol.BatchNorm(data=data, fix_gamma=False, eps=2e-5)
     qact = mx.sym.QActivation(data=bn, act_bit=BITA, backward_only=True)
     conv = mx.symbol.QConvolution(
-        data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, act_bit=BITW, cudnn_off=False)
+        data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, act_bit=BITA, weight_bit=BITW, cudnn_off=False)
     bn2 = mx.symbol.BatchNorm(data=conv, fix_gamma=False, eps=2e-5, momentum=0.9)
     lrelu = mx.symbol.LeakyReLU(data=bn2, act_type="leaky")
     return lrelu

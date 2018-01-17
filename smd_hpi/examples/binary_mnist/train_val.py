@@ -75,14 +75,14 @@ def get_binary_lenet():
 
 	# second conv layer
 	ba1 = mx.sym.QActivation(data=bn1, act_bit=BITA, backward_only=True)
-	conv2 = mx.sym.QConvolution(data=ba1, kernel=(5,5), num_filter=64, act_bit=BITW, cudnn_off=False)
+	conv2 = mx.sym.QConvolution(data=ba1, kernel=(5,5), num_filter=64, act_bit=BITA, weight_bit=BITW, cudnn_off=False)
 	bn2 = mx.sym.BatchNorm(data=conv2)
 	pool2 = mx.sym.Pooling(data=bn2, pool_type="max", kernel=(2,2), stride=(2,2))
 	
 	# first fullc layer
 	flatten = mx.sym.Flatten(data=pool2)	
 	ba2 = mx.sym.QActivation(data=flatten,  act_bit=BITA, backward_only=True)	
-	fc1 = mx.symbol.QFullyConnected(data=ba2, num_hidden=1000, act_bit=BITW)
+	fc1 = mx.symbol.QFullyConnected(data=ba2, num_hidden=1000, act_bit=BITA, weight_bit=BITW)
 	#fc1 = mx.sym.Custom(data=fc1, op_type='debug')
 	bn3 = mx.sym.BatchNorm(data=fc1)
 	tanh3 = mx.sym.Activation(data=bn3, act_type="tanh")

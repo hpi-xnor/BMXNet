@@ -107,9 +107,9 @@ MXNET_REGISTER_OP_PROPERTY(QFullyConnected, QFullyConnectedProp)
 It maps the input of shape `(batch_size, input_dim)` to the shape of
 `(batch_size, num_hidden)`. Learnable parameters include the weights
 of the linear transform and an optional bias vector.)")
-.add_argument("data", "Symbol", "Input data to the Q_FullyConnectedOp.")
-.add_argument("weight", "Symbol", "Weight matrix.")
-.add_argument("bias", "Symbol", "Bias parameter.")
+.add_argument("data", "NDArray-or-Symbol", "Input data to the Q_FullyConnectedOp.")
+.add_argument("weight", "NDArray-or-Symbol", "Weight matrix.")
+.add_argument("bias", "NDArray-or-Symbol", "Bias parameter.")
 .add_arguments(QFullyConnectedParam::__FIELDS__());
 }  // namespace op
 }  // namespace mxnet

@@ -49,6 +49,7 @@ namespace mxnet {
             dmlc::optional<int> layout;
             // mf quantization and binarization variables
             uint32_t act_bit;
+            uint32_t weight_bit;
             bool scaling_factor;
             bool binarized_weights_only;
             DMLC_DECLARE_PARAMETER(QConvolutionParam) {
@@ -85,11 +86,13 @@ namespace mxnet {
                       .describe("Set layout for input, output and weight. Empty for\n    "
                                         "default layout: NCW for 1d, NCHW for 2d and NCDHW for 3d.");
               DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
-                      .describe("Number of bits to quantize weights to.");
+                      .describe("Number of bits to quantize activations (inputs) to.");
               DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
                       .describe("Enable alpha and beta scaling factors.");
               DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
                       .describe("Params file contains only binarized weights. Set automatically by model converter.");
+              DMLC_DECLARE_FIELD(weight_bit).set_default(1).set_range(1, 32)
+                      .describe("Number of bits to quantize weights to.");
 
             }
             // Adjusts kernel size for effects of dilation in the dimension `dim`.
@@ -166,7 +169,7 @@ namespace mxnet {
               if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
                 // mf quantize weights
                 Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
-                helper::quantize(w1d, this->param_.act_bit);
+                helper::quantize_weights(w1d, this->param_.weight_bit);
                 // /mf quantize weights
               }
               //                                            //
@@ -187,13 +190,7 @@ namespace mxnet {
                 // since the padding elements are all "0"     //
                 //                                            //
                 if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
-                  if(this->param_.act_bit == 1){
-                    col_buffer_3d = F<mshadow_op::det_sign>(col_buffer_3d);
-                  }else{
-                    col_buffer_3d = F<mshadow_op::quantize>(F<mshadow_op::maximum>(
-                            F<mshadow_op::minimum>(col_buffer_3d, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
-                                                            scalar(DType(this->param_.act_bit)));
-                  }
+                  helper::quantize_activations(col_buffer_3d, this->param_.act_bit);
                 }
                 //                                            //
                 //============================================//
@@ -211,7 +208,10 @@ namespace mxnet {
                   //   QConvolutionForward(...)                                       //
                   // should produce the exactly same result as the dot(bina(..))method//
                   //                                                                  //
-                  if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
+                  if(!ctx.is_train 
+                      && std::is_same<xpu, cpu>::value 
+                      && this->param_.act_bit == 1 
+                      && this->param_.weight_bit == 1){
 
                     // @todo: watch out, we get 32bit float space here and later possibly cast it into 64bit space
                     Tensor<xpu, 1, DType> binary_inputs_workspace =
@@ -235,7 +235,7 @@ namespace mxnet {
                   }else{ // for training phase...
                     ASSIGN_DISPATCH(output_3d[g], req[qconv::kOut], dot(weight_3d[g], col_buffer_3d[g]));
                     //this converting is just for mimicing 1-bit xnor-popc operations
-                    if(this->param_.act_bit == 1)
+                    if(this->param_.act_bit == 1 && this->param_.weight_bit == 1)
                       output_3d[g] = (ScalarExp<DType>(weight_3d[g].size(1)) + output_3d[g]) / scalar(DType(2.0));
                   }
                   //                                                                  //

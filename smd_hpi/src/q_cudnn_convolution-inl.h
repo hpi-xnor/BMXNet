@@ -145,7 +145,7 @@ class QCuDNNConvolutionOp : public Operator {
     //                                            //
     // mf quantize weights                        //
     Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
-    helper::quantize(w1d, this->param_.act_bit);
+    helper::quantize_weights(w1d, this->param_.weight_bit);
     // /mf quantize weights                       //
     //============================================//
 
@@ -174,16 +174,9 @@ class QCuDNNConvolutionOp : public Operator {
                                                       mshadow::expr::scalar(DType(this->param_.act_bit)));
       }
       data_ptr = padded_data.dptr_;
-    } else {                                      //
-      if (this->param_.act_bit == 1) {            //
-        data = mshadow::expr::F<mshadow_op::det_sign>(data);
-      } else {                                    //
-        data = mshadow::expr::F<mshadow_op::quantize>(mshadow::expr::F<mshadow_op::maximum>(
-                                                         mshadow::expr::F<mshadow_op::minimum>(data, mshadow::expr::scalar(DType(1))),
-                                                         mshadow::expr::scalar(DType(0))), //clip to [0, 1]
-                                                      mshadow::expr::scalar(DType(this->param_.act_bit)));
-      }
-    }                                             //
+    } else { // no padding    
+      helper::quantize_activations(data, this->param_.act_bit);      
+    }                                             
     //============================================//
 
     for (uint32_t g = 0; g < param_.num_group; ++g) { // for our tests: num_group == 1, so not-a-loop
@@ -230,7 +223,7 @@ class QCuDNNConvolutionOp : public Operator {
     //             OUT SCALING                    //
     // this converting is just for mimicing       //
     // 1-bit xnor-popc operations                 //
-    if (this->param_.act_bit == 1) {              //
+    if (this->param_.act_bit == 1 && this->param_.weight_bit == 1) {              //
       int k = in_data[qconv::kWeight].shape_[1] / param_.num_group * in_data[qconv::kWeight].shape_[2] * in_data[qconv::kWeight].shape_[3];
 
       //LOG(INFO) << "in_data[qconv::kData].shape_ = " << in_data[qconv::kWeight].shape_(1) *;

@@ -20,43 +20,6 @@ void xnor_gemm_unrolled(int M, int N, int K,
                         BINARY_WORD *A, int lda,
                         BINARY_WORD *B, int ldb,
                         float *C, int ldc){
-  //TODO: @Martin:after you changed to this version, the prediction result using binarized_model is not correct, I thus
-  //fallback to the previous version, please check again!!
-  // int m,k,n;
-  // BINARY_WORD A_PART[UNROLLN];
-  // int popc[UNROLLN];
-  // #pragma omp parallel for    
-  // for (m = 0; m < M; ++m) {
-  //   #pragma omp parallel for
-  //   for (k = 0; k < ((K / UNROLLN) * UNROLLN); k+=UNROLLN) {
-  //     A_PART[0] = A[m*lda+k];
-  //     A_PART[1] = A[m*lda+k+1];
-  //     A_PART[2] = A[m*lda+k+2];
-  //     A_PART[3] = A[m*lda+k+3];
-  //     A_PART[4] = A[m*lda+k+4];
-  //     A_PART[5] = A[m*lda+k+5];
-  //     #pragma omp parallel for
-  //     for (n = 0; n < N; ++n) {
-  //       popc[0] = __builtin_popcountl(~(A_PART[0] ^ B[(k+0)*ldb+n]));
-  //       popc[1] = __builtin_popcountl(~(A_PART[1] ^ B[(k+1)*ldb+n]));
-  //       popc[2] = __builtin_popcountl(~(A_PART[2] ^ B[(k+2)*ldb+n]));
-  //       popc[3] = __builtin_popcountl(~(A_PART[3] ^ B[(k+3)*ldb+n]));
-  //       popc[4] = __builtin_popcountl(~(A_PART[4] ^ B[(k+4)*ldb+n]));
-  //       popc[5] = __builtin_popcountl(~(A_PART[5] ^ B[(k+5)*ldb+n]));
-  //       C[m*ldc+n] += popc[0] + popc[1] + popc[2] + popc[3] + popc[4] + popc[5];
-  //     }
-  //   }
-
-  //   #pragma omp parallel for 
-  //   for (k=(K / UNROLLN) * UNROLLN; k < K; ++k) {
-  //     A_PART[0] = A[m*lda+k];
-  //     #pragma omp parallel for
-  //     for (n = 0; n < N; ++n) {
-  //       C[m * ldc + n] += __builtin_popcountl(~(A_PART[0] ^ B[k * ldb + n]));
-  //     }
-  //   }
-  // }
-
   int m,k,n;
   #pragma omp parallel for    
   for (m = 0; m < M; ++m) {

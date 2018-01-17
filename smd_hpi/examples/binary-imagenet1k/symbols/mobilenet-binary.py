@@ -37,7 +37,7 @@ def QConv(data, num_filter=1, kernel=(1, 1), stride=(1, 1), pad=(0, 0), num_grou
         eps=BN_eps, momentum=BN_mom)
     act = mx.sym.QActivation(data=bn, act_bit=BITA, backward_only=True)
     conv = mx.sym.QConvolution(data=act, num_filter=num_filter, kernel=kernel, num_group=num_group, 
-        stride=stride, pad=pad, no_bias=True, name='%s%s_conv2d' %(name, suffix), act_bit=BITW, cudnn_off=cudnn_off)      
+        stride=stride, pad=pad, no_bias=True, name='%s%s_conv2d' %(name, suffix), act_bit=BITA, weight_bit=BITW, cudnn_off=cudnn_off)      
     relu = mx.symbol.LeakyReLU(data=conv, act_type="leaky")
     return relu
 

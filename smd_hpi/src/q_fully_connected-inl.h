@@ -36,6 +36,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
   int num_hidden;
   bool no_bias;
   unsigned int act_bit;
+  unsigned int weight_bit;
   bool binarized_weights_only;
   DMLC_DECLARE_PARAMETER(QFullyConnectedParam) {
     // TODO(bing) add support for boolean
@@ -44,9 +45,11 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
     DMLC_DECLARE_FIELD(no_bias).set_default(true)
     .describe("Whether to disable bias parameter.");
     DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
-    .describe("Number of bits to quantize weights to.");
+    .describe("Number of bits to quantize activations to.");
     DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
             .describe("Params file contains only binarized weights. Set automatically by model converter.");
+    DMLC_DECLARE_FIELD(weight_bit).set_default(1).set_range(1, 32)
+    .describe("Number of bits to quantize weights to.");
   }
 };
 
@@ -96,7 +99,10 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> out = out_data[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
-    if(!ctx.is_train && std::is_same<xpu, cpu>::value && this->param_.act_bit == 1){
+    if(!ctx.is_train 
+       && std::is_same<xpu, cpu>::value 
+       && this->param_.act_bit == 1
+       && this->param_.weight_bit == 1){
       int m = data.size(0);
       int n = data.size(1);
       int k = param_.num_hidden;
@@ -122,24 +128,18 @@ class QFullyConnectedOp : public Operator {
       //============================================//
   		// mf quantize weights
   		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-  		helper::quantize(w1d, this->param_.act_bit);
+  		helper::quantize_weights(w1d, this->param_.weight_bit);
   		// /mf quantize weights
       //============================================//
       //             INPUT quantization             //   
       //============================================//
-      if(this->param_.act_bit == 1){
-        data = F<mshadow_op::det_sign>(data);
-      }else{
-        data = F<mshadow_op::quantize>(F<mshadow_op::maximum>(
-                                            F<mshadow_op::minimum>(data, scalar(DType(1))), scalar(DType(0))), //clip to [0, 1]
-                                            scalar(DType(this->param_.act_bit)));
-      }// /mf quantize input
+      helper::quantize_activations(data, this->param_.act_bit);
 
   		out = dot(data, wmat.T());
 
       //this converting is just for mimicing 2-bit xnor-popc operations
       //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
-      if(this->param_.act_bit == 1)
+      if(this->param_.act_bit == 1 && this->param_.weight_bit == 1)
         out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
 
   		if (!param_.no_bias) {
