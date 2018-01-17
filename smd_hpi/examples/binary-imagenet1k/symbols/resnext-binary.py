@@ -247,7 +247,7 @@ def get_symbol(num_classes, num_layers, image_shape, num_group=32, conv_workspac
         #else:
         #    filter_list = [64, 64, 128, 256, 512]
         #    bottle_neck = False
-	    bottle_neck = False # bottle neck design will significantly decrease the bnn accuracy
+        bottle_neck = False # bottle neck design will significantly decrease the bnn accuracy
         if num_layers >= 50:
             filter_list = [64, 128, 256, 512, 1024]
         else:
