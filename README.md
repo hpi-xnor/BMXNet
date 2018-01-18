@@ -14,23 +14,38 @@ Our current efforts are focused on binarizing the inputs and weights of convolut
 
 # Setup
 
-We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](docs/get_started/setup.md#prerequisites). 
+We use ``cmake`` to build the project. Make sure to install all the dependencies described [here](docs/install/build_from_source.md#prerequisites). 
 
-Adjust settings in cmake (build-type ``Release`` or ``Debug``, configure CUDA, OpenBLAS, OpenCV, OpenMP etc.)  
+Adjust settings in cmake (build-type ``Release`` or ``Debug``, configure CUDA, OpenBLAS or Atlas, OpenCV, OpenMP etc.)  
 
 ```shell
 $ git clone --recursive https://github.com/hpi-xnor/mxnet.git # remember to include the --recursive
-$ mkdir build && cd build
-$ ccmake .. # or cmake, or GUI cmake
+$ mkdir build/Release && cd build/Release
+$ cmake ../../ # if any error occurs, apply ccmake or cmake-gui to adjust the cmake config.
+$ ccmake . # or GUI cmake
 $ make -j `nproc`
 ```
 
-This will generate the mxnet library. To be able to use it from python, be sure to add the location of the libray to your ``LD_LIBRARY_PATH`` as well as the mxnet python folder to your ``PYTHONPATH``:
+## Build the MXNet Python binding
+
+### Step 1 Install prerequisites - python, setup-tools, python-pip and numpy.
 ```shell
-$ export LD_LIBRARY_PATH=<mxnet-root>/build
+$ sudo apt-get install -y python-dev python-setuptools python-numpy python-pip
+```
+
+### Step 2 Install the MXNet Python binding.
+```shell
+$ cd <mxnet-root>/python
+$ pip install --upgrade pip
+$ pip install -e .
+```
+
+If your mxnet python binding still not works, you can add the location of the libray to your ``LD_LIBRARY_PATH`` as well as the mxnet python folder to your ``PYTHONPATH``:
+```shell
+$ export LD_LIBRARY_PATH=<mxnet-root>/build/Release
 $ export PYTHONPATH=<mxnet-root>/python
 ```
-### Docker
+## Docker
 
 There is a simple Dockerfile that you can use to ease the setup process. Once running, find mxnet at ``/mxnet`` and the build folder at ``/mxnet/release``. (Be *warned* though, CUDA will not work inside the container so training process can be quite tedious)
 
@@ -50,20 +65,20 @@ These can be used when specifying a model. They extend the parameters of their c
 
 ## Quantization
 
-Set the parameter ``act_bit`` and ``weight_bit`` to a value between 1 and 32 to quantize the activations and weights to that bit width.
+Set the parameter ``act_bit`` and ``weight_bit`` to a value between 1 and 32 to quantize the activations and weights to that bit widths.
 
 The quantization on bit widths ranging from 2 to 31 bit is available mainly for scientific purpose. There is no speed or memory gain (rather the opposite since there are conversion steps) as the quantized values are still stored in full precision ``float`` variables.
 
 ## Binarization
 
-To binarize the weights first set ``weight_bit=1`` and ``act_bit=1``. Then train your network (you can use CUDA). The resulting .params file will contain binary weights, but still store a single weight in one float. 
+To binarize the weights first set ``weight_bit=1`` and ``act_bit=1``. Then train your network (you can use CUDA/CuDNN). The resulting .params file will contain binary weights, but still store a single weight in one float. 
 
 To convert your trained and saved network, call the model converter with your ``.params`` file: 
 ```shell
-$ <mxnet-root>smd_hpi/tools/model_converter mnist-0001.params
+$ <mxnet-root>/build/Release/smd_hpi/tools/model_converter mnist-0001.params
 ```
 
-This will generate a ``.params`` and ``.json`` file with prepended ``binarized_``. This model file will use only 1 bit of runtime memory and storage for every weight in the convolutional layers.
+This will generate a new ``.params`` and ``.json`` file with prepended ``binarized_``. This model file will use only 1 bit of runtime memory and storage for every weight in the convolutional layers.
 
 We have example python scripts to train and validate [resnet18](smd_hpi/examples/binary-imagenet1k) (cifar10, imagenet) and [lenet](smd_hpi/examples/binary_mnist) (mnist) neural networks with binarized layers.
 
