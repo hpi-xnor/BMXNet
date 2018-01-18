@@ -7,9 +7,9 @@ from common.util import download_file
 import mxnet as mx
 
 def add_binary_args(parser):
-    parser.add_argument('--bit-w', type=int, default=1,
+    parser.add_argument('--bits-w', type=int, default=1,
                        help='number of bits for weights')
-    parser.add_argument('--bit-a', type=int, default=1,
+    parser.add_argument('--bits-a', type=int, default=1,
                        help='number of bits for activations')
 
 if __name__ == '__main__':
