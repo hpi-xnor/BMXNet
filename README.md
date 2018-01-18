@@ -26,14 +26,14 @@ $ ccmake . # or GUI cmake
 $ make -j `nproc`
 ```
 
-## Build the MXNet Python binding
+#### Build the MXNet Python binding
 
-### Step 1 Install prerequisites - python, setup-tools, python-pip and numpy.
+Step 1 Install prerequisites - python, setup-tools, python-pip and numpy.
 ```shell
 $ sudo apt-get install -y python-dev python-setuptools python-numpy python-pip
 ```
 
-### Step 2 Install the MXNet Python binding.
+Step 2 Install the MXNet Python binding.
 ```shell
 $ cd <mxnet-root>/python
 $ pip install --upgrade pip
@@ -45,7 +45,7 @@ If your mxnet python binding still not works, you can add the location of the li
 $ export LD_LIBRARY_PATH=<mxnet-root>/build/Release
 $ export PYTHONPATH=<mxnet-root>/python
 ```
-## Docker
+#### Docker
 
 There is a simple Dockerfile that you can use to ease the setup process. Once running, find mxnet at ``/mxnet`` and the build folder at ``/mxnet/release``. (Be *warned* though, CUDA will not work inside the container so training process can be quite tedious)
 
