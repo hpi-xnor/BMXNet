@@ -140,12 +140,14 @@ class QCuDNNConvolutionOp : public Operator {
 
     //============================================//
     //            WEIGHTS quantization            //
-    // for training or prediction in gpu mode,    //
+    // for training mode,                         //
     // we apply quantization function on weights. //
     //                                            //
     // mf quantize weights                        //
-    Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
-    helper::quantize_weights(w1d, this->param_.weight_bit);
+    if (ctx.is_train){
+      Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
+      helper::quantize_weights(w1d, this->param_.weight_bit);
+    }
     // /mf quantize weights                       //
     //============================================//
 

@@ -154,10 +154,10 @@ class QConvolutionV1Op : public Operator {
 
     //============================================//
     //            WEIGHTS quantization            //            
-    // for training or prediction in gpu mode,    //
+    // for training mode,                         //
     // we apply quantization function on weights. //
     //============================================//
-    if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
+    if(ctx.is_train){
       // mf quantize weights
       Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
       helper::quantize_weights(w1d, this->param_.weight_bit);

@@ -123,12 +123,15 @@ class QFullyConnectedOp : public Operator {
     }else{
       //============================================//
       //            WEIGHTS quantization            //            
-      // for training or prediction in gpu mode,    //
+      // for training mode,                         //
       // we apply quantization function on weights. //
       //============================================//
   		// mf quantize weights
-  		Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-  		helper::quantize_weights(w1d, this->param_.weight_bit);
+      if (ctx.is_train){
+        Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+        helper::quantize_weights(w1d, this->param_.weight_bit);
+      }
+
   		// /mf quantize weights
       //============================================//
       //             INPUT quantization             //   
