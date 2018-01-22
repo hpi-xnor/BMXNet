@@ -166,7 +166,7 @@ namespace mxnet {
               // for training mode,                         //
               // we apply quantization function on weights. //
               //                                            //
-              if(ctx.is_train){
+              if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
                 // mf quantize weights
                 Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
                 helper::quantize_weights(w1d, this->param_.weight_bit);

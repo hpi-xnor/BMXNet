@@ -144,10 +144,18 @@ class QCuDNNConvolutionOp : public Operator {
     // we apply quantization function on weights. //
     //                                            //
     // mf quantize weights                        //
-    if (ctx.is_train){
+//    if (ctx.is_train){
       Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
+
+//          mshadow::Tensor<cpu, 1, DType> tensor_cpu = mshadow::NewTensor<cpu>(w1d.shape_, DType(1.0));
+//          mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
+
+//          for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
+//	    std::cout<< tensor_cpu[i] << std::endl;  
+//          }
+//mshadow::FreeSpace(&tensor_cpu);
       helper::quantize_weights(w1d, this->param_.weight_bit);
-    }
+//    }
     // /mf quantize weights                       //
     //============================================//
 
