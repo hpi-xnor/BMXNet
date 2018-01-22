@@ -99,10 +99,46 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> out = out_data[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
+
+		Tensor<xpu, 1, DType> q_w1d = NULL;
+		Tensor<xpu, 1, DType> w1d = NULL;
+    if(ctx.is_train
+				|| (!ctx.is_train 
+						&& std::is_same<xpu, gpu>::value)
+				|| (!ctx.is_train 
+						&& std::is_same<xpu, cpu>::value 
+						&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
+					)	 
+    ){
+	    //============================================//
+	    //            WEIGHTS quantization            //            
+	    // we apply quantization function on weights. //
+			// mf quantize weights
+			if(this->param_.weight_bit < 32) {
+	      w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+	      q_w1d = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+	      mshadow::Copy(q_w1d, w1d, w1d.stream_);
+	      helper::quantize_weights(w1d, this->param_.weight_bit);
+        //std::cout << "before dot:" << std::endl;
+        //for (index_t i = 0; i < w1d.size(0); ++i) {
+						//std::cout<< w1d[i] << std::endl;  
+    		//}
+    	}
+    	// /mf quantize weights
+			//============================================//
+
+	    //============================================//
+	    //             INPUT quantization             //
+	    if(this->param_.act_bit < 32){
+	    	helper::quantize_activations(data, this->param_.act_bit);
+	  	}
+	    //============================================//
+    }
+
     if(!ctx.is_train 
-       && std::is_same<xpu, cpu>::value 
-       && this->param_.act_bit == 1
-       && this->param_.weight_bit == 1){
+      && std::is_same<xpu, cpu>::value 
+      && this->param_.act_bit == 1
+      && this->param_.weight_bit == 1){
       int m = data.size(0);
       int n = data.size(1);
       int k = param_.num_hidden;
@@ -121,35 +157,31 @@ class QFullyConnectedOp : public Operator {
       }
 
     }else{
-      //============================================//
-      //            WEIGHTS quantization            //            
-      // for training mode,                         //
-      // we apply quantization function on weights. //
-      //============================================//
-  		// mf quantize weights
-      if (ctx.is_train){
-        Tensor<xpu, 1, DType> w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-        helper::quantize_weights(w1d, this->param_.weight_bit);
-      }
-
-  		// /mf quantize weights
-      //============================================//
-      //             INPUT quantization             //   
-      //============================================//
-      helper::quantize_activations(data, this->param_.act_bit);
-
   		out = dot(data, wmat.T());
-
       //this converting is just for mimicing 2-bit xnor-popc operations
       //details please refer to "xnor_to_binary_dot" method in xnor_cpu.h
       if(this->param_.act_bit == 1 && this->param_.weight_bit == 1)
         out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
-
-  		if (!param_.no_bias) {
-  		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
-  		  out += repmat(bias, data.size(0));
-  		}
     }
+
+		if (!param_.no_bias) {
+		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
+		  out += repmat(bias, data.size(0));
+		}
+
+    //============================================//
+    //            WEIGHTS quantization            //
+    //copy back the original weights
+    if(q_w1d != NULL && w1d != NULL){
+    	mshadow::Copy(w1d, q_w1d, q_w1d.stream_);
+    	mshadow::FreeSpace(&q_w1d);
+
+    	//std::cout << "end forward:" << std::endl;
+      //for (index_t i = 0; i < w1d.size(0); ++i) {
+					//std::cout<< w1d[i] << std::endl;  
+  		//}
+    }
+    //============================================//
   }
 
   virtual void Backward(const OpContext &ctx,

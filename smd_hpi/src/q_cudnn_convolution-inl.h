@@ -144,18 +144,25 @@ class QCuDNNConvolutionOp : public Operator {
     // we apply quantization function on weights. //
     //                                            //
     // mf quantize weights                        //
-//    if (ctx.is_train){
-      Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
+		Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
 
-//          mshadow::Tensor<cpu, 1, DType> tensor_cpu = mshadow::NewTensor<cpu>(w1d.shape_, DType(1.0));
-//          mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
+    //mshadow::Tensor<cpu, 1, DType> tensor_cpu = mshadow::NewTensor<cpu>(w1d.shape_, DType(1.0));
+    //mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
+    //std::cout << "before quantize:" << std::endl;
+    //for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
+				//std::cout<< tensor_cpu[i] << std::endl;  
+		//}
 
-//          for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
-//	    std::cout<< tensor_cpu[i] << std::endl;  
-//          }
-//mshadow::FreeSpace(&tensor_cpu);
-      helper::quantize_weights(w1d, this->param_.weight_bit);
-//    }
+    Tensor<gpu, 1, DType> q_w1d = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+    mshadow::Copy(q_w1d, w1d, w1d.stream_);
+		helper::quantize_weights(w1d, this->param_.weight_bit);
+
+    //mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
+    //std::cout << "after quantize:" << std::endl;
+    //for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
+				//std::cout<< tensor_cpu[i] << std::endl;  
+		//}
+
     // /mf quantize weights                       //
     //============================================//
 
@@ -243,6 +250,19 @@ class QCuDNNConvolutionOp : public Operator {
     if (padded) {
       mshadow::FreeSpace(&padded_data);
     }
+    //============================================//
+    //            WEIGHTS quantization            //
+    //copy back the original weights
+  	mshadow::Copy(w1d, q_w1d, q_w1d.stream_);
+  	mshadow::FreeSpace(&q_w1d);
+
+    //mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
+    //std::cout << "before quantize:" << std::endl;
+    //for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
+				//std::cout<< tensor_cpu[i] << std::endl;  
+		//}
+		//mshadow::FreeSpace(&tensor_cpu);
+  	//============================================//
   }
 
   virtual void Backward(const OpContext &ctx,

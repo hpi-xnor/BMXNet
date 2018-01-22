@@ -166,26 +166,27 @@ namespace mxnet {
               // for training mode,                         //
               // we apply quantization function on weights. //
               //                                            //
-			  Tensor<xpu, 1, DType> q_w1d = NULL;
+			  			Tensor<xpu, 1, DType> q_w1d = NULL;
+	  					Tensor<xpu, 1, DType> w1d = NULL;
               if(this->param_.weight_bit < 32 
                 	&& (ctx.is_train
                 		|| (!ctx.is_train 
-                			&& std::is_same<xpu, gpu>::value)
+                				&& std::is_same<xpu, gpu>::value)
                 		|| (!ctx.is_train 
-                			&& std::is_same<xpu, cpu>::value 
-            				&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
-        					)	 
-						)
+                				&& std::is_same<xpu, cpu>::value 
+            						&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
+        							)	 
+										)
               ){
                 // mf quantize weights
-                Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
+                w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
                 q_w1d = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
                 mshadow::Copy(q_w1d, w1d, w1d.stream_);
                 helper::quantize_weights(w1d, this->param_.weight_bit);
-                std::cout << "before dot:" << std::endl;
-                for (index_t i = 0; i < w1d.size(0); ++i) {
-	 			    std::cout<< w1d[i] << std::endl;  
-		         }
+                //std::cout << "before dot:" << std::endl;
+                //for (index_t i = 0; i < w1d.size(0); ++i) {
+	 								//std::cout<< w1d[i] << std::endl;  
+		        		//}
                 // /mf quantize weights
               }
               //                                            //
@@ -208,13 +209,13 @@ namespace mxnet {
                 if(this->param_.act_bit < 32 
                 	&& (ctx.is_train
                 		|| (!ctx.is_train 
-                			&& std::is_same<xpu, gpu>::value)
+                				&& std::is_same<xpu, gpu>::value)
                 		|| (!ctx.is_train 
-                			&& std::is_same<xpu, cpu>::value 
-            				&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
-        					)	 
-						)
-				){
+                				&& std::is_same<xpu, cpu>::value 
+            						&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
+        								)	 
+										)
+								){
                   helper::quantize_activations(col_buffer_3d, this->param_.act_bit);
                 }
                 //                                            //
@@ -274,17 +275,19 @@ namespace mxnet {
                 // has bias term, broadcast it to the same shape of output_3d in channel dim
                 output_3d += mshadow::expr::broadcast<1>(bias, output_3d.shape_);
               }
-
-              //copy the original weights back
-              if(q_w1d != NULL){
+					    //============================================//
+					    //            WEIGHTS quantization            //
+              //copy back the original weights
+              if(q_w1d != NULL && w1d != NULL){
               	mshadow::Copy(w1d, q_w1d, q_w1d.stream_);
               	mshadow::FreeSpace(&q_w1d);
 
-              	std::cout << "end forward:" << std::endl;
-                for (index_t i = 0; i < w1d.size(0); ++i) {
-	 			    std::cout<< w1d[i] << std::endl;  
-		         }
-              } 
+              	//std::cout << "end forward:" << std::endl;
+                //for (index_t i = 0; i < w1d.size(0); ++i) {
+	 								//std::cout<< w1d[i] << std::endl;  
+		        		//}
+              }
+              //============================================//
             }
 
             virtual void Backward(const OpContext &ctx,

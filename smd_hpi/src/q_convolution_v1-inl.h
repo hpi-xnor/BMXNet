@@ -157,11 +157,24 @@ class QConvolutionV1Op : public Operator {
     // for training mode,                         //
     // we apply quantization function on weights. //
     //============================================//
-    if(ctx.is_train){
-      // mf quantize weights
-      Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
-      helper::quantize_weights(w1d, this->param_.weight_bit);
-      // /mf quantize weights
+    Tensor<xpu, 1, DType> q_w1d = NULL;
+		Tensor<xpu, 1, DType> w1d = NULL;
+		if(this->param_.weight_bit < 32 
+			&& (ctx.is_train
+				|| (!ctx.is_train 
+					&& std::is_same<xpu, gpu>::value)
+				|| (!ctx.is_train 
+					&& std::is_same<xpu, cpu>::value 
+					&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
+					)	 
+				)
+		){
+			// mf quantize weights
+			w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
+			q_w1d = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+			mshadow::Copy(q_w1d, w1d, w1d.stream_);
+			helper::quantize_weights(w1d, this->param_.weight_bit);
+			// mf quantize weights
     }
 
     const index_t nbatch = data.size(0);
@@ -204,9 +217,18 @@ class QConvolutionV1Op : public Operator {
       // This process should be after padding elemt //
       // since the padding elements are all "0"     //
       //============================================//
-      if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
-        helper::quantize_activations(temp_col, this->param_.act_bit);
-      }
+			if(this->param_.act_bit < 32 
+				&& (ctx.is_train
+					|| (!ctx.is_train 
+							&& std::is_same<xpu, gpu>::value)
+					|| (!ctx.is_train 
+							&& std::is_same<xpu, cpu>::value 
+							&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
+						 )	 
+					 )
+			){
+				helper::quantize_activations(temp_col, this->param_.act_bit);
+			}
 
       const index_t gstride = temp_col.size(0) / param_.num_group;
 
@@ -271,6 +293,14 @@ class QConvolutionV1Op : public Operator {
       Tensor<xpu, 1, DType> bias = in_data[q_conv_v1::kBias].get<xpu, 1, DType>(s);
       out += mshadow::expr::broadcast<1>(bias, out.shape_);
     }
+    //============================================//
+    //            WEIGHTS quantization            //
+    //copy back the original weights 
+		if(q_w1d != NULL && w1d != NULL){
+			mshadow::Copy(w1d, q_w1d, q_w1d.stream_);
+			mshadow::FreeSpace(&q_w1d);
+		} 
+		//============================================//
 
   }
 
