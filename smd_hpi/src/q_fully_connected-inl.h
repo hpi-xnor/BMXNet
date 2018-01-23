@@ -100,8 +100,15 @@ class QFullyConnectedOp : public Operator {
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
 
-		Tensor<xpu, 1, DType> q_w1d = NULL;
-		Tensor<xpu, 1, DType> w1d = NULL;
+		Tensor<xpu, 1, DType> w1d_copy;
+		Tensor<xpu, 1, DType> w1d;
+    Tensor<xpu, 2, DType> data_copy;
+    ///TODO:is there better way, instead of setting flags?
+    //use this flag to mark the quantization. 
+    //we create a copy of the original weights, need to release it
+    //after forward processing.
+    bool w_quantized = false, in_quantized = false;
+
     if(ctx.is_train
 				|| (!ctx.is_train 
 						&& std::is_same<xpu, gpu>::value)
@@ -116,13 +123,12 @@ class QFullyConnectedOp : public Operator {
 			// mf quantize weights
 			if(this->param_.weight_bit < 32) {
 	      w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-	      q_w1d = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-	      mshadow::Copy(q_w1d, w1d, w1d.stream_);
+	      w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+        //TODO: I wanted to apply this resource but somehow the data stream will be overwritten by other requests
+        //ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
+	      mshadow::Copy(w1d_copy, w1d, w1d.stream_);
 	      helper::quantize_weights(w1d, this->param_.weight_bit);
-        //std::cout << "before dot:" << std::endl;
-        //for (index_t i = 0; i < w1d.size(0); ++i) {
-						//std::cout<< w1d[i] << std::endl;  
-    		//}
+        w_quantized = true;
     	}
     	// /mf quantize weights
 			//============================================//
@@ -130,8 +136,12 @@ class QFullyConnectedOp : public Operator {
 	    //============================================//
 	    //             INPUT quantization             //
 	    if(this->param_.act_bit < 32){
+        data_copy = mshadow::NewTensor<xpu>(data.shape_, DType(1.0), true, data.stream_);
+        mshadow::Copy(data_copy, data, data.stream_);
 	    	helper::quantize_activations(data, this->param_.act_bit);
+        in_quantized = true;
 	  	}
+
 	    //============================================//
     }
 
@@ -170,16 +180,14 @@ class QFullyConnectedOp : public Operator {
 		}
 
     //============================================//
-    //            WEIGHTS quantization            //
-    //copy back the original weights
-    if(q_w1d != NULL && w1d != NULL){
-    	mshadow::Copy(w1d, q_w1d, q_w1d.stream_);
-    	mshadow::FreeSpace(&q_w1d);
-
-    	//std::cout << "end forward:" << std::endl;
-      //for (index_t i = 0; i < w1d.size(0); ++i) {
-					//std::cout<< w1d[i] << std::endl;  
-  		//}
+    //copy back the original weights and inputs   //
+    if(w_quantized){
+    	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+    	mshadow::FreeSpace(&w1d_copy);
+    }
+    if(in_quantized){
+      mshadow::Copy(data, data_copy, data_copy.stream_);
+      mshadow::FreeSpace(&data_copy);
     }
     //============================================//
   }

@@ -11,7 +11,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 BITW = 1
 BITA = 1
-BITG = 6 # TODO: we don't have binarized gradient implementation yet.
+BITG = 32 # TODO: we don't have binarized gradient implementation yet.
 
 # get quantized functions
 f_w, f_a, f_g = get_dorefa(BITW, BITA, BITG)

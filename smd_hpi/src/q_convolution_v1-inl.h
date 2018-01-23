@@ -157,8 +157,11 @@ class QConvolutionV1Op : public Operator {
     // for training mode,                         //
     // we apply quantization function on weights. //
     //============================================//
-    Tensor<xpu, 1, DType> q_w1d = NULL;
-		Tensor<xpu, 1, DType> w1d = NULL;
+    Tensor<xpu, 1, DType> w1d, w1d_copy;
+    //use this flag to mark the weight quantization.
+    //we create a copy of the original weights, need to release it
+    //after forward processing.
+    bool w_quantized = false;
 		if(this->param_.weight_bit < 32 
 			&& (ctx.is_train
 				|| (!ctx.is_train 
@@ -171,11 +174,17 @@ class QConvolutionV1Op : public Operator {
 		){
 			// mf quantize weights
 			w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
-			q_w1d = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-			mshadow::Copy(q_w1d, w1d, w1d.stream_);
+			w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+			mshadow::Copy(w1d_copy, w1d, w1d.stream_);
 			helper::quantize_weights(w1d, this->param_.weight_bit);
+      w_quantized = true;
 			// mf quantize weights
     }
+    //========================================//
+    // create data copy                       //
+    Tensor<xpu, 4, DType> data_copy = mshadow::NewTensor<xpu>(data.shape_, DType(1.0), true, data.stream_);
+    mshadow::Copy(data_copy, data, data.stream_);
+    //========================================//
 
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
@@ -294,12 +303,14 @@ class QConvolutionV1Op : public Operator {
       out += mshadow::expr::broadcast<1>(bias, out.shape_);
     }
     //============================================//
-    //            WEIGHTS quantization            //
     //copy back the original weights 
-		if(q_w1d != NULL && w1d != NULL){
-			mshadow::Copy(w1d, q_w1d, q_w1d.stream_);
-			mshadow::FreeSpace(&q_w1d);
+		if(w_quantized){
+			mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+			mshadow::FreeSpace(&w1d_copy);
 		} 
+    //copy back inputs
+    mshadow::Copy(data, data_copy, data_copy.stream_);
+    mshadow::FreeSpace(&data_copy);    
 		//============================================//
 
   }

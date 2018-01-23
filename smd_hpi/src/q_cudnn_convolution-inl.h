@@ -145,24 +145,9 @@ class QCuDNNConvolutionOp : public Operator {
     //                                            //
     // mf quantize weights                        //
 		Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
-
-    //mshadow::Tensor<cpu, 1, DType> tensor_cpu = mshadow::NewTensor<cpu>(w1d.shape_, DType(1.0));
-    //mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
-    //std::cout << "before quantize:" << std::endl;
-    //for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
-				//std::cout<< tensor_cpu[i] << std::endl;  
-		//}
-
-    Tensor<gpu, 1, DType> q_w1d = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-    mshadow::Copy(q_w1d, w1d, w1d.stream_);
+    Tensor<gpu, 1, DType> w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+    mshadow::Copy(w1d_copy, w1d, w1d.stream_);
 		helper::quantize_weights(w1d, this->param_.weight_bit);
-
-    //mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
-    //std::cout << "after quantize:" << std::endl;
-    //for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
-				//std::cout<< tensor_cpu[i] << std::endl;  
-		//}
-
     // /mf quantize weights                       //
     //============================================//
 
@@ -174,6 +159,9 @@ class QCuDNNConvolutionOp : public Operator {
     // since the padding elements are all "0"     //
     //                                            //
     mshadow::Tensor<gpu, 4, DType> padded_data = data;
+    Tensor<gpu, 4, DType> data_copy = mshadow::NewTensor<gpu>(data.shape_, DType(1.0), true, data.stream_);
+    mshadow::Copy(data_copy, data, data.stream_);
+
     bool padded = (param_.pad[0] != 0) || (param_.pad[1] != 0);
     if (padded) {
       Shape<4> padded_shape = Shape4(data.shape_[0],
@@ -251,17 +239,12 @@ class QCuDNNConvolutionOp : public Operator {
       mshadow::FreeSpace(&padded_data);
     }
     //============================================//
-    //            WEIGHTS quantization            //
-    //copy back the original weights
-  	mshadow::Copy(w1d, q_w1d, q_w1d.stream_);
-  	mshadow::FreeSpace(&q_w1d);
-
-    //mshadow::Copy(tensor_cpu, w1d, w1d.stream_);
-    //std::cout << "before quantize:" << std::endl;
-    //for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
-				//std::cout<< tensor_cpu[i] << std::endl;  
-		//}
-		//mshadow::FreeSpace(&tensor_cpu);
+    //copy back the weights
+  	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+  	mshadow::FreeSpace(&w1d_copy);
+    //copy back inputs
+    mshadow::Copy(data, data_copy, data_copy.stream_);
+    mshadow::FreeSpace(&data_copy);    
   	//============================================//
   }
 

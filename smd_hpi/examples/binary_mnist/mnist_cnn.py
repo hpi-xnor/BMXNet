@@ -65,15 +65,14 @@ def main(args):
 	if not args.predict:
 		print 'starting training...'
 		model = mnist_train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, args.epochs, args.gpu_id)
-		model.save_checkpoint(args.out_file, args.epochs)
+		model.save_checkpoint(args.model_prefix, args.epochs)
 	else:
 		mnist_val(args.model_prefix, args.epochs, train_img, val_img, train_lbl, val_lbl, batch_size, args.gpu_id)
 		#mnist_classify(val_img, args.model_prefix, args.epochs, train_img, train_lbl, val_lbl, batch_size, args.gpu_id)
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='generate generate annotations file from data source')
-	parser.add_argument('--model_prefix', dest='model_prefix', type=str, help="gives where to find the binary model file and .json file")
-	parser.add_argument('--o', dest='out_file', type=str, default=None, help='path to save model')
+	parser.add_argument('--model-prefix', dest='model_prefix', type=str, help="gives where to find the binary model file and .json file")
 	parser.add_argument('--gpus', dest='gpu_id', type=int, default=-1, help='selected gpu device id')
 	parser.add_argument('--predict', dest='predict', action='store_true',default=False, help='whether do the prediction, otherwise do the training')
 	parser.add_argument('--epochs', dest='epochs', type=int, default=0, help='set the epoch number')
