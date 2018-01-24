@@ -102,12 +102,11 @@ class QFullyConnectedOp : public Operator {
 
 		Tensor<xpu, 1, DType> w1d_copy;
 		Tensor<xpu, 1, DType> w1d;
-    Tensor<xpu, 2, DType> data_copy;
     ///TODO:is there better way, instead of setting flags?
     //use this flag to mark the quantization. 
     //we create a copy of the original weights, need to release it
     //after forward processing.
-    bool w_quantized = false, in_quantized = false;
+    bool w_quantized = false;
 
     if(ctx.is_train
 				|| (!ctx.is_train 
@@ -136,10 +135,7 @@ class QFullyConnectedOp : public Operator {
 	    //============================================//
 	    //             INPUT quantization             //
 	    if(this->param_.act_bit < 32){
-        data_copy = mshadow::NewTensor<xpu>(data.shape_, DType(1.0), true, data.stream_);
-        mshadow::Copy(data_copy, data, data.stream_);
 	    	helper::quantize_activations(data, this->param_.act_bit);
-        in_quantized = true;
 	  	}
 
 	    //============================================//
@@ -180,14 +176,10 @@ class QFullyConnectedOp : public Operator {
 		}
 
     //============================================//
-    //copy back the original weights and inputs   //
+    //copy back the original weights              //
     if(w_quantized){
     	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
     	mshadow::FreeSpace(&w1d_copy);
-    }
-    if(in_quantized){
-      mshadow::Copy(data, data_copy, data_copy.stream_);
-      mshadow::FreeSpace(&data_copy);
     }
     //============================================//
   }
@@ -217,6 +209,24 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> grad = out_grad[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
+		//============================================//
+		//            WEIGHTS quantization            //
+		// we apply quantization function on weights. //
+		// mf quantize weights
+		bool w_quantized = false;
+		Tensor<xpu, 1, DType> w1d_copy, w1d;
+		if(this->param_.weight_bit < 32) {
+			w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+			w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+			//TODO: I wanted to apply this resource but somehow the data stream will be overwritten by other requests
+			//ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
+			mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+			helper::quantize_weights(w1d, this->param_.weight_bit);
+			w_quantized = true;
+		}
+		// /mf quantize weights
+		//============================================//
+
 #if defined(__CUDACC__)
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
@@ -235,6 +245,14 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> gdata = in_grad[q_fullc::kData].get_with_shape<xpu, 2, DType>(
         Shape2(ishape[0], ishape.ProdShape(1, ishape.ndim())), s);
     Assign(gdata, req[q_fullc::kData], dot(grad, wmat));
+
+    //============================================//
+    //copy back the original weights              //
+    if(w_quantized){
+      mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+      mshadow::FreeSpace(&w1d_copy);
+    }
+    //============================================//
   }
 
  private:
