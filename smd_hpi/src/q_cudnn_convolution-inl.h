@@ -159,8 +159,8 @@ class QCuDNNConvolutionOp : public Operator {
     // since the padding elements are all "0"     //
     //                                            //
     mshadow::Tensor<gpu, 4, DType> padded_data = data;
-    Tensor<gpu, 4, DType> data_copy = mshadow::NewTensor<gpu>(data.shape_, DType(1.0), true, data.stream_);
-    mshadow::Copy(data_copy, data, data.stream_);
+//    Tensor<gpu, 4, DType> data_copy = mshadow::NewTensor<gpu>(data.shape_, DType(1.0), true, data.stream_);
+//    mshadow::Copy(data_copy, data, data.stream_);
 
     bool padded = (param_.pad[0] != 0) || (param_.pad[1] != 0);
     if (padded) {
@@ -243,8 +243,8 @@ class QCuDNNConvolutionOp : public Operator {
   	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
   	mshadow::FreeSpace(&w1d_copy);
     //copy back inputs
-    mshadow::Copy(data, data_copy, data_copy.stream_);
-    mshadow::FreeSpace(&data_copy);    
+//    mshadow::Copy(data, data_copy, data_copy.stream_);
+//    mshadow::FreeSpace(&data_copy);
   	//============================================//
   }
 
