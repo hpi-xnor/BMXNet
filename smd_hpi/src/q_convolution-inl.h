@@ -282,7 +282,7 @@ namespace mxnet {
                 // has bias term, broadcast it to the same shape of output_3d in channel dim
                 output_3d += mshadow::expr::broadcast<1>(bias, output_3d.shape_);
               }
-					    //============================================//
+                        //============================================//
               //copy back the original weights
               if(w_quantized){
               	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
@@ -310,6 +310,7 @@ namespace mxnet {
               CHECK_EQ(in_data[qconv::kWeight].CheckContiguous(), true);
               LayerSetUp(in_grad[qconv::kData].shape_, out_grad[qconv::kOut].shape_);
               Stream<xpu> *s = ctx.get_stream<xpu>();
+
               // allocate workspace for col_buffer
               Tensor<xpu, 1, DType> workspace = ctx.requested[qconv::kTempSpace]
                       .get_space_typed<xpu, 1, DType>(Shape1(col_buffer_size_), s);
@@ -336,6 +337,32 @@ namespace mxnet {
               // For computing dLoss/dWeight
               Tensor<xpu, 3, DType> dweight_3d = in_grad[qconv::kWeight].get_with_shape<xpu, 3, DType>(
                       Shape3(group_, K, M), s);
+
+              //========================================//
+              // calculate gradients for binarized      //
+              // or quantized weights, then later apply //
+              // to original weights                    //
+              // save here once, copy back later        //
+              Tensor<xpu, 3, DType> weight_copy = mshadow::NewTensor<xpu>(weight_3d.shape_, DType(1.0), true, weight_3d.stream_);
+              mshadow::Copy(weight_copy, weight_3d, weight_3d.stream_);
+
+              // now we need to quant/binarize weight   //
+              Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
+              helper::quantize_weights(w1d, this->param_.weight_bit);
+              if(this->param_.weight_bit < 32
+                    && (ctx.is_train
+                        || (!ctx.is_train
+                                && std::is_same<xpu, gpu>::value)
+                        || (!ctx.is_train
+                                && std::is_same<xpu, cpu>::value
+                                    && (this->param_.act_bit != 1 || this->param_.weight_bit != 1)
+                                    )
+                                        )
+              ){
+                  helper::quantize_weights(w1d, this->param_.weight_bit);
+              }
+              //                                        //
+              //========================================//
 
               for (index_t n = 0; n < num_; ++n) {
                 Tensor<xpu, 3, DType> out_grad_3d = out_grad_4d[n];
@@ -368,6 +395,14 @@ namespace mxnet {
                         Shape3(num_, conv_out_channels_, conv_out_spatial_dim_), s);
                 ASSIGN_DISPATCH(dbias, req[qconv::kBias], sumall_except_dim<1>(dout));
               }
+
+              //========================================//
+              // gradient calculation done, swap back   //
+              // weights and also free space            //
+              mshadow::Copy(weight_3d, weight_copy, weight_copy.stream_);
+              mshadow::FreeSpace(&weight_copy);
+              //                                        //
+              //========================================//
             }
 
         private:
