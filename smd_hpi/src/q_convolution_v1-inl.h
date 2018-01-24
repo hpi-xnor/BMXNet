@@ -180,11 +180,6 @@ class QConvolutionV1Op : public Operator {
       w_quantized = true;
 			// mf quantize weights
     }
-    //========================================//
-    // create data copy                       //
-    Tensor<xpu, 4, DType> data_copy = mshadow::NewTensor<xpu>(data.shape_, DType(1.0), true, data.stream_);
-    mshadow::Copy(data_copy, data, data.stream_);
-    //========================================//
 
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
@@ -307,10 +302,7 @@ class QConvolutionV1Op : public Operator {
 		if(w_quantized){
 			mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
 			mshadow::FreeSpace(&w1d_copy);
-		} 
-    //copy back inputs
-    mshadow::Copy(data, data_copy, data_copy.stream_);
-    mshadow::FreeSpace(&data_copy);    
+		}
 		//============================================//
 
   }
@@ -350,6 +342,33 @@ class QConvolutionV1Op : public Operator {
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
 #endif
+
+    //========================================//
+    // calculate gradients for binarized      //
+    // or quantized weights, then later apply //
+    // to original weights                    //
+    // save here once, copy back later        //
+    Tensor<xpu, 3, DType> wmat_copy = mshadow::NewTensor<xpu>(wmat.shape_, DType(1.0), true, wmat.stream_);
+    mshadow::Copy(wmat_copy, wmat, wmat.stream_);
+
+    // now we need to quant/binarize weight   //
+    Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
+    helper::quantize_weights(w1d, this->param_.weight_bit);
+    if(this->param_.weight_bit < 32
+          && (ctx.is_train
+              || (!ctx.is_train
+                      && std::is_same<xpu, gpu>::value)
+              || (!ctx.is_train
+                      && std::is_same<xpu, cpu>::value
+                          && (this->param_.act_bit != 1 || this->param_.weight_bit != 1)
+                          )
+                              )
+    ){
+        helper::quantize_weights(w1d, this->param_.weight_bit);
+    }
+    //                                        //
+    //========================================//
+
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
         ctx.requested[q_conv_v1::kTempSpace].get_space_typed<xpu, 1, DType>(
@@ -427,6 +446,13 @@ class QConvolutionV1Op : public Operator {
       Tensor<xpu, 1, DType> gbias = in_grad[q_conv_v1::kBias].get<xpu, 1, DType>(s);
       Assign(gbias, req[q_conv_v1::kBias], sumall_except_dim<1>(grad));
     }
+    //========================================//
+    // gradient calculation done, swap back   //
+    // weights and also free space            //
+    mshadow::Copy(wmat, wmat_copy, wmat_copy.stream_);
+    mshadow::FreeSpace(&wmat_copy);
+    //                                        //
+    //========================================//
   }
 
  private:

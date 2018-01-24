@@ -161,12 +161,6 @@ namespace mxnet {
               CHECK_EQ(in_data[qconv::kData].shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
                 << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << in_data[qconv::kData].shape_[1];
               
-              //========================================//
-              // create data copy                       //
-              Tensor<xpu, 4, DType> data = in_data[qconv::kData].get<xpu, 4, DType>(s);
-              Tensor<xpu, 4, DType> data_copy = mshadow::NewTensor<xpu>(data.shape_, DType(1.0), true, data.stream_);
-              mshadow::Copy(data_copy, data, data.stream_);
-              //========================================//
               //============================================//
               //            WEIGHTS quantization            //
               // for training mode,                         //
@@ -282,15 +276,12 @@ namespace mxnet {
                 // has bias term, broadcast it to the same shape of output_3d in channel dim
                 output_3d += mshadow::expr::broadcast<1>(bias, output_3d.shape_);
               }
-                        //============================================//
+              //============================================//
               //copy back the original weights
               if(w_quantized){
               	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
               	mshadow::FreeSpace(&w1d_copy);
               }
-              //copy back inputs
-              mshadow::Copy(data, data_copy, data_copy.stream_);
-              mshadow::FreeSpace(&data_copy); 
               //============================================//
             }
 
