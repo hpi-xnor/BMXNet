@@ -26,13 +26,13 @@ namespace mxnet {
         // GPU (includes copy to CPU)
         template<int dim, typename DType>
         inline DType amax(const mshadow::Tensor<gpu, dim, DType> &tensor) {
-          mshadow::Tensor<cpu, 1, DType> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(1.0));
+          mshadow::Tensor<cpu, dim, DType> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(1.0));
           mshadow::Copy(tensor_cpu, tensor, tensor.stream_);
 
           DType max = 0;
-          for (index_t i = 0; i < tensor_cpu.size(0); ++i) {
-            if (tensor_cpu[i] > max) {
-              max = tensor_cpu[i];
+          for (index_t i = 0; i < tensor_cpu.shape_.Size(); ++i) {
+            if (tensor_cpu.dptr_[i] > max) {
+              max = tensor_cpu.dptr_[i];
             }
           }
           mshadow::FreeSpace(&tensor_cpu);
@@ -43,7 +43,7 @@ namespace mxnet {
         // Note that currently only "float" supported 
         template<int dim>
         inline float amax(const mshadow::Tensor<gpu, dim, float> &tensor) {           
-          int tensor_size = tensor.size(0);
+          int tensor_size = tensor.shape_.Size();
           float * input = tensor.dptr_;
           float max = launch_max_reduce(input, tensor_size);
           return max;
@@ -53,9 +53,9 @@ namespace mxnet {
         template<int dim, typename DType>
         inline DType amax(const mshadow::Tensor<cpu, dim, DType> &tensor) {
           DType max = 0;
-          for (index_t i = 0; i < tensor.size(0); ++i) {
-            if (tensor[i] > max) {
-              max = tensor[i];
+          for (index_t i = 0; i < tensor.shape_.Size(); ++i) {
+            if (tensor.dptr_[i] > max) {
+              max = tensor.dptr_[i];
             }
           }
           return max;
@@ -73,7 +73,7 @@ namespace mxnet {
             dataflow = F<mshadow_op::det_sign>(dataflow / ScalarExp<DType>(scaling_factor)) *
                       ScalarExp<DType>(scaling_factor);
           } else if (bit_width < 32) {
-            mshadow::Tensor<xpu, 1, DType> workspace = mshadow::NewTensor<xpu>(dataflow.shape_, DType(1.0), true, dataflow.stream_);
+            mshadow::Tensor<xpu, dim, DType> workspace = mshadow::NewTensor<xpu>(dataflow.shape_, DType(1.0), true, dataflow.stream_);
             workspace = F<mshadow_op::abs>(F<mshadow_op::tanh>(dataflow));
 
             DType max = amax(workspace);            
