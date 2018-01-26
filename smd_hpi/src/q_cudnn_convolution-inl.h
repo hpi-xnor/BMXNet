@@ -144,7 +144,7 @@ class QCuDNNConvolutionOp : public Operator {
     // we apply quantization function on weights. //
     //                                            //
     // mf quantize weights                        //
-		Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
+    Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
     Tensor<gpu, 1, DType> w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
     mshadow::Copy(w1d_copy, w1d, w1d.stream_);
 		helper::quantize_weights(w1d, this->param_.weight_bit);
@@ -159,8 +159,6 @@ class QCuDNNConvolutionOp : public Operator {
     // since the padding elements are all "0"     //
     //                                            //
     mshadow::Tensor<gpu, 4, DType> padded_data = data;
-    Tensor<gpu, 4, DType> data_copy = mshadow::NewTensor<gpu>(data.shape_, DType(1.0), true, data.stream_);
-    mshadow::Copy(data_copy, data, data.stream_);
 
     bool padded = (param_.pad[0] != 0) || (param_.pad[1] != 0);
     if (padded) {
@@ -242,9 +240,6 @@ class QCuDNNConvolutionOp : public Operator {
     //copy back the weights
   	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
   	mshadow::FreeSpace(&w1d_copy);
-    //copy back inputs
-    mshadow::Copy(data, data_copy, data_copy.stream_);
-    mshadow::FreeSpace(&data_copy);    
   	//============================================//
   }
 
@@ -289,6 +284,19 @@ class QCuDNNConvolutionOp : public Operator {
       data_ptr = data.dptr_;
       gdata_ptr = gdata.dptr_;
     }
+
+    //========================================//
+    // calculate gradients for binarized      //
+    // or quantized weights, then later apply //
+    // to original weights                    //
+    // save here once, copy back later        //
+    Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
+    Tensor<gpu, 1, DType> w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+    mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+    helper::quantize_weights(w1d, this->param_.weight_bit);
+    //                                        //
+    //========================================//
+
     Tensor<gpu, 1, DType> workspace = AllocateTempWorkspace(ctx, backward_workspace_byte_);
     size_t workspace_size = TensorSizeBytes(workspace);
     for (uint32_t g = 0; g < param_.num_group; ++g) {
@@ -368,6 +376,13 @@ class QCuDNNConvolutionOp : public Operator {
         #endif
       }
     }
+    //========================================//
+    // gradient calculation done, swap back   //
+    // weights and also free space            //
+    mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+    mshadow::FreeSpace(&w1d_copy);
+    //                                        //
+    //========================================//
   }
 
 /*!
