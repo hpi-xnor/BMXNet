@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 #include "../../src/operator/operator_common.h"
-#include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
 #include "./xnor_cpu.h"
 #include <type_traits>
@@ -176,8 +175,8 @@ class QConvolutionV1Op : public Operator {
 			w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
 			w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
 			mshadow::Copy(w1d_copy, w1d, w1d.stream_);
-			helper::quantize_weights(w1d, this->param_.weight_bit);
-      w_quantized = true;
+            q_helper::quantize_weights(w1d, this->param_.weight_bit);
+            w_quantized = true;
 			// mf quantize weights
     }
 
@@ -231,7 +230,7 @@ class QConvolutionV1Op : public Operator {
 						 )	 
 					 )
 			){
-				helper::quantize_activations(temp_col, this->param_.act_bit);
+                q_helper::quantize_activations(temp_col, this->param_.act_bit);
 			}
 
       const index_t gstride = temp_col.size(0) / param_.num_group;
@@ -353,7 +352,6 @@ class QConvolutionV1Op : public Operator {
 
     // now we need to quant/binarize weight   //
     Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
-    helper::quantize_weights(w1d, this->param_.weight_bit);
     if(this->param_.weight_bit < 32
           && (ctx.is_train
               || (!ctx.is_train
@@ -364,7 +362,7 @@ class QConvolutionV1Op : public Operator {
                           )
                               )
     ){
-        helper::quantize_weights(w1d, this->param_.weight_bit);
+        q_helper::quantize_weights(w1d, this->param_.weight_bit);
     }
     //                                        //
     //========================================//

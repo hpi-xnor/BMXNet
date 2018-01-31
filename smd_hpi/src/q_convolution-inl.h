@@ -166,7 +166,7 @@ namespace mxnet {
               // for training mode,                         //
               // we apply quantization function on weights. //
               //                                            //
-			  			Tensor<xpu, 1, DType> w1d, w1d_copy;	  					
+              Tensor<xpu, 1, DType> w1d, w1d_copy;
               //use this flag to mark the weight quantization.
               //we create a copy of the original weights, need to release it
               //after forward processing.
@@ -186,7 +186,7 @@ namespace mxnet {
                 w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
                 w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
                 mshadow::Copy(w1d_copy, w1d, w1d.stream_);
-                helper::quantize_weights(w1d, this->param_.weight_bit);
+                q_helper::quantize_weights(w1d, this->param_.weight_bit);
                 w_quantized = true;
                 // /mf quantize weights
               }
@@ -217,7 +217,7 @@ namespace mxnet {
         								)	 
 										)
 								){
-                  helper::quantize_activations(col_buffer_3d, this->param_.act_bit);
+                  q_helper::quantize_activations(col_buffer_3d, this->param_.act_bit);
                 }
                 //                                            //
                 //============================================//
@@ -339,7 +339,6 @@ namespace mxnet {
 
               // now we need to quant/binarize weight   //
               Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
-              helper::quantize_weights(w1d, this->param_.weight_bit);
               if(this->param_.weight_bit < 32
                     && (ctx.is_train
                         || (!ctx.is_train
@@ -350,7 +349,7 @@ namespace mxnet {
                                     )
                                         )
               ){
-                  helper::quantize_weights(w1d, this->param_.weight_bit);
+                   q_helper::quantize_weights(w1d, this->param_.weight_bit);
               }
               //                                        //
               //========================================//
