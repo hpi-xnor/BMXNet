@@ -60,16 +60,14 @@ __global__ void reduce_max_kernel(const float *input, float *d_out,  int size) {
   }
 }
 
-
-// reduce_sum_kernel
 __global__ void reduce_sum_kernel(const float *input, float *d_out,  int size) {
   int tid         = threadIdx.x;                              // Local thread index
-  int myId        = blockIdx.x * blockDim.x + threadIdx.x;    // Global thread index
+  int myId        = blockIdx.x*(blockDim.x*2) + threadIdx.x;   // Global thread index
 
   extern __shared__ float tempsum[]; //shared memory
 
   // --- Loading data to shared memory. All the threads contribute to loading the data to shared memory.
-  tempsum[tid] = (myId < size) ? input[myId] : 0.0f;
+  tempsum[tid] = (myId < size) ? input[myId] + input[myId+blockDim.x] : 0.0f;
 
   // --- make sure that all the shared memory loads have been completed
   __syncthreads();
@@ -85,6 +83,7 @@ __global__ void reduce_sum_kernel(const float *input, float *d_out,  int size) {
       d_out[blockIdx.x] = tempsum[0];
   }
 }
+
 
 extern "C" 
 float launch_max_reduce(float *input, int size_of_array)
@@ -103,6 +102,7 @@ float launch_max_reduce(float *input, int size_of_array)
   unsigned int mem_size_tmp = sizeof(float) * NumBlocks;
   float* d_tmp;
   QHELPER_CUDA_CHECK(cudaMalloc((void**) &d_tmp, mem_size_tmp));
+  QHELPER_CUDA_CHECK(cudaMemset(d_tmp, 0, mem_size_tmp));
 
   // --- reduce2  STAGE 1
   reduce_max_kernel<<<NumBlocks, NumThreads, smemSize>>>(input, d_tmp, size_of_array);
@@ -117,6 +117,7 @@ float launch_max_reduce(float *input, int size_of_array)
   unsigned int mem_size_f = sizeof(float)*NumBlocks;
   float* d_final;
   QHELPER_CUDA_CHECK(cudaMalloc((void**) &d_final, mem_size_f));
+  QHELPER_CUDA_CHECK(cudaMemset(d_final, 0, mem_size_f));
 
   // --- reduce2  STAGE 2
   reduce_max_kernel<<<NumBlocks, NumThreads, smemSize>>>(d_tmp, d_final, old_NumBlocks);
@@ -169,6 +170,7 @@ float launch_mean_reduce(float *input, int size_of_array)
   unsigned int mem_size_tmp = sizeof(float) * NumBlocks;
   float* d_tmp;
   QHELPER_CUDA_CHECK(cudaMalloc((void**) &d_tmp, mem_size_tmp));
+  QHELPER_CUDA_CHECK(cudaMemset(d_tmp, 0, mem_size_tmp));
 
   // --- reduce2  STAGE 1
   reduce_sum_kernel<<<NumBlocks, NumThreads, smemSize>>>(input, d_tmp, size_of_array);
@@ -183,6 +185,7 @@ float launch_mean_reduce(float *input, int size_of_array)
   unsigned int mem_size_f = sizeof(float)*NumBlocks;
   float* d_final;
   QHELPER_CUDA_CHECK(cudaMalloc((void**) &d_final, mem_size_f));  
+  QHELPER_CUDA_CHECK(cudaMemset(d_final, 0, mem_size_f));
 
   // --- reduce2  STAGE 2
   reduce_sum_kernel<<<NumBlocks, NumThreads, smemSize>>>(d_tmp, d_final, old_NumBlocks);
@@ -193,12 +196,14 @@ float launch_mean_reduce(float *input, int size_of_array)
 
   // --- find the sum on the host   STAGE 3
   float result_reduce0 = .0f;
-  for (int i=0; i<NumBlocks; i++) result_reduce0 += h_final[i];
-  
+  for (int i=0; i<NumBlocks; i++) {
+    result_reduce0 += h_final[i];
+  }
+
   // --- release memory
   free(h_final);  
   QHELPER_CUDA_CHECK(cudaFree(d_final));
-  QHELPER_CUDA_CHECK(cudaFree(d_tmp));
+  QHELPER_CUDA_CHECK(cudaFree(d_tmp));  
   return result_reduce0/(float)size_of_array;
 }
 

@@ -61,7 +61,7 @@ inline DType amax(const mshadow::Tensor<cpu, dim, DType> &tensor) {
 // GPU (includes copy to CPU)
 template<int dim, typename DType>
 inline DType amax(const mshadow::Tensor<gpu, dim, DType> &tensor) {
-  mshadow::Tensor<cpu, dim, DType> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(1.0));
+  mshadow::Tensor<cpu, dim, DType> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(0.0));
   mshadow::Copy(tensor_cpu, tensor, tensor.stream_);
 
   DType max = 0;
@@ -83,6 +83,19 @@ inline float amax(const mshadow::Tensor<gpu, dim, float> &tensor) {
   int tensor_size = tensor.shape_.Size();
   float * input = tensor.dptr_;
   float max = launch_max_reduce(input, tensor_size);
+
+/* stuff for verify gpu and cpu results
+  mshadow::Tensor<cpu, dim, float> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, 0.0f);
+  mshadow::Copy(tensor_cpu, tensor, tensor.stream_);
+
+  float cpumax = .0f;
+  for (index_t i = 0; i < tensor_cpu.shape_.Size(); ++i) {
+    cpumax = cpumax >tensor_cpu.dptr_[i] ? cpumax : tensor_cpu.dptr_[i];
+  }  
+  mshadow::FreeSpace(&tensor_cpu);
+  printf("cpu max: %f \n gpu max float: %f \n", cpumax, max);
+*/
+
   return max;
 }
 // Launches CUDA max_reduce kernel.
@@ -101,7 +114,7 @@ template<int dim, typename DType>
 inline DType amean(const mshadow::Tensor<gpu, dim, DType> &tensor) {
   if(tensor.shape_.Size() == 0) return DType(0);
 
-  mshadow::Tensor<cpu, dim, DType> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(1.0));
+  mshadow::Tensor<cpu, dim, DType> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, DType(0.0));
   mshadow::Copy(tensor_cpu, tensor, tensor.stream_);
 
   DType mean = 0;
@@ -117,6 +130,7 @@ inline DType amean(const mshadow::Tensor<gpu, dim, DType> &tensor) {
 
 /*
  * GPU 
+ * Double
  * calculates the global mean of input array using mean reduce kernel
  */
 template<int dim>
@@ -128,26 +142,29 @@ inline double amean(const mshadow::Tensor<gpu, dim, double> &tensor) {
   return mean;
 }
 
+// Float
 template<int dim>
 inline float amean(const mshadow::Tensor<gpu, dim, float> &tensor) {
   if(tensor.shape_.Size() == 0) return .0f;
-
   int tensor_size = tensor.shape_.Size();
   float * input = tensor.dptr_;
   float mean = launch_mean_reduce(input, tensor_size);
-
+  
+  /* stuff for verify gpu and cpu results
   //testing code
-  mshadow::Tensor<cpu, dim, float> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, 1.0f);
+  mshadow::Tensor<cpu, dim, float> tensor_cpu = mshadow::NewTensor<cpu>(tensor.shape_, 0.0f);
   mshadow::Copy(tensor_cpu, tensor, tensor.stream_);
-  float cpumean = .0f;
-  for (index_t i = 0; i < tensor_cpu.shape_.Size(); ++i) {
-    cpumean += tensor_cpu.dptr_[i];
+  float cpumean = 0.0f;
+  for (index_t i = 0; i < tensor_size; ++i) {
+    cpumean += (float)tensor_cpu.dptr_[i];
   }
-  cpumean = cpumean/(float)tensor_cpu.shape_.Size();
-  std::cout << "cpu mean: " << cpumean << std::endl;
-  std::cout << "gpu mean float: " << mean << std::endl;
+  cpumean = cpumean/(float)tensor_size;
   mshadow::FreeSpace(&tensor_cpu);
 
+
+
+  printf("cpu mean: %f \n gpu mean float: %f \n", cpumean, mean);
+  */
   return mean;
 }
 #endif
@@ -211,6 +228,14 @@ inline DType get_scaling_scalar(const mshadow::Tensor<xpu, dim, DType> &dataflow
   DType mean = amean(workspace);                    
   mshadow::FreeSpace(&workspace);
   return mean;
+}
+
+/*
+ * Quantization for activations (inputs).
+ */
+template<int dim, typename xpu, typename DType>
+inline mshadow::Tensor<xpu, dim, DType> tensor_mul_scalar(mshadow::Tensor<xpu, dim, DType> &dataflow, DType scalar) {
+  return dataflow;
 }
 
 
