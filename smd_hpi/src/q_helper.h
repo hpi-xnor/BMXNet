@@ -231,11 +231,11 @@ inline DType get_scaling_scalar(const mshadow::Tensor<xpu, dim, DType> &dataflow
 }
 
 /*
- * Quantization for activations (inputs).
+ * return tensor * scalar
  */
 template<int dim, typename xpu, typename DType>
-inline mshadow::Tensor<xpu, dim, DType> tensor_mul_scalar(mshadow::Tensor<xpu, dim, DType> &dataflow, DType scalar) {
-  return dataflow;
+inline void tensor_mul_scalar(mshadow::Tensor<xpu, dim, DType>& dataflow, DType scal) {
+  dataflow = dataflow * mshadow::expr::scalar(DType(scal));
 }
 
 

@@ -148,8 +148,11 @@ class QCuDNNConvolutionOp : public Operator {
     Tensor<gpu, 1, DType> w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
     mshadow::Copy(w1d_copy, w1d, w1d.stream_);
     q_helper::quantize_weights(w1d, this->param_.weight_bit);
-    
+
+    //sample code to calc scaling scalar
     //DType scaling_scalar = q_helper::get_scaling_scalar(w1d_copy);
+    //q_helper::tensor_mul_scalar(w1d_copy, scaling_scalar);
+    
     // /mf quantize weights                       //
     //============================================//
 
