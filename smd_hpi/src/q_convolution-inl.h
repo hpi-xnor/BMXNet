@@ -33,6 +33,7 @@ namespace mxnet {
             enum ConvolutionOpOutputs {kOut};
             enum ConvolutionOpResource {kTempSpace};
             enum ConvolutionOpCudnnTune {kOff, kLimited, kFastest};
+            enum ScalingMode {scaling_none, scaling_forward, scaling_backward};
         }
 
         struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
@@ -50,8 +51,8 @@ namespace mxnet {
             // mf quantization and binarization variables
             uint32_t act_bit;
             uint32_t weight_bit;
-            bool scaling_factor;
             bool binarized_weights_only;
+            dmlc::optional<int> scaling_mode;            
             DMLC_DECLARE_PARAMETER(QConvolutionParam) {
               DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
               DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -87,12 +88,18 @@ namespace mxnet {
                                         "default layout: NCW for 1d, NCHW for 2d and NCDHW for 3d.");
               DMLC_DECLARE_FIELD(act_bit).set_default(1).set_range(1, 32)
                       .describe("Number of bits to quantize activations (inputs) to.");
-              DMLC_DECLARE_FIELD(scaling_factor).set_default(false)
-                      .describe("Enable alpha and beta scaling factors.");
               DMLC_DECLARE_FIELD(binarized_weights_only).set_default(false)
                       .describe("Params file contains only binarized weights. Set automatically by model converter.");
               DMLC_DECLARE_FIELD(weight_bit).set_default(1).set_range(1, 32)
                       .describe("Number of bits to quantize weights to.");
+              DMLC_DECLARE_FIELD(scaling_mode)
+                      .add_enum("none", qconv::scaling_none)
+                      .add_enum("forward", qconv::scaling_forward)
+                      .add_enum("backward", qconv::scaling_backward)
+                      .set_default(dmlc::optional<int>(0))
+                      .describe("Set whether or how to apply scaling factor to the conv output.\n"
+                                "none: no scaling process; forward: apply scaling scalar after standard forward op; \n"
+                                "backward: only apply scaling scalar in the backward pass on weights and inputs");                                          
 
             }
             // Adjusts kernel size for effects of dilation in the dimension `dim`.
@@ -160,7 +167,21 @@ namespace mxnet {
               // xnor related check
               CHECK_EQ(in_data[qconv::kData].shape_[1] % mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD, 0)
                 << "input channel currently have to be multiple of " << mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD << " but are: " << in_data[qconv::kData].shape_[1];
-              
+
+              //============================================//
+              //calc the scaling scalar for 1-bit mode.
+              //Note that should on original weights and activations              
+              DType scaling_scalar_w;
+              DType scaling_scalar_i;
+              if(this->param_.act_bit == 1 && this->param_.weight_bit == 1 
+                 && param_.scaling_mode.value() == qconv::scaling_forward){
+                //calc scaling scalar of original weights
+                Tensor<xpu, 1, DType> w = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
+                Tensor<xpu, 1, DType> inputd = in_data[qconv::kData].FlatTo1D<xpu, DType>(s);
+                scaling_scalar_w = q_helper::get_scaling_scalar(w);
+                scaling_scalar_i = q_helper::get_scaling_scalar(inputd);                
+              }
+              //============================================//              
               //============================================//
               //            WEIGHTS quantization            //
               // for training mode,                         //
@@ -276,6 +297,19 @@ namespace mxnet {
                 // has bias term, broadcast it to the same shape of output_3d in channel dim
                 output_3d += mshadow::expr::broadcast<1>(bias, output_3d.shape_);
               }
+
+              //============================================//
+              //calc the scaling scalar
+              if(this->param_.act_bit == 1 && this->param_.weight_bit == 1 
+                 && param_.scaling_mode.value() == qconv::scaling_forward){
+                Tensor<xpu, 4, DType> o4d = out_data[qconv::kOut].get<xpu, 4, DType>(s);
+                //q_helper::tensor_mul_scalar(o4d, scaling_scalar_i);
+                q_helper::tensor_mul_scalar(o4d, scaling_scalar_w);
+                //store the binary weights*scaling_scalar_w
+                //q_helper::tensor_mul_scalar(binary_weights, scaling_scalar_w);
+              }
+              //============================================//
+
               //============================================//
               //copy back the original weights
               if(w_quantized){
@@ -353,6 +387,20 @@ namespace mxnet {
               }
               //                                        //
               //========================================//
+              //============================================//
+              //calc the scaling scalar for 1-bit mode.        
+              if(this->param_.act_bit == 1 && this->param_.weight_bit == 1){
+                DType scaling_scalar_w = q_helper::get_scaling_scalar(weight_copy);
+                if(param_.scaling_mode.value() == qconv::scaling_forward){
+                  //here should just use the scaled binary weights which has been calculated in
+                  //the forward pass.
+                  q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);
+                }else if(param_.scaling_mode.value() == qconv::scaling_backward){
+                  //calc scaling scalar of original weights                                    
+                  q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);
+                }
+              }
+              //============================================//                
 
               for (index_t n = 0; n < num_; ++n) {
                 Tensor<xpu, 3, DType> out_grad_3d = out_grad_4d[n];
