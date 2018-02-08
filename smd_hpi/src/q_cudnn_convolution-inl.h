@@ -143,12 +143,15 @@ class QCuDNNConvolutionOp : public Operator {
     //calc the scaling scalar for 1-bit mode.
     //Note that should on original weights and activations              
     DType scaling_scalar_w;
-    DType scaling_scalar_i;
+    //DType scaling_scalar_i;
     if(this->param_.act_bit == 1 && this->param_.weight_bit == 1 
        && param_.scaling_mode.value() == qconv::scaling_forward){
       //calc scaling scalar of original weights
       scaling_scalar_w = q_helper::get_scaling_scalar(wmat);
-      scaling_scalar_i = q_helper::get_scaling_scalar(data);        
+
+      //Note: the current experiment results show that with input scaling, we 
+      //cannot even get acceptable result on MNIST dataset!
+      //scaling_scalar_i = q_helper::get_scaling_scalar(data);        
       //debug information
       //std::cout << "scaling mode:" << param_.scaling_mode.value() << std::endl;
       //printf("scl w : %f, scal in: %f\n", scaling_scalar_w, scaling_scalar_i);       
@@ -163,9 +166,11 @@ class QCuDNNConvolutionOp : public Operator {
     //                                            //
     // mf quantize weights                        //
     Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
-    Tensor<gpu, 1, DType> w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-    mshadow::Copy(w1d_copy, w1d, w1d.stream_);
-
+    Tensor<gpu, 1, DType> w1d_copy;
+    if (this->param_.gradient_update_mode.value() != qconv::bb){
+      w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+      mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+    }
     q_helper::quantize_weights(w1d, this->param_.weight_bit);
     // /mf quantize weights                       //
     //============================================//
@@ -268,8 +273,10 @@ class QCuDNNConvolutionOp : public Operator {
     //============================================//    
     //============================================//
     //copy back the weights
-  	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
-  	mshadow::FreeSpace(&w1d_copy);
+    if (this->param_.gradient_update_mode.value() != qconv::bb){
+    	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+    	mshadow::FreeSpace(&w1d_copy);
+    }
   	//============================================//
   }
 
@@ -315,22 +322,40 @@ class QCuDNNConvolutionOp : public Operator {
       gdata_ptr = gdata.dptr_;
     }
 
+    //============================================//
+    //calc the scaling scalar for 1-bit mode.   
+    //Note: basiclly gradient_update_mode "ff" don't need a scaling process, since
+    //full precision weights in use.
+    DType scaling_scalar_w;
+    Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
+    if(this->param_.act_bit == 1 
+        && this->param_.weight_bit == 1
+        && this->param_.scaling_mode.value() != qconv::scaling_none
+        && this->param_.gradient_update_mode.value() != qconv::ff){
+      scaling_scalar_w = q_helper::get_scaling_scalar(w1d);
+    }
+    //============================================//         
+
     //========================================//
     // calculate gradients for binarized      //
     // or quantized weights, then later apply //
     // to original weights                    //
     // save here once, copy back later        //
-    Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
-    Tensor<gpu, 1, DType> w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-    mshadow::Copy(w1d_copy, w1d, w1d.stream_);
-    q_helper::quantize_weights(w1d, this->param_.weight_bit);
+    Tensor<gpu, 1, DType> w1d_copy;
+    //use binary/quantized weights for gradient calc,
+    if (this->param_.gradient_update_mode.value() == qconv::bf){  
+      w1d_copy = mshadow::NewTensor<gpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+      mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+      q_helper::quantize_weights(w1d, this->param_.weight_bit);
+    }
     //                                        //
     //========================================//
 
     //============================================//
     //calc the scaling scalar for 1-bit mode.        
-    if(this->param_.act_bit == 1 && this->param_.weight_bit == 1){
-      DType scaling_scalar_w = q_helper::get_scaling_scalar(w1d_copy);
+    if(this->param_.act_bit == 1 
+        && this->param_.weight_bit == 1
+        && this->param_.gradient_update_mode.value() != qconv::ff){
       if(param_.scaling_mode.value() == qconv::scaling_forward){
         //here should just use the scaled binary weights which has been calculated in
         //the forward pass.
@@ -424,8 +449,10 @@ class QCuDNNConvolutionOp : public Operator {
     //========================================//
     // gradient calculation done, swap back   //
     // weights and also free space            //
-    mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
-    mshadow::FreeSpace(&w1d_copy);
+    if (param_.gradient_update_mode.value() == qconv::bf){      
+      mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+      mshadow::FreeSpace(&w1d_copy);
+    }
     //                                        //
     //========================================//
   }

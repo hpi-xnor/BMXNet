@@ -34,6 +34,7 @@ namespace mxnet {
             enum ConvolutionOpResource {kTempSpace};
             enum ConvolutionOpCudnnTune {kOff, kLimited, kFastest};
             enum ScalingMode {scaling_none, scaling_forward, scaling_backward};
+            enum GradientUpdateMode {bb, bf, ff};
         }
 
         struct QConvolutionParam : public dmlc::Parameter<QConvolutionParam> {
@@ -52,7 +53,8 @@ namespace mxnet {
             uint32_t act_bit;
             uint32_t weight_bit;
             bool binarized_weights_only;
-            dmlc::optional<int> scaling_mode;            
+            dmlc::optional<int> scaling_mode;   
+            dmlc::optional<int> gradient_update_mode;
             DMLC_DECLARE_PARAMETER(QConvolutionParam) {
               DMLC_DECLARE_FIELD(kernel).describe("convolution kernel size: (h, w) or (d, h, w)");
               DMLC_DECLARE_FIELD(stride).set_default(TShape())
@@ -99,8 +101,17 @@ namespace mxnet {
                       .set_default(dmlc::optional<int>(0))
                       .describe("Set whether or how to apply scaling factor to the conv output.\n"
                                 "none: no scaling process; forward: apply scaling scalar after standard forward op; \n"
-                                "backward: only apply scaling scalar in the backward pass on weights and inputs");                                          
-
+                                "backward: only apply scaling scalar in the backward pass on weights and inputs");
+              DMLC_DECLARE_FIELD(gradient_update_mode)
+                      .add_enum("bb", qconv::bb)
+                      .add_enum("bf", qconv::bf)
+                      .add_enum("ff", qconv::ff)
+                      .set_default(dmlc::optional<int>(0))
+                      .describe("Set the mode of gradient calculation and update.\n"
+                                "bb: calculate gradients on binary/quantized weights, update binary/quantized weights; \n"
+                                "bf: calculate gradients on binary/quantized weights, update full-precision weights; \n"
+                                "ff: calculate gradients on full-precision weights, update full-precision weights; \n"
+                                "For disambiguation: we always use binary/quantized weights for forward calculation.");
             }
             // Adjusts kernel size for effects of dilation in the dimension `dim`.
             index_t DilatedKernelSize(int dim) const {
@@ -172,16 +183,14 @@ namespace mxnet {
               //calc the scaling scalar for 1-bit mode.
               //Note that should on original weights and activations              
               DType scaling_scalar_w;
-              DType scaling_scalar_i;
               if(this->param_.act_bit == 1 && this->param_.weight_bit == 1 
                  && param_.scaling_mode.value() == qconv::scaling_forward){
                 //calc scaling scalar of original weights
                 Tensor<xpu, 1, DType> w = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
                 Tensor<xpu, 1, DType> inputd = in_data[qconv::kData].FlatTo1D<xpu, DType>(s);
-                scaling_scalar_w = q_helper::get_scaling_scalar(w);
-                scaling_scalar_i = q_helper::get_scaling_scalar(inputd);                
+                scaling_scalar_w = q_helper::get_scaling_scalar(w);           
               }
-              //============================================//              
+              //============================================//  
               //============================================//
               //            WEIGHTS quantization            //
               // for training mode,                         //
@@ -303,7 +312,6 @@ namespace mxnet {
               if(this->param_.act_bit == 1 && this->param_.weight_bit == 1 
                  && param_.scaling_mode.value() == qconv::scaling_forward){
                 Tensor<xpu, 4, DType> o4d = out_data[qconv::kOut].get<xpu, 4, DType>(s);
-                //q_helper::tensor_mul_scalar(o4d, scaling_scalar_i);
                 q_helper::tensor_mul_scalar(o4d, scaling_scalar_w);
                 //store the binary weights*scaling_scalar_w
                 //q_helper::tensor_mul_scalar(binary_weights, scaling_scalar_w);
