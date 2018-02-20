@@ -216,10 +216,9 @@ def get_symbol(num_classes, num_layers, image_shape, conv_workspace=256, bn_mom=
             units = [6, 12, 36, 24]
         else:
             raise ValueError("no experiments done on detph {}, you can do it youself".format(num_layers))
-        DenseNet(units=units, num_stage=4, growth_rate=64 if num_layers == 161 else growth_rate, num_class=num_classes, 
+        return DenseNet(units=units, num_stage=4, growth_rate=64 if num_layers == 161 else growth_rate, num_class=num_classes, 
                             data_type="imagenet", reduction=reduction, drop_out=drop_out, bottle_neck=use_bottle_neck,
                             bn_mom=bn_mom, workspace=conv_workspace)
-        return 
     elif data_type == "vggface":
         if num_layers   == 121:
             units = [6, 12, 24, 16]
