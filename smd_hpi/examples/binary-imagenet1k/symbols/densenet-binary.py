@@ -45,13 +45,13 @@ def BasicBlock(data, growth_rate, stride, name, bottle_neck=True, drop_out=0.0, 
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
         act1 = mx.sym.QActivation(data=bn1, backward_only=True, name=name + '_relu1', act_bit=BITA)
         conv1 = mx.sym.QConvolution(data=act1, num_filter=int(growth_rate * 4), kernel=(1, 1), stride=(1, 1), pad=(0, 0),
-                                   no_bias=1, workspace=workspace, name=name + '_conv1', act_bit=BITW)
+                                   no_bias=1, workspace=workspace, name=name + '_conv1', weight_bit=BITW, act_bit=BITA)
         if drop_out > 0:
             conv1 = mx.symbol.Dropout(data=conv1, p=drop_out, name=name + '_dp1')
         bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn2')
         act2 = mx.sym.QActivation(data=bn2, backward_only=True, name=name + '_relu2', act_bit=BITA)
         conv2 = mx.sym.QConvolution(data=act2, num_filter=int(growth_rate), kernel=(3, 3), stride=stride, pad=(1, 1),
-                                   no_bias=1, workspace=workspace, name=name + '_conv2', act_bit=BITW)
+                                   no_bias=1, workspace=workspace, name=name + '_conv2', weight_bit=BITW, act_bit=BITA)
         if drop_out > 0:
             conv2 = mx.symbol.Dropout(data=conv2, p=drop_out, name=name + '_dp2')
         # return mx.symbol.Concat(data, conv2, name=name + '_concat0')
@@ -60,7 +60,7 @@ def BasicBlock(data, growth_rate, stride, name, bottle_neck=True, drop_out=0.0, 
         bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
         act1 = mx.sym.QActivation(data=bn1, backward_only=True, name=name + '_relu1', act_bit=BITA)
         conv1 = mx.sym.QConvolution(data=act1, num_filter=int(growth_rate), kernel=(3, 3), stride=(1, 1), pad=(1, 1),
-                                   no_bias=1, workspace=workspace, name=name + '_conv1', act_bit=BITW)
+                                   no_bias=1, workspace=workspace, name=name + '_conv1', weight_bit=BITW, act_bit=BITA)
         if drop_out > 0:
             conv1 = mx.symbol.Dropout(data=conv1, p=drop_out, name=name + '_dp1')
         # return mx.symbol.Concat(data, conv1, name=name + '_concat0')
@@ -116,7 +116,7 @@ def TransitionBlock(num_stage, data, num_filter, stride, name, drop_out=0.0, bn_
     act1 = mx.sym.QActivation(data=bn1, backward_only=True, name=name + '_relu1', act_bit=BITA)
     conv1 = mx.sym.QConvolution(data=act1, num_filter=num_filter,
                                kernel=(1, 1), stride=stride, pad=(0, 0), no_bias=1,
-                               workspace=workspace, name=name + '_conv1', act_bit=BITW)
+                               workspace=workspace, name=name + '_conv1', weight_bit=BITW, act_bit=BITA)
     if drop_out > 0:
         conv1 = mx.symbol.Dropout(data=conv1, p=drop_out, name=name + '_dp1')
     return mx.symbol.Pooling(conv1, global_pool=False, kernel=(2, 2), stride=(2, 2), pool_type='avg',
