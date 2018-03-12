@@ -30,6 +30,7 @@ namespace q_fullc {
 enum QFullyConnectedOpInputs {kData, kWeight, kBias};
 enum QFullyConnectedOpOutputs {kOut};
 enum QFullyConnectedResource {kTempSpace};
+enum GradientUpdateMode {bb, bf, ff};
 }  // fullc
 
 struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
@@ -38,6 +39,7 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
   unsigned int act_bit;
   unsigned int weight_bit;
   bool binarized_weights_only;
+  dmlc::optional<int> gradient_update_mode;
   DMLC_DECLARE_PARAMETER(QFullyConnectedParam) {
     // TODO(bing) add support for boolean
     DMLC_DECLARE_FIELD(num_hidden).set_lower_bound(1)
@@ -50,6 +52,16 @@ struct QFullyConnectedParam : public dmlc::Parameter<QFullyConnectedParam> {
             .describe("Params file contains only binarized weights. Set automatically by model converter.");
     DMLC_DECLARE_FIELD(weight_bit).set_default(1).set_range(1, 32)
     .describe("Number of bits to quantize weights to.");
+    DMLC_DECLARE_FIELD(gradient_update_mode)
+            .add_enum("bb", q_fullc::bb)
+            .add_enum("bf", q_fullc::bf)
+            .add_enum("ff", q_fullc::ff)
+            .set_default(dmlc::optional<int>(0))
+            .describe("Set the mode of gradient calculation and update.\n"
+                      "bb: calculate gradients on binary/quantized weights, update binary/quantized weights; \n"
+                      "bf: calculate gradients on binary/quantized weights, update full-precision weights; \n"
+                      "ff: calculate gradients on full-precision weights, update full-precision weights; \n"
+                      "For disambiguation: we always use binary/quantized weights for forward calculation.");
   }
 };
 
@@ -99,14 +111,9 @@ class QFullyConnectedOp : public Operator {
     Tensor<xpu, 2, DType> out = out_data[q_fullc::kOut].get_with_shape<xpu, 2, DType>(
         Shape2(oshape[0], oshape.ProdShape(1, oshape.ndim())), s);
 
-
 		Tensor<xpu, 1, DType> w1d_copy;
 		Tensor<xpu, 1, DType> w1d;
-    ///TODO:is there better way, instead of setting flags?
-    //use this flag to mark the quantization. 
-    //we create a copy of the original weights, need to release it
-    //after forward processing.
-    bool w_quantized = false;
+
     if(ctx.is_train
 				|| (!ctx.is_train 
 						&& std::is_same<xpu, gpu>::value)
@@ -119,24 +126,22 @@ class QFullyConnectedOp : public Operator {
 	    //            WEIGHTS quantization            //            
 	    // we apply quantization function on weights. //
 			// mf quantize weights
-			if(this->param_.weight_bit < 32) {
-	      w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+      w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+      if (this->param_.gradient_update_mode.value() != q_fullc::bb){
 	      w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-        //TODO: I wanted to apply this resource but somehow the data stream will be overwritten by other requests
-        //ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
 	      mshadow::Copy(w1d_copy, w1d, w1d.stream_);
-          q_helper::quantize_weights(w1d, this->param_.weight_bit);
-        w_quantized = true;
-    	}
+      }
+      q_helper::quantize_weights(w1d, this->param_.weight_bit);
+
+
     	// /mf quantize weights
 			//============================================//
 
 	    //============================================//
 	    //             INPUT quantization             //
 	    if(this->param_.act_bit < 32){
-            q_helper::quantize_activations(data, this->param_.act_bit);
+        q_helper::quantize_activations(data, this->param_.act_bit);
 	  	}
-
 	    //============================================//
     }
 
@@ -176,7 +181,7 @@ class QFullyConnectedOp : public Operator {
 
     //============================================//
     //copy back the original weights              //
-    if(w_quantized){
+    if (this->param_.gradient_update_mode.value() != q_fullc::bb){
     	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
     	mshadow::FreeSpace(&w1d_copy);
     }
@@ -212,19 +217,15 @@ class QFullyConnectedOp : public Operator {
     //            WEIGHTS quantization            //
     // we apply quantization function on weights. //
     // mf quantize weights
-    bool w_quantized = false;
     Tensor<xpu, 1, DType> w1d_copy, w1d;
-    if(this->param_.weight_bit < 32) {
-        w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-        w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-        //TODO: I wanted to apply this resource but somehow the data stream will be overwritten by other requests
-        //ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(w1d.shape_, w1d.stream_);
-        mshadow::Copy(w1d_copy, w1d, w1d.stream_);
-            q_helper::quantize_weights(w1d, this->param_.weight_bit);
-            w_quantized = true;
-        }
-        // /mf quantize weights
-        //============================================//
+    if (this->param_.gradient_update_mode.value() == q_fullc::bf){  
+      w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+      w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+      mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+      q_helper::quantize_weights(w1d, this->param_.weight_bit);
+    }
+    // /mf quantize weights
+    //============================================//
 
 #if defined(__CUDACC__)
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
@@ -247,7 +248,7 @@ class QFullyConnectedOp : public Operator {
 
     //============================================//
     //copy back the original weights              //
-    if(w_quantized){
+    if (this->param_.gradient_update_mode.value() == q_fullc::bf){
       mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
       mshadow::FreeSpace(&w1d_copy);
     }

@@ -324,7 +324,7 @@ class QCuDNNConvolutionOp : public Operator {
 
     //============================================//
     //calc the scaling scalar for 1-bit mode.   
-    //Note: basiclly gradient_update_mode "ff" don't need a scaling process, since
+    //Note: gradient_update_mode "ff" don't need a scaling process, since
     //full precision weights in use.
     DType scaling_scalar_w;
     Tensor<gpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<gpu, DType>(s);
@@ -352,18 +352,13 @@ class QCuDNNConvolutionOp : public Operator {
     //========================================//
 
     //============================================//
-    //calc the scaling scalar for 1-bit mode.        
+    //calc the scaling scalar for 1-bit mode.    
     if(this->param_.act_bit == 1 
-        && this->param_.weight_bit == 1
-        && this->param_.gradient_update_mode.value() != qconv::ff){
-      if(param_.scaling_mode.value() == qconv::scaling_forward){
-        //here should just use the scaled binary weights which has been calculated in
-        //the forward pass.
-        q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);        
-      }else if(param_.scaling_mode.value() == qconv::scaling_backward){
-        //calc scaling scalar of original weights                  
-        q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);
-      }
+      && this->param_.weight_bit == 1
+      && this->param_.scaling_mode.value() != qconv::scaling_none
+      && this->param_.gradient_update_mode.value() != qconv::ff)
+    {    
+        q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);              
     }
     //============================================//         
 

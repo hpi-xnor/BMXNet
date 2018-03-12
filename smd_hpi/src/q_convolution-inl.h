@@ -100,8 +100,9 @@ namespace mxnet {
                       .add_enum("backward", qconv::scaling_backward)
                       .set_default(dmlc::optional<int>(0))
                       .describe("Set whether or how to apply scaling factor to the conv output.\n"
-                                "none: no scaling process; forward: apply scaling scalar after standard forward op; \n"
-                                "backward: only apply scaling scalar in the backward pass on weights and inputs");
+                                "none: no scaling process;\n"
+                                "forward: apply scaling scalar after standard forward and backward operations;\n"
+                                "backward: only apply scaling scalar in backward pass");
               DMLC_DECLARE_FIELD(gradient_update_mode)
                       .add_enum("bb", qconv::bb)
                       .add_enum("bf", qconv::bf)
@@ -187,7 +188,7 @@ namespace mxnet {
                  && param_.scaling_mode.value() == qconv::scaling_forward){
                 //calc scaling scalar of original weights
                 Tensor<xpu, 1, DType> w = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
-                Tensor<xpu, 1, DType> inputd = in_data[qconv::kData].FlatTo1D<xpu, DType>(s);
+                //Tensor<xpu, 1, DType> inputd = in_data[qconv::kData].FlatTo1D<xpu, DType>(s);
                 scaling_scalar_w = q_helper::get_scaling_scalar(w);           
               }
               //============================================//  
@@ -197,10 +198,6 @@ namespace mxnet {
               // we apply quantization function on weights. //
               //                                            //
               Tensor<xpu, 1, DType> w1d, w1d_copy;
-              //use this flag to mark the weight quantization.
-              //we create a copy of the original weights, need to release it
-              //after forward processing.
-              bool w_quantized = false;
 
               if(this->param_.weight_bit < 32 
                 	&& (ctx.is_train
@@ -214,10 +211,11 @@ namespace mxnet {
               ){
                 // mf quantize weights
                 w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
-                w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-                mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+                if (this->param_.gradient_update_mode.value() != qconv::bb){
+                  w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+                  mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+                }
                 q_helper::quantize_weights(w1d, this->param_.weight_bit);
-                w_quantized = true;
                 // /mf quantize weights
               }
               //                                            //
@@ -312,15 +310,13 @@ namespace mxnet {
               if(this->param_.act_bit == 1 && this->param_.weight_bit == 1 
                  && param_.scaling_mode.value() == qconv::scaling_forward){
                 Tensor<xpu, 4, DType> o4d = out_data[qconv::kOut].get<xpu, 4, DType>(s);
-                q_helper::tensor_mul_scalar(o4d, scaling_scalar_w);
-                //store the binary weights*scaling_scalar_w
-                //q_helper::tensor_mul_scalar(binary_weights, scaling_scalar_w);
+                q_helper::tensor_mul_scalar(o4d, scaling_scalar_w);                            
               }
               //============================================//
 
               //============================================//
               //copy back the original weights
-              if(w_quantized){
+              if(this->param_.gradient_update_mode.value() != qconv::bb){
               	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
               	mshadow::FreeSpace(&w1d_copy);
               }
@@ -371,44 +367,45 @@ namespace mxnet {
               Tensor<xpu, 3, DType> dweight_3d = in_grad[qconv::kWeight].get_with_shape<xpu, 3, DType>(
                       Shape3(group_, K, M), s);
 
+              //============================================//
+              //calc the scaling scalar for 1-bit mode.   
+              //Note: gradient_update_mode "ff" don't need a scaling process, since
+              //full precision weights in use.
+              DType scaling_scalar_w;
+              Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
+              if(this->param_.act_bit == 1 
+                  && this->param_.weight_bit == 1
+                  && this->param_.scaling_mode.value() != qconv::scaling_none
+                  && this->param_.gradient_update_mode.value() != qconv::ff){
+                scaling_scalar_w = q_helper::get_scaling_scalar(w1d);
+              }
+              //============================================//  
+
               //========================================//
               // calculate gradients for binarized      //
               // or quantized weights, then later apply //
               // to original weights                    //
               // save here once, copy back later        //
-              Tensor<xpu, 3, DType> weight_copy = mshadow::NewTensor<xpu>(weight_3d.shape_, DType(1.0), true, weight_3d.stream_);
-              mshadow::Copy(weight_copy, weight_3d, weight_3d.stream_);
-
-              // now we need to quant/binarize weight   //
-              Tensor<xpu, 1, DType> w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
-              if(this->param_.weight_bit < 32
-                    && (ctx.is_train
-                        || (!ctx.is_train
-                                && std::is_same<xpu, gpu>::value)
-                        || (!ctx.is_train
-                                && std::is_same<xpu, cpu>::value
-                                    && (this->param_.act_bit != 1 || this->param_.weight_bit != 1)
-                                    )
-                                        )
-              ){
-                   q_helper::quantize_weights(w1d, this->param_.weight_bit);
+              Tensor<xpu, 1, DType> w1d_copy;
+              //use binary/quantized weights for gradient calc,
+              if (this->param_.gradient_update_mode.value() == qconv::bf){  
+                w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+                mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+                q_helper::quantize_weights(w1d, this->param_.weight_bit);
               }
               //                                        //
-              //========================================//
+              //========================================//   
+
               //============================================//
               //calc the scaling scalar for 1-bit mode.        
-              if(this->param_.act_bit == 1 && this->param_.weight_bit == 1){
-                DType scaling_scalar_w = q_helper::get_scaling_scalar(weight_copy);
-                if(param_.scaling_mode.value() == qconv::scaling_forward){
-                  //here should just use the scaled binary weights which has been calculated in
-                  //the forward pass.
-                  q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);
-                }else if(param_.scaling_mode.value() == qconv::scaling_backward){
-                  //calc scaling scalar of original weights                                    
-                  q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);
-                }
+               if(this->param_.act_bit == 1 
+                && this->param_.weight_bit == 1
+                && this->param_.scaling_mode.value() != qconv::scaling_none
+                && this->param_.gradient_update_mode.value() != qconv::ff)
+              {    
+                q_helper::tensor_mul_scalar(w1d, scaling_scalar_w);              
               }
-              //============================================//                
+              //============================================//             
 
               for (index_t n = 0; n < num_; ++n) {
                 Tensor<xpu, 3, DType> out_grad_3d = out_grad_4d[n];
@@ -445,8 +442,10 @@ namespace mxnet {
               //========================================//
               // gradient calculation done, swap back   //
               // weights and also free space            //
-              mshadow::Copy(weight_3d, weight_copy, weight_copy.stream_);
-              mshadow::FreeSpace(&weight_copy);
+              if (param_.gradient_update_mode.value() == qconv::bf){   
+                mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+                mshadow::FreeSpace(&w1d_copy);
+              }
               //                                        //
               //========================================//
             }
