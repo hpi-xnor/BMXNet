@@ -185,7 +185,7 @@ class debug(mx.operator.CustomOp):
 	def forward(self, is_train, req, in_data, out_data, aux):
 		x = in_data[0].asnumpy()
 		#pdb.set_trace()
-		print x
+		print(x)
 		#print y.asnumpy()
 		self.assign(out_data[0], req[0], in_data[0])
 	

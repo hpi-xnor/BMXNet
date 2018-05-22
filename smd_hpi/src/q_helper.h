@@ -37,7 +37,7 @@ inline DType amean(const mshadow::Tensor<cpu, dim, DType> &tensor) {
   for (index_t i = 0; i < tensor.shape_.Size(); ++i) {
     mean += tensor.dptr_[i];
   }
-  mean = mean/(DType)tensor.shape_.Size();
+  mean = mean / static_cast<DType>(tensor.shape_.Size());
   return mean;
 }
 

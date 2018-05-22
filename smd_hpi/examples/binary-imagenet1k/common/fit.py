@@ -2,6 +2,7 @@ import mxnet as mx
 import logging
 import os
 import time
+from math import sqrt
 
 def _get_lr_scheduler(args, kv):
     if 'lr_factor' not in args or args.lr_factor >= 1:
@@ -156,7 +157,15 @@ def fit(args, network, data_loader, **kwargs):
     if args.optimizer == 'sgd':
         optimizer_params['momentum'] = args.mom
 
-    monitor = mx.mon.Monitor(args.monitor, pattern=".*") if args.monitor > 0 else None
+    all_layers_pattern = ".*"
+    conv_layers_pattern = ".*conv.*"
+
+    monitor = mx.mon.Monitor(args.monitor, pattern=all_layers_pattern, stat_func=lambda x: [
+        mx.nd.max(x),
+        mx.nd.min(x),
+        mx.nd.mean(x),
+        mx.nd.norm(x) / sqrt(x.size),
+    ]) if args.monitor > 0 else None
 
     initializer   = mx.init.Xavier(
        rnd_type='gaussian', factor_type="in", magnitude=2)
