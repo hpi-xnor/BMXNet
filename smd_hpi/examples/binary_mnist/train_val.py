@@ -92,7 +92,7 @@ def get_binary_lenet():
 	# softmax loss
 	lenet = mx.sym.SoftmaxOutput(data=fc2, name='softmax')
 
-	print 'using quantized lenet with bitwidth %d (weights), %d (activations) and %d (gradients)' % (BITW, BITA, BITG)
+	print('using quantized lenet with bitwidth %d (weights), %d (activations) and %d (gradients)' % (BITW, BITA, BITG))
 	return lenet
 
 
@@ -129,8 +129,8 @@ def val(model_prefix, epoch_num, train_img, val_img, train_lbl, val_lbl, batch_s
 	print('Evaluating...')
 	metric = mx.metric.Accuracy()
 	score = model.score(val_iter, metric)
-	print score
-	#print 'Validation accuracy: %f%%' % (score*100)
+	print(score)
+	#print('Validation accuracy: %f%%' % (score*100))
 
 def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 	device = mx.cpu()
@@ -147,7 +147,7 @@ def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, ba
 	#plt.axis('off')
 	#plt.show()
 	prob = model.predict(eval_data=val_iter, num_batch=1)[n].asnumpy() 
-	print 'Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob))
+	print('Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob)))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
 	lenet = get_binary_lenet()
