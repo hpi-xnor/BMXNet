@@ -531,10 +531,13 @@ add_library(mxnet_static STATIC ${SOURCE})
 
 else()
   if(UNIX)
+    # Create dummy file since we want an empty shared library before linking
+    set(DUMMY_SOURCE ${CMAKE_BINARY_DIR}/dummy.c)
+    file(WRITE ${DUMMY_SOURCE} "")
     list(APPEND MXNET_INSTALL_TARGETS mxnet_static)
     add_library(mxnet_static STATIC ${SOURCE})
     # Need an arbitrary source file to trigger CMake to build the library
-    add_library(mxnet SHARED)
+    add_library(mxnet SHARED ${DUMMY_SOURCE})
     set_target_properties(mxnet_static PROPERTIES OUTPUT_NAME mxnet)
     target_link_libraries(mxnet PRIVATE "-Wl,--whole-archive $<TARGET_FILE:mxnet_static> -Wl,--no-whole-archive")
     target_link_libraries(mxnet PRIVATE mxnet_static) # Let cmake understand the dependency
