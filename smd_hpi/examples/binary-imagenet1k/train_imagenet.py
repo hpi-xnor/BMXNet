@@ -82,8 +82,8 @@ if __name__ == '__main__':
 
     if args.visualize:
         mx.visualization.print_summary(sym, shape={'data': (1, 3, 224, 224)})
-        digraph = mx.visualization.plot_network(sym, save_format='jpg')
-        digraph.render()
+        # digraph = mx.visualization.plot_network(sym, save_format='jpg')
+        # digraph.render()
     else:
         #load pretrained
         args_params=None
