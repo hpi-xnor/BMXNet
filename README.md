@@ -94,14 +94,24 @@ Have a look at our [source, tools and examples](smd_hpi) to find out more.
 Please cite BMXNet in your publications if it helps your research work:
 
 ```shell
-@article{HPI_xnor,
-  Author = {Haojin Yang, Martin Fritzsche, Christian Bartz, Christoph Meinel},
-  journal = {ArXiv e-prints},
-  archivePrefix = "arXiv",
-  eprint = {1705.09864},
-  Title = {BMXNet: An Open-Source Binary Neural Network Implementation Based on MXNet},
-  Year = {2017}
-}
+@inproceedings{bmxnet,
+ author = {Yang, Haojin and Fritzsche, Martin and Bartz, Christian and Meinel, Christoph},
+ title = {BMXNet: An Open-Source Binary Neural Network Implementation Based on MXNet},
+ booktitle = {Proceedings of the 2017 ACM on Multimedia Conference},
+ series = {MM '17},
+ year = {2017},
+ isbn = {978-1-4503-4906-2},
+ location = {Mountain View, California, USA},
+ pages = {1209--1212},
+ numpages = {4},
+ url = {http://doi.acm.org/10.1145/3123266.3129393},
+ doi = {10.1145/3123266.3129393},
+ acmid = {3129393},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {binary neural networks, computer vision, machine learning, open source},
+} 
+
 ```
 
 ### Reference
