@@ -8,6 +8,11 @@ Our current efforts are focused on binarizing the inputs and weights of convolut
 
 ## News
 
+- **Dec 06, 2018** - [BMXNet-v2](https://github.com/hpi-xnor/BMXNet-v2)
+    - We are happy to annouce a [new (beta) version 2 of BMXNet](https://github.com/hpi-xnor/BMXNet-v2)
+    - In BMXNet-v2 we utilize the new Gluon API for better maintainability
+    - If you need deployment and fast inference with binary operations and models continue using this version of BMXNet, since it is not yet implemented in BMXNet-v2
+
 - **Dec 22, 2017** - MXNet v1.0.0 and cuDNN
     - We are updating the underlying MXNet to version 1.0.0, see changes and release notes [here](https://github.com/apache/incubator-mxnet/releases/tag/1.0.0).
     - cuDNN is now supported in the training of binary networks, speeding up the training process by about 2x
