@@ -14,7 +14,7 @@ def add_binary_args(parser):
                        help='number of bits for activations')
     parser.add_argument('--reduction', type=float, default=1,
                        help='reduction in transition blocks (densenet only)')
-    parser.add_argument('--growth-rate', type=int, default=160,
+    parser.add_argument('--growth-rate', type=int, default=32,
                        help='number of initial filters (densenet only)')
 
 if __name__ == '__main__':
@@ -33,6 +33,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--log', dest='log_file', type=str, default="train.log",
                     help='save training log to file')
+
+    parser.add_argument('--visualize', action='store_true',
+                    help='visualize network instead of train it')
 
     add_binary_args(parser)
 
@@ -77,20 +80,25 @@ if __name__ == '__main__':
     net = import_module('symbols.'+args.network)
     sym = net.get_symbol(**vars(args))
 
-    #load pretrained
-    args_params=None
-    auxs_params=None
-
-    # train
-    if args_params and auxs_params:
-        fit.fit(
-            args,
-            sym,
-            data.get_rec_iter,
-            arg_params=args_params,
-            aux_params=auxs_params)
+    if args.visualize:
+        mx.visualization.print_summary(sym, shape={'data': (1, 3, 224, 224)})
+        # digraph = mx.visualization.plot_network(sym, save_format='jpg')
+        # digraph.render()
     else:
-        fit.fit(
-            args,
-            sym,
-            data.get_rec_iter)
+        #load pretrained
+        args_params=None
+        auxs_params=None
+
+        # train
+        if args_params and auxs_params:
+            fit.fit(
+                args,
+                sym,
+                data.get_rec_iter,
+                arg_params=args_params,
+                aux_params=auxs_params)
+        else:
+            fit.fit(
+                args,
+                sym,
+                data.get_rec_iter)
