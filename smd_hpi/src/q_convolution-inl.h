@@ -199,24 +199,13 @@ namespace mxnet {
               //                                            //
               Tensor<xpu, 1, DType> w1d, w1d_copy;
 
-              if(this->param_.weight_bit < 32 
-                	&& (ctx.is_train
-                		|| (!ctx.is_train 
-                				&& std::is_same<xpu, gpu>::value)
-                		|| (!ctx.is_train 
-                				&& std::is_same<xpu, cpu>::value 
-            						&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
-        							)	 
-										)
-              ){
-                // mf quantize weights
+              if(this->param_.weight_bit < 32 && !param_.binarized_weights_only){                
                 w1d = in_data[qconv::kWeight].FlatTo1D<xpu, DType>(s);
                 if (this->param_.gradient_update_mode.value() != qconv::bb){
                   w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
                   mshadow::Copy(w1d_copy, w1d, w1d.stream_);
                 }
                 q_helper::quantize_weights(w1d, this->param_.weight_bit);
-                // /mf quantize weights
               }
               //                                            //
               //============================================//
@@ -235,16 +224,7 @@ namespace mxnet {
                 // This process should be after padding elemt //
                 // since the padding elements are all "0"     //
                 //                                            //
-                if(this->param_.act_bit < 32 
-                	&& (ctx.is_train
-                		|| (!ctx.is_train 
-                				&& std::is_same<xpu, gpu>::value)
-                		|| (!ctx.is_train 
-                				&& std::is_same<xpu, cpu>::value 
-            						&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
-        								)	 
-										)
-								){
+                if(this->param_.act_bit < 32 && !param_.binarized_weights_only){
                   q_helper::quantize_activations(col_buffer_3d, this->param_.act_bit);
                 }
                 //                                            //
@@ -263,30 +243,19 @@ namespace mxnet {
                   //   QConvolutionForward(...)                                       //
                   // should produce the exactly same result as the dot(bina(..))method//
                   //                                                                  //
-                  if(!ctx.is_train 
-                      && std::is_same<xpu, cpu>::value 
-                      && this->param_.act_bit == 1 
-                      && this->param_.weight_bit == 1){
-
+                  if(param_.binarized_weights_only){
                     // @todo: watch out, we get 32bit float space here and later possibly cast it into 64bit space
                     Tensor<xpu, 1, DType> binary_inputs_workspace =
                             ctx.requested[qconv::kTempSpace].get_space_typed<xpu, 1, DType>(
                                     Shape1(N * K / (sizeof(DType) * CHAR_BIT)), s);
                     Tensor<xpu, 2, DType> temp_dst_gid = output_3d[g];
-                    if (param_.binarized_weights_only) {
-                      CHECK(g == 0) << "groups not yet supported for pre-binarized weights";
-                      QConvolutionForward(M, N, K,
-                                          wmat_binarized,
-                                          binary_inputs_workspace,
-                                          col_buffer_3d[g],
-                                          temp_dst_gid);
-                    } else {
-                      QConvolutionForward(M, N, K,
-                                          weight_3d[g],
-                                          binary_inputs_workspace,
-                                          col_buffer_3d[g],
-                                          temp_dst_gid);
-                    }
+                  
+                    CHECK(g == 0) << "groups not yet supported for pre-binarized weights";
+                    QConvolutionForward(M, N, K,
+                                        wmat_binarized,
+                                        binary_inputs_workspace,
+                                        col_buffer_3d[g],
+                                        temp_dst_gid);
                   }else{ // for training phase...
                     ASSIGN_DISPATCH(output_3d[g], req[qconv::kOut], dot(weight_3d[g], col_buffer_3d[g]));
                     //this converting is just for mimicing 1-bit xnor-popc operations
@@ -316,7 +285,8 @@ namespace mxnet {
 
               //============================================//
               //copy back the original weights
-              if(this->param_.gradient_update_mode.value() != qconv::bb){
+              if(this->param_.weight_bit < 32 
+                && this->param_.gradient_update_mode.value() != qconv::bb){
               	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
               	mshadow::FreeSpace(&w1d_copy);
               }
@@ -572,20 +542,24 @@ namespace mxnet {
                 // 2d conv
                 CHECK_EQ(dshp.ndim(), 4U) \
           << "Input data should be 4D in batch-num_filter-y-x";
-                Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);
 
+                Shape<4> dshape = ConvertLayout(dshp.get<4>(), param_.layout.value(), kNCHW);                
+                Shape<4> wshape;
                 if (param_.binarized_weights_only) {
                   CHECK_EQ(param_.num_group, 1) << "groups not (yet?) supported for pre-binarized weights";
-                  Shape<1> wshape = Shape1(dshape[1] * param_.num_filter * param_.kernel[0] * param_.kernel[1] / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD);
-                  SHAPE_ASSIGN_CHECK(*in_shape, qconv::kWeight, wshape);
+                  //this is the old 1-D version of binarized weights, will be removed
+                  //Shape<1> wshape = Shape1(dshape[1] * param_.num_filter * param_.kernel[0] * param_.kernel[1] / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD);
+                  wshape = Shape4(param_.num_filter / param_.num_group,
+                         dshape[1] / param_.num_group / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD,
+                         param_.kernel[0], param_.kernel[1]);
                 } else {
-                  Shape<4> wshape = Shape4(param_.num_filter / param_.num_group,
+                  wshape = Shape4(param_.num_filter / param_.num_group,
                                            dshape[1] / param_.num_group,
                                            param_.kernel[0], param_.kernel[1]);
-                  wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
-                  wshape[0] *= param_.num_group;
-                  SHAPE_ASSIGN_CHECK(*in_shape, qconv::kWeight, wshape);
                 }
+                wshape = ConvertLayout(wshape, kNCHW, param_.layout.value());
+                wshape[0] *= param_.num_group;
+                SHAPE_ASSIGN_CHECK(*in_shape, qconv::kWeight, wshape);                
 
                 if (!param_.no_bias) {
                   SHAPE_ASSIGN_CHECK(*in_shape, qconv::kBias, Shape1(param_.num_filter));
@@ -645,8 +619,8 @@ namespace mxnet {
                 if ((*in_type)[i] == -1) {
                   (*in_type)[i] = dtype;
                 } else {
-                  if (param_.binarized_weights_only &&
-                      (i == qconv::kWeight)) {
+                  if (param_.binarized_weights_only
+                      && (i == qconv::kWeight)) {
                     continue;
                   }
                   CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "

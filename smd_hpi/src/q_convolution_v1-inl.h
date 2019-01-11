@@ -164,9 +164,6 @@ class QConvolutionV1Op : public Operator {
 		if(this->param_.weight_bit < 32 
 			&& (ctx.is_train
 				|| (!ctx.is_train 
-					&& std::is_same<xpu, gpu>::value)
-				|| (!ctx.is_train 
-					&& std::is_same<xpu, cpu>::value 
 					&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
 					)	 
 				)
@@ -222,10 +219,7 @@ class QConvolutionV1Op : public Operator {
       //============================================//
 			if(this->param_.act_bit < 32 
 				&& (ctx.is_train
-					|| (!ctx.is_train 
-							&& std::is_same<xpu, gpu>::value)
-					|| (!ctx.is_train 
-							&& std::is_same<xpu, cpu>::value 
+					|| (!ctx.is_train
 							&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
 						 )	 
 					 )
@@ -250,7 +244,6 @@ class QConvolutionV1Op : public Operator {
         // should produce the exactly same result as the dot(bina(..))method//
         //==================================================================//
         if(!ctx.is_train 
-           && std::is_same<xpu, cpu>::value 
            && this->param_.act_bit == 1
            && this->param_.weight_bit == 1){          
           

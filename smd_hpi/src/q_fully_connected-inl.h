@@ -114,25 +114,19 @@ class QFullyConnectedOp : public Operator {
 		Tensor<xpu, 1, DType> w1d_copy;
 		Tensor<xpu, 1, DType> w1d;
 
-    if(ctx.is_train
-				|| (!ctx.is_train 
-						&& std::is_same<xpu, gpu>::value)
-				|| (!ctx.is_train 
-						&& std::is_same<xpu, cpu>::value 
-						&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
-					)	 
-    ){
+    if(!this->param_.binarized_weights_only){
 	    //============================================//
 	    //            WEIGHTS quantization            //            
 	    // we apply quantization function on weights. //
 			// mf quantize weights
-      w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
-      if (this->param_.gradient_update_mode.value() != q_fullc::bb){
-	      w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
-	      mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+      if (this->param_.weight_bit < 32){
+        w1d = in_data[q_fullc::kWeight].FlatTo1D<xpu, DType>(s);
+        if (this->param_.gradient_update_mode.value() != q_fullc::bb){
+          w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+          mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+        }
+        q_helper::quantize_weights(w1d, this->param_.weight_bit);
       }
-      q_helper::quantize_weights(w1d, this->param_.weight_bit);
-
 
     	// /mf quantize weights
 			//============================================//
@@ -145,27 +139,14 @@ class QFullyConnectedOp : public Operator {
 	    //============================================//
     }
 
-    if(!ctx.is_train 
-      && std::is_same<xpu, cpu>::value 
-      && this->param_.act_bit == 1
-      && this->param_.weight_bit == 1){
+    if(this->param_.binarized_weights_only){
       int m = data.size(0);
       int n = data.size(1);
       int k = param_.num_hidden;
       Tensor<xpu, 1, DType> binary_inputs_workspace =
               ctx.requested[q_fullc::kTempSpace].get_space_typed<xpu, 1, DType>(
-                      Shape1(n * m / (sizeof(DType) * CHAR_BIT)), s);
-
-      if (param_.binarized_weights_only) {
-        QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_binarized, out);
-      } else {
-        Tensor<xpu, 2, DType> wmat_T =
-                NewTensor<xpu>(Shape2(wmat.shape_[1], wmat.shape_[0]), DType(0.0), MSHADOW_ALLOC_PAD, s);
-        wmat_T = wmat.T();
-        QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_T, out);
-        mshadow::FreeSpace(&wmat_T);
-      }
-
+                      Shape1(n * m / (sizeof(DType) * CHAR_BIT)), s); 
+      QFullyConnectedForward(m, n, k, data, binary_inputs_workspace, wmat_binarized, out);
     }else{
   		out = dot(data, wmat.T());
       //this converting is just for mimicing 2-bit xnor-popc operations
@@ -174,14 +155,15 @@ class QFullyConnectedOp : public Operator {
         out = (ScalarExp<DType>(data.size(1)) + out) / scalar(DType(2.0));
     }
 
-		if (!param_.no_bias) {
+		if (!this->param_.no_bias) {
 		  Tensor<xpu, 1, DType> bias = in_data[q_fullc::kBias].get<xpu, 1, DType>(s);
 		  out += repmat(bias, data.size(0));
 		}
 
     //============================================//
     //copy back the original weights              //
-    if (this->param_.gradient_update_mode.value() != q_fullc::bb){
+    if(this->param_.weight_bit < 32 &&
+        this->param_.gradient_update_mode.value() != q_fullc::bb){
     	mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
     	mshadow::FreeSpace(&w1d_copy);
     }
@@ -300,7 +282,8 @@ class QFullyConnectedProp : public OperatorProperty {
 
     index_t num_input = dshape.ProdShape(1, dshape.ndim());
     if (param_.binarized_weights_only) {
-      SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kWeight, Shape1(param_.num_hidden * num_input / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
+      //SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kWeight, Shape1(param_.num_hidden * num_input / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
+      SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kWeight, Shape2(param_.num_hidden, num_input / mxnet::op::xnor_cpu::BITS_PER_BINARY_WORD));
     } else {
       SHAPE_ASSIGN_CHECK(*in_shape, q_fullc::kWeight, Shape2(param_.num_hidden, num_input));
     }
@@ -322,8 +305,7 @@ class QFullyConnectedProp : public OperatorProperty {
       if ((*in_type)[i] == -1) {
         (*in_type)[i] = dtype;
       } else {
-        if (param_.binarized_weights_only &&
-            (i == q_fullc::kWeight)) {
+        if (param_.binarized_weights_only && (i == q_fullc::kWeight)) {
           continue;
         }
         CHECK_EQ((*in_type)[i], dtype) << "This layer requires uniform type. "
