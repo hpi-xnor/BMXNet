@@ -31,11 +31,19 @@ void convert_to_binary_row(mxnet::NDArray& array) {
   //if(array.shape()[1] < BITS_PER_BINARY_WORD) return;  
   
   CHECK(array.shape()[1] % BITS_PER_BINARY_WORD == 0); // depth from input has to be divisible by 32 (or 64)
-  nnvm::TShape binarized_shape(1);
+  
+  nnvm::TShape binarized_shape(4);
   size_t size = array.shape().Size();
-  binarized_shape[0] = size / BITS_PER_BINARY_WORD;
+  binarized_shape[0] = array.shape()[0];
+  binarized_shape[1] = array.shape()[1] / BITS_PER_BINARY_WORD;
+  binarized_shape[2] = array.shape()[2];
+  binarized_shape[3] = array.shape()[3];
+
   mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, mxnet::op::xnor_cpu::corresponding_dtype());
-  mxnet::op::xnor_cpu::get_binary_row((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, size);
+  mxnet::op::xnor_cpu::get_binary_row((float*) array.data().dptr_, 
+                                  (BINARY_WORD*) temp.data().dptr_, 
+                                  size);
+
   array = temp;
 }
 
@@ -78,11 +86,17 @@ void transpose_and_convert_to_binary_col(mxnet::NDArray& array) {
   //if(array.shape()[0] < BITS_PER_BINARY_WORD) return;
   
   CHECK(array.shape()[0] % BITS_PER_BINARY_WORD == 0); // length of columns has to be divisible by 32 (or 64)
-  nnvm::TShape binarized_shape(1);
-  size_t size = array.shape().Size();
-  binarized_shape[0] = size / BITS_PER_BINARY_WORD;
+
+  nnvm::TShape binarized_shape(2);  
+  binarized_shape[0] = array.shape()[1];
+  binarized_shape[1] = array.shape()[0] / BITS_PER_BINARY_WORD;
+
   mxnet::NDArray temp(binarized_shape, mxnet::Context::CPU(), false, mxnet::op::xnor_cpu::corresponding_dtype());
-  mxnet::op::xnor_cpu::get_binary_col_unrolled((float*) array.data().dptr_, (BINARY_WORD*) temp.data().dptr_, array.shape()[0], array.shape()[1]);
+  mxnet::op::xnor_cpu::get_binary_col_unrolled((float*) array.data().dptr_, 
+                                            (BINARY_WORD*) temp.data().dptr_, 
+                                            array.shape()[0], 
+                                            array.shape()[1]);
+
   array = temp;
 }
 

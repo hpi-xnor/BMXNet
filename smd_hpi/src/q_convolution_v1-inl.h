@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 #include "../../src/operator/operator_common.h"
-#include "../../src/operator/mshadow_op.h"
 #include "./q_helper.h"
 #include "./xnor_cpu.h"
 #include <type_traits>
@@ -154,14 +153,28 @@ class QConvolutionV1Op : public Operator {
 
     //============================================//
     //            WEIGHTS quantization            //            
-    // for training or prediction in gpu mode,    //
+    // for training mode,                         //
     // we apply quantization function on weights. //
     //============================================//
-    if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
-      // mf quantize weights
-      Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
-      helper::quantize_weights(w1d, this->param_.weight_bit);
-      // /mf quantize weights
+    Tensor<xpu, 1, DType> w1d, w1d_copy;
+    //use this flag to mark the weight quantization.
+    //we create a copy of the original weights, need to release it
+    //after forward processing.
+    bool w_quantized = false;
+		if(this->param_.weight_bit < 32 
+			&& (ctx.is_train
+				|| (!ctx.is_train 
+					&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
+					)	 
+				)
+		){
+			// mf quantize weights
+			w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
+			w1d_copy = mshadow::NewTensor<xpu>(w1d.shape_, DType(1.0), true, w1d.stream_);
+			mshadow::Copy(w1d_copy, w1d, w1d.stream_);
+            q_helper::quantize_weights(w1d, this->param_.weight_bit);
+            w_quantized = true;
+			// mf quantize weights
     }
 
     const index_t nbatch = data.size(0);
@@ -204,9 +217,15 @@ class QConvolutionV1Op : public Operator {
       // This process should be after padding elemt //
       // since the padding elements are all "0"     //
       //============================================//
-      if(ctx.is_train || (!ctx.is_train && std::is_same<xpu, gpu>::value)){
-        helper::quantize_activations(temp_col, this->param_.act_bit);
-      }
+			if(this->param_.act_bit < 32 
+				&& (ctx.is_train
+					|| (!ctx.is_train
+							&& (this->param_.act_bit != 1 || this->param_.weight_bit != 1) 
+						 )	 
+					 )
+			){
+                q_helper::quantize_activations(temp_col, this->param_.act_bit);
+			}
 
       const index_t gstride = temp_col.size(0) / param_.num_group;
 
@@ -225,7 +244,6 @@ class QConvolutionV1Op : public Operator {
         // should produce the exactly same result as the dot(bina(..))method//
         //==================================================================//
         if(!ctx.is_train 
-           && std::is_same<xpu, cpu>::value 
            && this->param_.act_bit == 1
            && this->param_.weight_bit == 1){          
           
@@ -271,6 +289,13 @@ class QConvolutionV1Op : public Operator {
       Tensor<xpu, 1, DType> bias = in_data[q_conv_v1::kBias].get<xpu, 1, DType>(s);
       out += mshadow::expr::broadcast<1>(bias, out.shape_);
     }
+    //============================================//
+    //copy back the original weights 
+		if(w_quantized){
+			mshadow::Copy(w1d, w1d_copy, w1d_copy.stream_);
+			mshadow::FreeSpace(&w1d_copy);
+		}
+		//============================================//
 
   }
 
@@ -309,6 +334,32 @@ class QConvolutionV1Op : public Operator {
     CHECK_EQ(s->blas_handle_ownership_, Stream<xpu>::OwnHandle)
         << "Must init CuBLAS handle in stream";
 #endif
+
+    //========================================//
+    // calculate gradients for binarized      //
+    // or quantized weights, then later apply //
+    // to original weights                    //
+    // save here once, copy back later        //
+    Tensor<xpu, 3, DType> wmat_copy = mshadow::NewTensor<xpu>(wmat.shape_, DType(1.0), true, wmat.stream_);
+    mshadow::Copy(wmat_copy, wmat, wmat.stream_);
+
+    // now we need to quant/binarize weight   //
+    Tensor<xpu, 1, DType> w1d = in_data[q_conv_v1::kWeight].FlatTo1D<xpu, DType>(s);
+    if(this->param_.weight_bit < 32
+          && (ctx.is_train
+              || (!ctx.is_train
+                      && std::is_same<xpu, gpu>::value)
+              || (!ctx.is_train
+                      && std::is_same<xpu, cpu>::value
+                          && (this->param_.act_bit != 1 || this->param_.weight_bit != 1)
+                          )
+                              )
+    ){
+        q_helper::quantize_weights(w1d, this->param_.weight_bit);
+    }
+    //                                        //
+    //========================================//
+
     const index_t nbatch = data.size(0);
     Tensor<xpu, 1, DType> workspace =
         ctx.requested[q_conv_v1::kTempSpace].get_space_typed<xpu, 1, DType>(
@@ -386,6 +437,13 @@ class QConvolutionV1Op : public Operator {
       Tensor<xpu, 1, DType> gbias = in_grad[q_conv_v1::kBias].get<xpu, 1, DType>(s);
       Assign(gbias, req[q_conv_v1::kBias], sumall_except_dim<1>(grad));
     }
+    //========================================//
+    // gradient calculation done, swap back   //
+    // weights and also free space            //
+    mshadow::Copy(wmat, wmat_copy, wmat_copy.stream_);
+    mshadow::FreeSpace(&wmat_copy);
+    //                                        //
+    //========================================//
   }
 
  private:

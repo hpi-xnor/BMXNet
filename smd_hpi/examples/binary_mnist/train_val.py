@@ -6,12 +6,13 @@ import pdb
 from dorefa_ops import get_dorefa
 from math_ops import *
 from random import randint
+import time
 
 logging.getLogger().setLevel(logging.DEBUG)
 
 BITW = 1
 BITA = 1
-BITG = 6 # TODO: we don't have binarized gradient implementation yet.
+BITG = 32 # TODO: we don't have binarized gradient implementation yet.
 
 # get quantized functions
 f_w, f_a, f_g = get_dorefa(BITW, BITA, BITG)
@@ -92,7 +93,7 @@ def get_binary_lenet():
 	# softmax loss
 	lenet = mx.sym.SoftmaxOutput(data=fc2, name='softmax')
 
-	print 'using quantized lenet with bitwidth %d (weights), %d (activations) and %d (gradients)' % (BITW, BITA, BITG)
+	print('using quantized lenet with bitwidth %d (weights), %d (activations) and %d (gradients)' % (BITW, BITA, BITG))
 	return lenet
 
 
@@ -125,12 +126,14 @@ def val(model_prefix, epoch_num, train_img, val_img, train_lbl, val_lbl, batch_s
 	
 	model.bind(data_shapes=val_iter.provide_data,
 	         label_shapes=val_iter.provide_label, for_training=False)  # create memory by given input shapes
-	model.init_params()  # initial parameters with the default random initializer
 	print('Evaluating...')
 	metric = mx.metric.Accuracy()
+
+	tic = time.time()
 	score = model.score(val_iter, metric)
-	print score
-	#print 'Validation accuracy: %f%%' % (score*100)
+	speed = 10000 / (time.time() - tic)
+	logging.info(score)
+	logging.info('Finished with %f images per second', speed)
 
 def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, batch_size, gpu_id=0):
 	device = mx.cpu()
@@ -147,7 +150,7 @@ def classify(val_img, model_prefix, epoch_num, train_img, train_lbl, val_lbl, ba
 	#plt.axis('off')
 	#plt.show()
 	prob = model.predict(eval_data=val_iter, num_batch=1)[n].asnumpy() 
-	print 'Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob))
+	print('Classified as %d[%d] with probability %f' % (prob.argmax(), val_lbl[n], max(prob)))
 
 def train_binary(train_img, val_img, train_lbl, val_lbl, batch_size, epochs, gpu_id=0):
 	lenet = get_binary_lenet()

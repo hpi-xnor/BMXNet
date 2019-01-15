@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='score a model on a dataset')
     parser.add_argument('--model-prefix', type=str, required=True,
                         help = 'the model prefix.')
-    parser.add_argument('--gpus', type=str, default='0')
+    parser.add_argument('--gpus', type=str, default='')
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--rgb-mean', type=str, default='123.68,116.779,103.939')
     parser.add_argument('--data-val', type=str, required=True)
